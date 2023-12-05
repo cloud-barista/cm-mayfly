@@ -10,10 +10,10 @@ If you have any difficulties in using cm-mayfly, please let us know.
 (Open an issue or Join the Cloud-Migrator Slack)
 ```
 
-## cm-mayfly 개요
-- Cloud-Migrator 시스템의 설치, 실행, 상태정보 제공, 종료 등을 지원하는 관리 도구 입니다.
-- 현재는 Docker Compose 모드 방식만 제공합니다.
-  - [Docker Compose 모드](docs/cm-mayfly-docker-compose-mode.md)
+## cm-mayfly Overview
+- This is a operate tool that supports installing, running, providing status information, and shutting down the Cloud-Migrator system.
+- As a proof-of-concept phase, only the Docker Compose V2 mode method is currently available first.
+  - [Docker Compose Mode](docs/cm-mayfly-docker-compose-mode.md)
 
 ## Install Docker & Docker Compose V2
 - [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
@@ -39,9 +39,9 @@ cm-mayfly/src$ go build -o mayfly
 ```
 cm-mayfly/src$ ./mayfly 
 
-The mayfly is a tool to operate Cloud-Barista system. 
+The mayfly is a tool to operate Cloud-Migrator system. 
   
-  For example, you can setup and run, stop, and ... Cloud-Barista runtimes.
+  For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
   
   - ./mayfly pull [-f ../docker-compose-mode-files/docker-compose.yaml]
   - ./mayfly run [-f ../docker-compose-mode-files/docker-compose.yaml]
@@ -54,11 +54,11 @@ Usage:
 
 Available Commands:
   help        Help about any command
-  info        Get information of Cloud-Barista System
-  pull        Pull images of Cloud-Barista System containers
-  remove      Stop and Remove Cloud-Barista System
-  run         Setup and Run Cloud-Barista System
-  stop        Stop Cloud-Barista System
+  info        Get information of Cloud-Migrator System
+  pull        Pull images of Cloud-Migrator System containers
+  remove      Stop and Remove Cloud-Migrator System
+  run         Setup and Run Cloud-Migrator System
+  stop        Stop Cloud-Migrator System
 
 Flags:
       --config string   config file (default is $HOME/.mayfly.yaml)
@@ -72,13 +72,13 @@ Use "mayfly [command] --help" for more information about a command.
 ```
 cm-mayfly/src$ ./mayfly run -h
 
-Setup and Run Cloud-Barista System
+Setup and Run Cloud-Migrator System
 
 Usage:
   mayfly run [flags]
 
 Flags:
-  -f, --file string   Path to Cloud-Barista Docker-compose file (default "*.yaml")
+  -f, --file string   Path to Cloud-Migrator Docker-compose file (default "*.yaml")
   -h, --help          help for run
 
 Global Flags:
@@ -89,15 +89,15 @@ Global Flags:
 ```
 cm-mayfly/src$ ./mayfly stop -h
 
-Stop Cloud-Barista System
+Stop Cloud-Migrator System
 
 Usage:
   mayfly stop [flags]
 
 Flags:
-  -f, --file string   Path to Cloud-Barista Docker-compose file (default "*.yaml")
+  -f, --file string   Path to Cloud-Migrator Docker-compose file (default "*.yaml")
   -h, --help          help for stop
 
 Global Flags:
-      --config string   config file (default is $HOME/.mayflyvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv.yaml)
+      --config string   config file (default is $HOME/.mayfly.yaml)
 ```
