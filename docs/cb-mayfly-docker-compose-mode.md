@@ -1,13 +1,10 @@
 
-<!-- https://docs.google.com/presentation/d/13a5tXC66jCtaX5lGn1reGlzZWmURXxYpVQpEhxYCQVk/edit?usp=sharing -->
-
 ## `cm-mayfly`의 `Docker Compose 모드`를 이용한 Cloud-Migrator 설치 및 실행 가이드
 
-이 가이드에서는 `cm-mayfly`의 두 가지 모드 중 하나인 `Docker Compose 모드`를 이용하여 Cloud-Migrator를 설치하고 실행하는 방법에 대해 소개합니다.
+이 가이드에서는 `cm-mayfly`의 `Docker Compose 모드`를 이용하여 Cloud-Migrator 시스템을 구축 및 실행하는 방법에 대해 소개합니다. 
+
 
 ## 순서
-1. [참고] 프레임워크별 컨테이너 구성 및 API Endpoint
-1. [참고] 그 외 컨테이너 구성 및 Endpoint
 1. 개발환경 준비
 1. 필요사항 설치
    1. Golang
@@ -18,40 +15,13 @@
 1. cm-mayfly 소스코드 빌드
 1. cm-mayfly 이용하여 Cloud-Migrator 실행
 1. Cloud-Migrator 실행상태 확인
-
-## [참고] 프레임워크별 컨테이너 구성 및 API Endpoint
-| Framework별 Container Name | REST-API Endpoint | REST-API via APIGW Endpoint | Go-API Endpoint |
-|---|---|---|---|
-| cb-spider | http://{{host}}:1024/spider | http://{{host}}:8000/spider | http://{{host}}:2048  |
-| --- |   |   |   |
-| cb-tumblebug | http://{{host}}:1323/tumblebug | http://{{host}}:8000/tumblebug | http://{{host}}:50252  |
-| --- |   |   |   |
-| cb-ladybug | http://{{host}}:1470/ladybug | http://{{host}}:8000/ladybug  |   |
-| --- |   |   |   |
-| cb-dragonfly | http://{{host}}:9090/dragonfly | http://{{host}}:8000/dragonfly | http://{{host}}:9999<!--8094/udp-->  |
-
-## [참고] 그 외 컨테이너 구성 및 Endpoint
-| Container Name | Endpoint | Misc. |
-|---|---|---|
-| cb-dragonfly-influxdb | http://{{host}}:28086 |   |
-| cb-dragonfly-kafka | http://{{host}}:9092 |   |
-| cb-dragonfly-kapacitor | http://{{host}}:29092  |   |
-| cb-dragonfly-zookeeper | http://{{host}}:2181  |   |
-| --- |   |   |
-| cb-restapigw | GW: http://{{host}}:8000 <br> Admin: http://{{host}}:8001 | ID: admin <br> PW: test@admin00  | 
-| cb-restapigw-influxdb | http://{{host}}:8086 |   |
-| cb-restapigw-grafana | http://{{host}}:3100 | ID: admin <br> PW: admin  |
-| cb-restapigw-jaeger | http://{{host}}:16686 |   |
-| --- |   |   |
-| cb-webtool | http://{{host}}:1234 |   |
-| --- |   |   |
-| cb-tumblebug-phpliteadmin | http://{{host}}:2015  |   |
+1. [참고] 프레임워크별 컨테이너 구성 및 API Endpoint
 
 
 ## 개발환경 준비
 
 [권장사항]
-- Ubuntu 18.04
+- Ubuntu 20.04
 - Golang 1.15 또는 그 이상
 
 ## 필요사항 설치
@@ -64,10 +34,10 @@
   
 ```bash
 # Golang 다운로드
-wget https://golang.org/dl/go1.16.2.linux-amd64.tar.gz
+wget https://go.dev/dl/go1.21.4.linux-amd64.tar.gz
 
 # 기존 Golang 삭제 및 압축파일 해제
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.2.linux-amd64.tar.gz
+rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.4.linux-amd64.tar.gz
 
 # ~/.bashrc 또는 ~/.zshrc 등에 다음 라인을 추가
 export PATH=$PATH:/usr/local/go/bin
@@ -121,26 +91,8 @@ sudo apt install docker-compose
 git clone https://github.com/cm-mayfly/cm-mayfly.git
 ```
 
-## 환경설정 확인 및 변경
-- Cloud-Migrator를 설치 및 실행하는 VM/물리머신의 Public IP 주소를 알아냅니다.
-  - 예: `curl ifconfig.so`
-- `cm-mayfly/docker-compose-mode-files/conf/cb-dragonfly/config.yaml` 파일에 Public IP 주소를 기재합니다.
-```YAML
-# kafka connection info
-kafka:
-  endpoint_url: cb-dragonfly-kafka
-  external_ip: 127.0.0.1 # Cloud-Migrator를 설치 및 실행하는 VM/물리머신의 Public IP 주소를 기재
-  deploy_type: "compose"    # deploy environment "compose" => docker-compose or others , "helm" => helm chart on k8s
-  compose_external_port: 9092
-  helm_external_port: 32000
-  internal_port: 9092
-
-# collect manager configuration info
-collectManager:
-  collector_ip: 127.0.0.1  # Cloud-Migrator를 설치 및 실행하는 VM/물리머신의 Public IP 주소를 기재
-  collector_port: 8094    # udp port
-  collector_group_count: 1      # default collector group count
-```
+## 도커 서비스 정의
+Cloud-Migrator 시스템 구성에 필요한 서비스 정보를 `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` 파일에 정의합니다. (현재는 PoC단계라 아직 Cloud-Migrator 시스템의 정식 Docker 이미지가 없기에 유사한 Cloud-Barista의 cb-spider와 cb-tumblebug 도커 이미지를 예시로 제공합니다.)
 
 ## cm-mayfly 소스코드 빌드
 ```bash
@@ -162,54 +114,17 @@ go build -o mayfly main.go
 ./mayfly info
 ```
 
-<details>
-  <summary>[클릭하여 예시 보기]</summary>
-  
-```
-CM_OPERATOR_MODE: DockerCompose
-
-[Get info for Cloud-Migrator runtimes]
-
-[Config path] ../docker-compose-mode-files/docker-compose.yaml
-
-
-[v]Status of Cloud-Migrator runtimes
-          Name                         Command               State                                                    Ports
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-cb-dragonfly                cb-dragonfly                     Exit 2
-cb-dragonfly-influxdb       /entrypoint.sh influxd           Up       0.0.0.0:28083->8083/tcp, 0.0.0.0:28086->8086/tcp
-cb-dragonfly-kafka          start-kafka.sh                   Up       0.0.0.0:9092->9092/tcp
-cb-dragonfly-kapacitor      /entrypoint.sh kapacitord        Up       0.0.0.0:29092->9092/tcp
-cb-dragonfly-zookeeper      /bin/sh -c /usr/sbin/sshd  ...   Up       0.0.0.0:2181->2181/tcp, 22/tcp, 2888/tcp, 3888/tcp
-cb-ladybug                  /app/cb-ladybug                  Up       0.0.0.0:8080->8080/tcp
-cb-restapigw                /app/cb-restapigw -c /app/ ...   Up       0.0.0.0:8000->8000/tcp, 0.0.0.0:8001->8001/tcp
-cb-restapigw-grafana        /run.sh                          Up       0.0.0.0:3100->3000/tcp
-cb-restapigw-influxdb       /entrypoint.sh influxd           Up       0.0.0.0:8083->8083/tcp, 0.0.0.0:8086->8086/tcp
-cb-restapigw-jaeger         /go/bin/all-in-one-linux - ...   Up       14250/tcp, 0.0.0.0:14268->14268/tcp, 0.0.0.0:16686->16686/tcp, 5775/udp, 5778/tcp, 6831/udp, 6832/udp
-cb-spider                   /root/go/src/github.com/cl ...   Up       0.0.0.0:1024->1024/tcp, 0.0.0.0:2048->2048/tcp, 4096/tcp
-cb-tumblebug                /app/src/cb-tumblebug            Up       0.0.0.0:1323->1323/tcp, 0.0.0.0:50252->50252/tcp
-cb-tumblebug-phpliteadmin   /usr/bin/caddy --conf /etc ...   Up       0.0.0.0:2015->2015/tcp, 443/tcp, 80/tcp
-
-[v]Status of Cloud-Migrator runtime images
-        Container                    Repository                  Tag           Image Id      Size
----------------------------------------------------------------------------------------------------
-cb-dragonfly                cloudbaristaorg/cb-dragonfly   v0.3.0-espresso   00badc2e5613   125 MB
-cb-dragonfly-influxdb       influxdb                       1.8-alpine        97eae8355b82   175 MB
-cb-dragonfly-kafka          wurstmeister/kafka             2.12-2.4.1        2dd8b556702e   412 MB
-cb-dragonfly-kapacitor      kapacitor                      1.5               95490156d6f2   232 MB
-cb-dragonfly-zookeeper      wurstmeister/zookeeper         latest            3f43f72cb283   486 MB
-cb-ladybug                  cloudbaristaorg/cb-ladybug     v0.3.0-espresso   a8351e6ea963   29.2 MB
-cb-restapigw                cloudbaristaorg/cb-restapigw   v0.3.0-espresso   119daf1d457e   96.3 MB
-cb-restapigw-grafana        grafana/grafana                latest            c9e576dccd68   189 MB
-cb-restapigw-influxdb       influxdb                       latest            bd69ea12fb63   270 MB
-cb-restapigw-jaeger         jaegertracing/all-in-one       latest            d369432efee6   49.2 MB
-cb-spider                   cloudbaristaorg/cb-spider      v0.3.0-espresso   00bf045c9748   208 MB
-cb-tumblebug                cloudbaristaorg/cb-tumblebug   v0.3.0-espresso   76332875c917   113 MB
-cb-tumblebug-phpliteadmin   acttaiwan/phpliteadmin         latest            f5242ee12570   78.9 MB
-```
-</details>
 
 ## Cloud-Migrator 중지
 ```bash
 ./mayfly stop
 ```
+
+## [참고] 프레임워크별 컨테이너 구성 및 API Endpoint
+| Framework별 Container Name | REST-API Endpoint |
+|---|---|
+| cb-spider | http://{{host}}:1024/spider |
+| --- |
+| cb-tumblebug | http://{{host}}:1323/tumblebug |
+| --- |
+
