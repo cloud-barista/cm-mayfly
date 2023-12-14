@@ -34,7 +34,7 @@ var weaveScopeCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(weaveScopeCmd)
+	//rootCmd.AddCommand(weaveScopeCmd)
 
 	pf := weaveScopeCmd.PersistentFlags()
 	// pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")

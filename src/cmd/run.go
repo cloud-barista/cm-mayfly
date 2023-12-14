@@ -84,7 +84,8 @@ func init() {
 
 	pf := runCmd.PersistentFlags()
 	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
-	pf.StringVarP(&k8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services")
+	//pf.StringVarP(&k8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services") //@todo
+
 	// runCmd.MarkPersistentFlagRequired("k8sprovider")
 
 	//	cobra.MarkFlagRequired(pf, "file")

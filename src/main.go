@@ -71,7 +71,7 @@ func readMode() string {
 		errCheck(err)
 
 		common.CMMayflyMode = string(data)
-		fmt.Println("CM_OPERATOR_MODE: " + common.CMMayflyMode)
+		//fmt.Println("CM_OPERATOR_MODE File mode : " + common.CMMayflyMode)
 
 		//if common.CMMayflyMode == common.DockerCompose || common.CMMayflyMode == common.Kubernetes {
 		return common.CMMayflyMode
