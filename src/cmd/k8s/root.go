@@ -6,13 +6,13 @@ package framework
 import (
 	"fmt"
 
-	"github.com/cm-mayfly/cm-mayfly/src/cmd"
+	// "github.com/cm-mayfly/cm-mayfly/src/cmd"
 	"github.com/spf13/cobra"
 )
 
 // restCmd represents the rest command
-var dockerCmd = &cobra.Command{
-	Use: "docker",
+var k8sCmd = &cobra.Command{
+	Use: "k8s",
 	//Short: "Installing and managing cloud-migrator's infrastructure",
 	//Long:  `Build the environment of the infrastructure required for cloud-migrator and monitor the running status of the infrastructure.`,
 	Short: "A tool to operate Cloud-Migrator system",
@@ -33,7 +33,7 @@ For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(dockerCmd)
+	// cmd.RootCmd.AddCommand(k8sCmd)
 
 	// Here you will define your flags and configuration settings.
 

@@ -70,7 +70,7 @@ var volFlag bool
 var imgFlag bool
 
 func init() {
-	dockerCmd.AddCommand(removeCmd)
+	k8sCmd.AddCommand(removeCmd)
 
 	pf := removeCmd.PersistentFlags()
 	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")

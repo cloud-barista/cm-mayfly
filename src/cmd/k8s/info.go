@@ -53,7 +53,7 @@ var infoCmd = &cobra.Command{
 }
 
 func init() {
-	dockerCmd.AddCommand(infoCmd)
+	k8sCmd.AddCommand(infoCmd)
 
 	pf := infoCmd.PersistentFlags()
 	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
