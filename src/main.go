@@ -21,6 +21,8 @@ import (
 	"os"
 
 	"github.com/cm-mayfly/cm-mayfly/src/cmd"
+	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/docker"
+	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/rest"
 	"github.com/cm-mayfly/cm-mayfly/src/common"
 )
 

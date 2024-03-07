@@ -11,23 +11,14 @@ import (
 )
 
 var cfgFile string
-var k8sprovider string
+var K8sprovider string
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "mayfly",
-	Short: "A tool to operate Cloud-Migrator system",
-	Long: `The mayfly is a tool to operate Cloud-Migrator system. 
-  
-  For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
-  
-  - ./mayfly pull [-f ../docker-compose-mode-files/docker-compose.yaml]
-  - ./mayfly run [-f ../docker-compose-mode-files/docker-compose.yaml]
-  - ./mayfly info
-  - ./mayfly stop [-f ../docker-compose-mode-files/docker-compose.yaml]
-  - ./mayfly remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i
-
-  `,
+var RootCmd = &cobra.Command{
+	Use:               "mayfly",
+	Short:             "A tool to operate Cloud-Migrator system",
+	Long:              `The mayfly is a tool to operate Cloud-Migrator system.`,
+	CompletionOptions: cobra.CompletionOptions{HiddenDefaultCmd: true}, //completion 옵션 출력 제거
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
@@ -36,7 +27,7 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
