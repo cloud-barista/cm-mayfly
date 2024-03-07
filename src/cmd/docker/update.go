@@ -1,9 +1,10 @@
-package cmd
+package framework
 
 import (
 	"fmt"
 	"strings"
 
+	root "github.com/cm-mayfly/cm-mayfly/src/cmd"
 	"github.com/cm-mayfly/cm-mayfly/src/common"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +31,7 @@ var updateCmd = &cobra.Command{
 
 			case common.ModeKubernetes:
 				cmdStr = fmt.Sprintf("helm upgrade --namespace %s --install %s -f %s ../helm-chart", common.CMK8sNamespace, common.CMHelmReleaseName, common.FileStr)
-				if strings.ToLower(k8sprovider) == "gke" || strings.ToLower(k8sprovider) == "aks" {
+				if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "aks" {
 					cmdStr += " --set metricServer.enabled=false"
 				}
 				//fmt.Println(cmdStr)
@@ -49,7 +50,7 @@ func init() {
 
 	pf := updateCmd.PersistentFlags()
 	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
-	pf.StringVarP(&k8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services")
+	pf.StringVarP(&root.K8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services")
 
 	//	cobra.MarkFlagRequired(pf, "file")
 
