@@ -11,8 +11,9 @@ If you have any difficulties in using CM-Mayfly, please let us know.
 ```
 
 ## CM-Mayfly Overview
-- This is a operate tool that supports installing, running, providing status information, and shutting down the Cloud-Migrator system.
+- This is a operate tool that supports installing, running, shutting down, providing status information, and open api service call the Cloud-Migrator system.
 - As a proof-of-concept phase, only the `Docker Compose V2` mode method is currently available first.
+- Support for k8s and the ability to make REST calls and Rest-based service calls will be developed in small increments.
 
 
 ## CM-Mayfly Execution and Development Environment
@@ -55,41 +56,22 @@ cm-mayfly/src$ make clean
 
 
 # How to use CM-Mayfly
-For now, it supports docker's run/stop/info/pull commands, and k8s is a work in progress.   
+For now, it supports docker / rest sub-commands.   
 
-## docker-compose.yamlk
-The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `docker-compose-mode-files` folder.)   
-
-If you want to change the information for each container you want to deploy, modify the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file or use the -f option.   
-
-
-## Help
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
 ```
-cm-mayfly/src$ ./mayfly
+cm-mayfly/src$ ./mayfly -h
 
 The mayfly is a tool to operate Cloud-Migrator system.
-
-  For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
-
-  - ./mayfly pull [-f ../docker-compose-mode-files/docker-compose.yaml]
-  - ./mayfly run [-f ../docker-compose-mode-files/docker-compose.yaml]
-  - ./mayfly info
-  - ./mayfly stop [-f ../docker-compose-mode-files/docker-compose.yaml]
-  - ./mayfly remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i
 
 Usage:
   mayfly [command]
 
 Available Commands:
-  completion  Generate the autocompletion script for the specified shell
+  docker      A tool to operate Cloud-Migrator system
   help        Help about any command
-  info        Get information of Cloud-Migrator System
-  pull        Pull images of Cloud-Migrator System containers
-  remove      Stop and Remove Cloud-Migrator System
-  run         Setup and Run Cloud-Migrator System
-  stop        Stop Cloud-Migrator System
+  rest        rest api call
 
 Flags:
   -h, --help   help for mayfly
@@ -97,66 +79,92 @@ Flags:
 Use "mayfly [command] --help" for more information about a command.
 ```
 
-## Run
-Create and start containers from an image of the Cloud-Migrator System packages   
+
+
+# docker subcommand
+For now, it supports docker's run/stop/info/pull/remove commands.
+
+Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
 ```
-cm-mayfly/src$ ./mayfly run -h
-
-Setup and Run Cloud-Migrator System
-
 Usage:
-  mayfly run [flags]
+  mayfly docker [flags]
+  mayfly docker [command]
+
+Available Commands:
+  info        Get information of Cloud-Migrator System
+  pull        Pull images of Cloud-Migrator System containers
+  remove      Stop and Remove Cloud-Migrator System
+  run         Setup and Run Cloud-Migrator System
+  stop        Stop Cloud-Migrator System
 
 Flags:
-  -f, --file string   User-defined configuration file (default "Not_Defined")
-  -h, --help          help for run
+  -h, --help   help for docker
+
+Use "mayfly docker [command] --help" for more information about a command.
+```
+   
+## docker-compose.yaml
+The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `docker-compose-mode-files` folder.)   
+
+If you want to change the information for each container you want to deploy, modify the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file or use the -f option.   
+
+
+## docker command examples
+Simple usage examples for docker commands
+```
+ ./mayfly docker pull [-f ../docker-compose-mode-files/docker-compose.yaml]   
+ ./mayfly docker run [-f ../docker-compose-mode-files/docker-compose.yaml]   
+ ./mayfly docker info   
+ ./mayfly docker stop [-f ../docker-compose-mode-files/docker-compose.yaml]   
+ ./mayfly docker remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i   
 ```
 
-## Stop
-Stop and remove containers, networks   
+
+# k8s subcommand
+K8S is not currently supported and will be supported in the near future.   
+
+
+
+# rest subcommand
+The rest subcommands are developed around the basic features of REST to make it easy to use the open APIs of Cloud-Migrator-related frameworks from the CLI.
+For now, it supports get/post/delete/put/patch commands.
 
 ```
-cm-mayfly/src$ ./mayfly stop -h
-
-Stop Cloud-Migrator System
+rest api call
 
 Usage:
-  mayfly stop [flags]
+  mayfly rest [flags]
+  mayfly rest [command]
+
+Available Commands:
+  delete      REST API calls with DELETE methods
+  get         REST API calls with GET methods
+  patch       REST API calls with PATCH methods
+  post        REST API calls with POST methods
+  put         REST API calls with PUT methods
 
 Flags:
-  -f, --file string   User-defined configuration file (default "Not_Defined")
-  -h, --help          help for stop
+      --authScheme string   sets the auth scheme type in the HTTP request.(Exam. OAuth)(The default auth scheme is Bearer)
+      --authToken string    sets the auth token of the 'Authorization' header for all HTTP requests.(The default auth scheme is 'Bearer')
+  -d, --data string         Data to send to the server
+  -f, --file string         Data to send to the server from file
+  -I, --head                Show response headers only
+  -H, --header strings      Pass custom header(s) to server
+  -h, --help                help for rest
+  -p, --password string     Password for basic authentication
+  -u, --user string         Username for basic authentication
+  -v, --verbose             Show more detail information
+
+Use "mayfly rest [command] --help" for more information about a command.
 ```
 
-
-## Info
-Get information of Cloud-Migrator System Information about containers and container images
-
+## rest command examples
+Simple usage examples for rest commands
 ```
-cm-mayfly/src$ ./mayfly info -h
-
-Get information of Cloud-Migrator System. Information about containers and container images
-
-Usage:
-  mayfly info [flags]
-
-Flags:
-  -f, --file string   User-defined configuration file (default "Not_Defined")
-  -h, --help          help for info
-  ```
-
-
-## Pull
-```
-cm-mayfly/src$ ./mayfly pull -h
-
-Pull images of Cloud-Migrator System containers
-
-Usage:
-  mayfly pull [flags]
-
-Flags:
-  -f, --file string   User-defined configuration file (default "Not_Defined")
-  -h, --help          help for pull
+./mayfly rest get -u default -p default http://localhost:1323/tumblebug/health
+./mayfly rest post https://reqres.in/api/users -d '{
+                "name": "morpheus",
+                "job": "leader"
+        }'
 ```
