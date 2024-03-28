@@ -19,11 +19,11 @@ var dockerCmd = &cobra.Command{
 	Long: `The mayfly is a tool to operate Cloud-Migrator system.
 For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 
-- ./mayfly pull [-f ../docker-compose-mode-files/docker-compose.yaml]
-- ./mayfly run [-f ../docker-compose-mode-files/docker-compose.yaml]
-- ./mayfly info
-- ./mayfly stop [-f ../docker-compose-mode-files/docker-compose.yaml]
-- ./mayfly remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i
+- ./mayfly docker pull [-f ../docker-compose-mode-files/docker-compose.yaml]
+- ./mayfly docker run [-f ../docker-compose-mode-files/docker-compose.yaml]
+- ./mayfly docker info
+- ./mayfly docker stop [-f ../docker-compose-mode-files/docker-compose.yaml]
+- ./mayfly docker remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i
 
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
