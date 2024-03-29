@@ -9,7 +9,7 @@ services:
 
   # CB-Spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.7.2
+    image: cloudbaristaorg/cb-spider:0.8.8
     container_name: cb-spider
     ports:
       - "0.0.0.0:1024:1024"
@@ -30,7 +30,7 @@ services:
 
   # CB-Tumblebug
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.7.2
+    image: cloudbaristaorg/cb-tumblebug:0.8.4
     container_name: cb-tumblebug
     ports:
       - "0.0.0.0:1323:1323"
@@ -60,3 +60,15 @@ services:
       # - DB_USER=cb_tumblebug
       # - DB_PASSWORD=cb_tumblebug
       # - GODEBUG=netdns=go
+  cm-beetle:
+    image: cloudbaristaorg/cm-beetle:latest
+    container_name: cm-beetle
+    ports:
+      - "8056:8056"
+    depends_on:
+      - cb-tumblebug
+    environment:
+      - API_AUTH_ENABLED=true
+      - API_USERNAME=default
+      - API_PASSWORD=default
+      - LOGLEVEL=info

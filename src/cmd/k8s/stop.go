@@ -1,4 +1,4 @@
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -16,24 +16,14 @@ var stopCmd = &cobra.Command{
 		fmt.Println("\n[Stop Cloud-Migrator]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.K8sFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeDockerCompose:
-				cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop", common.CMComposeProjectName, common.FileStr)
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
 
-				common.SysCallDockerComposePs()
-			case common.ModeKubernetes:
-				cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
-				common.SysCall(cmdStr)
-			default:
+			cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
+			common.SysCall(cmdStr)
 
-			}
 		}
 
 	},
@@ -43,7 +33,7 @@ func init() {
 	k8sCmd.AddCommand(stopCmd)
 
 	pf := stopCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 	// Here you will define your flags and configuration settings.
 

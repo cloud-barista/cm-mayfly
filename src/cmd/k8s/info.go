@@ -1,4 +1,4 @@
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -16,38 +16,26 @@ var infoCmd = &cobra.Command{
 		fmt.Println("\n[Get info for Cloud-Migrator runtimes]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.K8sFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeDockerCompose:
-				common.SysCallDockerComposePs()
 
-				fmt.Println("")
-				fmt.Println("[v]Status of Cloud-Migrator runtime images")
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s images", common.CMComposeProjectName, common.FileStr)
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
-			case common.ModeKubernetes:
-				fmt.Println("[v]Status of Cloud-Migrator Helm release")
-				cmdStr = fmt.Sprintf("helm status --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
-				common.SysCall(cmdStr)
-				fmt.Println()
-				fmt.Println("[v]Status of Cloud-Migrator pods")
-				cmdStr = fmt.Sprintf("kubectl get pods -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-				fmt.Println()
-				fmt.Println("[v]Status of Cloud-Migrator container images")
-				cmdStr = `kubectl get pods -n ` + common.CMK8sNamespace + ` -o jsonpath="{..image}" |\
+			fmt.Println("[v]Status of Cloud-Migrator Helm release")
+			cmdStr = fmt.Sprintf("helm status --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
+			common.SysCall(cmdStr)
+			fmt.Println()
+			fmt.Println("[v]Status of Cloud-Migrator pods")
+			cmdStr = fmt.Sprintf("kubectl get pods -n %s", common.CMK8sNamespace)
+			common.SysCall(cmdStr)
+			fmt.Println()
+			fmt.Println("[v]Status of Cloud-Migrator container images")
+			cmdStr = `kubectl get pods -n ` + common.CMK8sNamespace + ` -o jsonpath="{..image}" |\
 				tr -s '[[:space:]]' '\n' |\
 				sort |\
 				uniq`
-				common.SysCall(cmdStr)
-			default:
+			common.SysCall(cmdStr)
 
-			}
 		}
 	},
 }
@@ -56,7 +44,7 @@ func init() {
 	k8sCmd.AddCommand(infoCmd)
 
 	pf := infoCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

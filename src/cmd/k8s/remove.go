@@ -1,4 +1,4 @@
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -17,50 +17,28 @@ var removeCmd = &cobra.Command{
 		fmt.Println("\n[Remove Cloud-Migrator]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.K8sFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeKubernetes:
-				cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
-				common.SysCall(cmdStr)
 
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-spider -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
+			cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
+			common.SysCall(cmdStr)
 
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-tumblebug -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-spider -n %s", common.CMK8sNamespace)
+			common.SysCall(cmdStr)
 
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-ladybug -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-tumblebug -n %s", common.CMK8sNamespace)
+			common.SysCall(cmdStr)
 
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-dragonfly -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-ladybug -n %s", common.CMK8sNamespace)
+			common.SysCall(cmdStr)
 
-				cmdStr = fmt.Sprintf("kubectl delete pvc data-cm-mayfly-etcd-0 -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-dragonfly -n %s", common.CMK8sNamespace)
+			common.SysCall(cmdStr)
 
-				//fallthrough
-			case common.ModeDockerCompose:
-				if volFlag && imgFlag {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v --rmi all", common.CMComposeProjectName, common.FileStr)
-				} else if volFlag {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v", common.CMComposeProjectName, common.FileStr)
-				} else if imgFlag {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --rmi all", common.CMComposeProjectName, common.FileStr)
-				} else {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down", common.CMComposeProjectName, common.FileStr)
-				}
-
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
-
-				common.SysCallDockerComposePs()
-			default:
-
-			}
+			cmdStr = fmt.Sprintf("kubectl delete pvc data-cm-mayfly-etcd-0 -n %s", common.CMK8sNamespace)
+			common.SysCall(cmdStr)
 		}
 
 	},
@@ -73,7 +51,7 @@ func init() {
 	k8sCmd.AddCommand(removeCmd)
 
 	pf := removeCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 
 	pf.BoolVarP(&volFlag, "volumes", "v", false, "Remove named volumes declared in the volumes section of the Compose file")

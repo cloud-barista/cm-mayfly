@@ -1,7 +1,7 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 */
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -9,6 +9,8 @@ import (
 	// "github.com/cm-mayfly/cm-mayfly/src/cmd"
 	"github.com/spf13/cobra"
 )
+
+var K8sprovider string
 
 // restCmd represents the rest command
 var k8sCmd = &cobra.Command{

@@ -1,4 +1,4 @@
-package framework
+package docker
 
 import (
 	"fmt"
@@ -16,24 +16,14 @@ var stopCmd = &cobra.Command{
 		fmt.Println("\n[Stop Cloud-Migrator]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.DockerFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
-			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeDockerCompose:
-				cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop", common.CMComposeProjectName, common.FileStr)
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop", common.CMComposeProjectName, common.DockerFilePath)
+			//fmt.Println(cmdStr)
+			common.SysCall(cmdStr)
 
-				common.SysCallDockerComposePs()
-			case common.ModeKubernetes:
-				cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
-				common.SysCall(cmdStr)
-			default:
-
-			}
+			common.SysCallDockerComposePs()
 		}
 
 	},
@@ -43,7 +33,7 @@ func init() {
 	dockerCmd.AddCommand(stopCmd)
 
 	pf := stopCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.DockerFilePath, "file", "f", common.DefaultDockerComposeConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 	// Here you will define your flags and configuration settings.
 
