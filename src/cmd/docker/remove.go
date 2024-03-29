@@ -1,4 +1,4 @@
-package framework
+package docker
 
 import (
 	"fmt"
@@ -22,45 +22,20 @@ var removeCmd = &cobra.Command{
 		} else {
 			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeKubernetes:
-				cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
-				common.SysCall(cmdStr)
-
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-spider -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-tumblebug -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-ladybug -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-
-				cmdStr = fmt.Sprintf("kubectl delete pvc cb-dragonfly -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-
-				cmdStr = fmt.Sprintf("kubectl delete pvc data-cm-mayfly-etcd-0 -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-
-				//fallthrough
-			case common.ModeDockerCompose:
-				if volFlag && imgFlag {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v --rmi all", common.CMComposeProjectName, common.FileStr)
-				} else if volFlag {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v", common.CMComposeProjectName, common.FileStr)
-				} else if imgFlag {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --rmi all", common.CMComposeProjectName, common.FileStr)
-				} else {
-					cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down", common.CMComposeProjectName, common.FileStr)
-				}
-
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
-
-				common.SysCallDockerComposePs()
-			default:
-
+			if volFlag && imgFlag {
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v --rmi all", common.CMComposeProjectName, common.FileStr)
+			} else if volFlag {
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v", common.CMComposeProjectName, common.FileStr)
+			} else if imgFlag {
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --rmi all", common.CMComposeProjectName, common.FileStr)
+			} else {
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down", common.CMComposeProjectName, common.FileStr)
 			}
+
+			//fmt.Println(cmdStr)
+			common.SysCall(cmdStr)
+
+			common.SysCallDockerComposePs()
 		}
 
 	},

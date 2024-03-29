@@ -1,11 +1,7 @@
-package framework
+package docker
 
 import (
 	"fmt"
-	"strings"
-
-	root "github.com/cm-mayfly/cm-mayfly/src/cmd"
-
 	"github.com/cm-mayfly/cm-mayfly/src/common"
 	"github.com/spf13/cobra"
 )
@@ -24,60 +20,11 @@ var runCmd = &cobra.Command{
 		} else {
 			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 
-			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeDockerCompose:
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up", common.CMComposeProjectName, common.FileStr)
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
-			case common.ModeKubernetes:
-				if root.K8sprovider == common.NotDefined {
-					fmt.Print(`--k8sprovider argument is required but not provided.
-					e.g.
-					--k8sprovider=gke
-					--k8sprovider=eks
-					--k8sprovider=aks
-					--k8sprovider=mcks
-					--k8sprovider=minikube
-					--k8sprovider=kubeadm
-					`)
-
-					break
-				}
-
-				// For Kubernetes 1.19 and above
-				cmdStr = fmt.Sprintf("kubectl create ns %s --dry-run=client -o yaml | kubectl apply -f -", common.CMK8sNamespace)
-				// For Kubernetes 1.18 and below
-				//cmdStr = fmt.Sprintf("kubectl create ns %s --dry-run -o yaml | kubectl apply -f -", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-
-				// cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s ../helm-chart --debug", common.CMK8sNamespace, common.CMHelmReleaseName, common.FileStr)
-				// if strings.ToLower(k8sprovider) == "gke" {
-				// 	cmdStr += " --set metricServer.enabled=false"
-				// }
-				// //fmt.Println(cmdStr)
-				// common.SysCall(cmdStr)
-
-				if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "eks" || strings.ToLower(root.K8sprovider) == "aks" {
-					cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s ../helm-chart --debug", common.CMK8sNamespace, common.CMHelmReleaseName, common.FileStr)
-					cmdStr += " --set cb-restapigw.service.type=LoadBalancer"
-					cmdStr += " --set cb-webtool.service.type=LoadBalancer"
-
-					if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "aks" {
-						cmdStr += " --set metricServer.enabled=false"
-					}
-
-					common.SysCall(cmdStr)
-				} else {
-					cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s ../helm-chart --debug", common.CMK8sNamespace, common.CMHelmReleaseName, common.FileStr)
-					common.SysCall(cmdStr)
-				}
-			default:
-
-			}
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up", common.CMComposeProjectName, common.FileStr)
+			//fmt.Println(cmdStr)
+			common.SysCall(cmdStr)
 
 		}
-
 	},
 }
 
