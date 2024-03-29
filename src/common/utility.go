@@ -7,21 +7,16 @@ import (
 	"os/exec"
 )
 
-// FileStr is a variable that holds path to the docker-compose.yaml.
-var FileStr string
+// DockerFilePath is a variable that holds path to the docker-compose.yaml.
+var DockerFilePath string
+
+// K8sFilePath is a variable that holds path to the helm-chart's values.yaml.
+var K8sFilePath string
 
 //var CommandStr string
 //var TargetStr string
 
-// CMMayflyMode is a variable that holds current cm-mayfly's mode.
-var CMMayflyMode string
-
 const (
-	// ModeDockerCompose is a variable that holds string indicating Docker Compose mode.
-	ModeDockerCompose = "DockerCompose"
-
-	// ModeKubernetes is a variable that holds string indicating Kubernetes mode.
-	ModeKubernetes = "Kubernetes"
 
 	// DefaultDockerComposeConfig is a variable that holds path to docker-compose.yaml
 	DefaultDockerComposeConfig = "../docker-compose-mode-files/docker-compose.yaml"
@@ -44,7 +39,7 @@ const (
 
 // SysCall executes user-passed command via system call.
 func SysCall(cmdStr string) {
-	//cmdStr := "docker-compose -f " + common.FileStr + " up"
+	//cmdStr := "docker-compose -f " + common.DockerFilePath + " up"
 	cmd := exec.Command("/bin/sh", "-c", cmdStr)
 
 	cmdReader, _ := cmd.StdoutPipe()
@@ -72,27 +67,7 @@ func SysCall(cmdStr string) {
 // SysCallDockerComposePs executes `docker-compose ps` command via system call.
 func SysCallDockerComposePs() {
 	fmt.Println("\n[v]Status of Cloud-Migrator runtimes")
-	//cmdStr := "COMPOSE_PROJECT_NAME=cm-mayfly docker-compose -f " + FileStr + " ps"
-	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps", CMComposeProjectName, FileStr)
+	//cmdStr := "COMPOSE_PROJECT_NAME=cm-mayfly docker-compose -f " + DockerFilePath + " ps"
+	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps", CMComposeProjectName, DockerFilePath)
 	SysCall(cmdStr)
-}
-
-// GenConfigPath receives path-to-config-file and cm-mayfly-mode, and returns path-to-config-file.
-func GenConfigPath(fileStr string, mode string) string {
-	returnStr := fileStr
-	switch mode {
-	case ModeDockerCompose:
-		if fileStr == NotDefined {
-			returnStr = DefaultDockerComposeConfig
-		}
-	case ModeKubernetes:
-		if fileStr == NotDefined {
-			returnStr = DefaultKubernetesConfig
-		}
-	default:
-
-	}
-	fmt.Println("[Config path] " + returnStr)
-	fmt.Println()
-	return returnStr
 }

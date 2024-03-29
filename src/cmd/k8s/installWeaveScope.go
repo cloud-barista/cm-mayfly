@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	root "github.com/cm-mayfly/cm-mayfly/src/cmd"
 	"github.com/cm-mayfly/cm-mayfly/src/common"
 	"github.com/spf13/cobra"
 )
@@ -18,11 +17,9 @@ var installWeaveScopeCmd = &cobra.Command{
 		fmt.Println("\n[Install Weave Scope]")
 		fmt.Println()
 
-		common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
-
 		var cmdStr string
 
-		if root.K8sprovider == common.NotDefined {
+		if K8sprovider == common.NotDefined {
 			fmt.Print(`--k8sprovider argument is required but not provided.
 					e.g.
 					--k8sprovider=gke
@@ -37,12 +34,12 @@ var installWeaveScopeCmd = &cobra.Command{
 		}
 
 		// If your cluster is on GKE, first you need to grant permissions for the installation.
-		if strings.ToLower(root.K8sprovider) == "gke" {
+		if strings.ToLower(K8sprovider) == "gke" {
 			cmdStr = `kubectl create clusterrolebinding "cluster-admin-$(whoami)" --clusterrole=cluster-admin --user="$(gcloud config get-value core/account)"`
 			common.SysCall(cmdStr)
 		}
 
-		if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "eks" || strings.ToLower(root.K8sprovider) == "aks" {
+		if strings.ToLower(K8sprovider) == "gke" || strings.ToLower(K8sprovider) == "eks" || strings.ToLower(K8sprovider) == "aks" {
 
 			// Install Weave Scope on your Kubernetes cluster.
 			cmdStr = `kubectl apply -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')&k8s-service-type=LoadBalancer"`
@@ -72,9 +69,9 @@ var installWeaveScopeCmd = &cobra.Command{
 func init() {
 	weaveScopeCmd.AddCommand(installWeaveScopeCmd)
 
-	// pf := installWeaveScopeCmd.PersistentFlags()
-	// // pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
-	// pf.StringVarP(&k8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services")
+	//pf := installWeaveScopeCmd.PersistentFlags()
+	//pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
+	//pf.StringVarP(&K8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services")
 
 	/*
 		switch common.CMMayflyMode {

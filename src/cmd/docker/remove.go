@@ -17,19 +17,18 @@ var removeCmd = &cobra.Command{
 		fmt.Println("\n[Remove Cloud-Migrator]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.DockerFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
 			if volFlag && imgFlag {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v --rmi all", common.CMComposeProjectName, common.FileStr)
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v --rmi all", common.CMComposeProjectName, common.DockerFilePath)
 			} else if volFlag {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v", common.CMComposeProjectName, common.FileStr)
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v", common.CMComposeProjectName, common.DockerFilePath)
 			} else if imgFlag {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --rmi all", common.CMComposeProjectName, common.FileStr)
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --rmi all", common.CMComposeProjectName, common.DockerFilePath)
 			} else {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down", common.CMComposeProjectName, common.FileStr)
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down", common.CMComposeProjectName, common.DockerFilePath)
 			}
 
 			//fmt.Println(cmdStr)
@@ -48,7 +47,7 @@ func init() {
 	dockerCmd.AddCommand(removeCmd)
 
 	pf := removeCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.DockerFilePath, "file", "f", common.DefaultDockerComposeConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 
 	pf.BoolVarP(&volFlag, "volumes", "v", false, "Remove named volumes declared in the volumes section of the Compose file")

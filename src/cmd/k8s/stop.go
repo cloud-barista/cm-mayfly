@@ -16,10 +16,9 @@ var stopCmd = &cobra.Command{
 		fmt.Println("\n[Stop Cloud-Migrator]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.K8sFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
 
 			cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
@@ -34,7 +33,7 @@ func init() {
 	k8sCmd.AddCommand(stopCmd)
 
 	pf := stopCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 	// Here you will define your flags and configuration settings.
 

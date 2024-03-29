@@ -16,15 +16,14 @@ var infoCmd = &cobra.Command{
 		fmt.Println("\n[Get info for Cloud-Migrator runtimes]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.DockerFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			common.SysCallDockerComposePs()
 
 			fmt.Println("")
 			fmt.Println("[v]Status of Cloud-Migrator runtime images")
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s images", common.CMComposeProjectName, common.FileStr)
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s images", common.CMComposeProjectName, common.DockerFilePath)
 			//fmt.Println(cmdStr)
 			common.SysCall(cmdStr)
 		}
@@ -35,7 +34,7 @@ func init() {
 	dockerCmd.AddCommand(infoCmd)
 
 	pf := infoCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.DockerFilePath, "file", "f", common.DefaultDockerComposeConfig, "User-defined configuration file")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

@@ -16,10 +16,9 @@ var infoCmd = &cobra.Command{
 		fmt.Println("\n[Get info for Cloud-Migrator runtimes]")
 		fmt.Println()
 
-		if common.FileStr == "" {
+		if common.K8sFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
 
 			fmt.Println("[v]Status of Cloud-Migrator Helm release")
@@ -45,7 +44,7 @@ func init() {
 	k8sCmd.AddCommand(infoCmd)
 
 	pf := infoCmd.PersistentFlags()
-	pf.StringVarP(&common.FileStr, "file", "f", common.NotDefined, "User-defined configuration file")
+	pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
