@@ -1,4 +1,4 @@
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -22,35 +22,27 @@ var uninstallWeaveScopeCmd = &cobra.Command{
 		common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 
 		var cmdStr string
-		switch common.CMMayflyMode {
-		case common.ModeDockerCompose:
-			fmt.Println("cm-mayfly Docker Compose mode does not support 'weave-scope uninstall' subcommand.")
 
-		case common.ModeKubernetes:
-			// If your cluster is on GKE, first you need to grant permissions for the uninstallation.
-			if strings.ToLower(root.K8sprovider) == "gke" {
-				cmdStr = `kubectl delete clusterrolebinding "cluster-admin-$(whoami)"`
-				common.SysCall(cmdStr)
-			}
+		// If your cluster is on GKE, first you need to grant permissions for the uninstallation.
+		if strings.ToLower(root.K8sprovider) == "gke" {
+			cmdStr = `kubectl delete clusterrolebinding "cluster-admin-$(whoami)"`
+			common.SysCall(cmdStr)
+		}
 
-			if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "eks" || strings.ToLower(root.K8sprovider) == "aks" {
+		if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "eks" || strings.ToLower(root.K8sprovider) == "aks" {
 
-				// Uninstall Weave Scope on your Kubernetes cluster.
-				cmdStr = `kubectl delete -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')&k8s-service-type=LoadBalancer"`
-				common.SysCall(cmdStr)
+			// Uninstall Weave Scope on your Kubernetes cluster.
+			cmdStr = `kubectl delete -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')&k8s-service-type=LoadBalancer"`
+			common.SysCall(cmdStr)
 
-				fmt.Print(`Weave Scope uninstalled successfully.`)
+			fmt.Print(`Weave Scope uninstalled successfully.`)
 
-			} else {
-				// Uninstall Weave Scope on your Kubernetes cluster.
-				cmdStr = `kubectl delete -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')&k8s-service-type=NodePort"`
-				common.SysCall(cmdStr)
+		} else {
+			// Uninstall Weave Scope on your Kubernetes cluster.
+			cmdStr = `kubectl delete -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')&k8s-service-type=NodePort"`
+			common.SysCall(cmdStr)
 
-				fmt.Print(`Weave Scope uninstalled successfully.`)
-			}
-
-		default:
-
+			fmt.Print(`Weave Scope uninstalled successfully.`)
 		}
 
 	},

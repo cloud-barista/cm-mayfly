@@ -1,4 +1,4 @@
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -25,20 +25,13 @@ var updateCmd = &cobra.Command{
 			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 
 			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeDockerCompose:
-				fmt.Println("cm-mayfly Docker Compose mode does not support 'update/apply' subcommand.")
 
-			case common.ModeKubernetes:
-				cmdStr = fmt.Sprintf("helm upgrade --namespace %s --install %s -f %s ../helm-chart", common.CMK8sNamespace, common.CMHelmReleaseName, common.FileStr)
-				if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "aks" {
-					cmdStr += " --set metricServer.enabled=false"
-				}
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
-			default:
-
+			cmdStr = fmt.Sprintf("helm upgrade --namespace %s --install %s -f %s ../helm-chart", common.CMK8sNamespace, common.CMHelmReleaseName, common.FileStr)
+			if strings.ToLower(root.K8sprovider) == "gke" || strings.ToLower(root.K8sprovider) == "aks" {
+				cmdStr += " --set metricServer.enabled=false"
 			}
+			//fmt.Println(cmdStr)
+			common.SysCall(cmdStr)
 
 		}
 

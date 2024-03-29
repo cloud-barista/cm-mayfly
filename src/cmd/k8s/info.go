@@ -1,4 +1,4 @@
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -21,33 +21,22 @@ var infoCmd = &cobra.Command{
 		} else {
 			common.FileStr = common.GenConfigPath(common.FileStr, common.CMMayflyMode)
 			var cmdStr string
-			switch common.CMMayflyMode {
-			case common.ModeDockerCompose:
-				common.SysCallDockerComposePs()
 
-				fmt.Println("")
-				fmt.Println("[v]Status of Cloud-Migrator runtime images")
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s images", common.CMComposeProjectName, common.FileStr)
-				//fmt.Println(cmdStr)
-				common.SysCall(cmdStr)
-			case common.ModeKubernetes:
-				fmt.Println("[v]Status of Cloud-Migrator Helm release")
-				cmdStr = fmt.Sprintf("helm status --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
-				common.SysCall(cmdStr)
-				fmt.Println()
-				fmt.Println("[v]Status of Cloud-Migrator pods")
-				cmdStr = fmt.Sprintf("kubectl get pods -n %s", common.CMK8sNamespace)
-				common.SysCall(cmdStr)
-				fmt.Println()
-				fmt.Println("[v]Status of Cloud-Migrator container images")
-				cmdStr = `kubectl get pods -n ` + common.CMK8sNamespace + ` -o jsonpath="{..image}" |\
+			fmt.Println("[v]Status of Cloud-Migrator Helm release")
+			cmdStr = fmt.Sprintf("helm status --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
+			common.SysCall(cmdStr)
+			fmt.Println()
+			fmt.Println("[v]Status of Cloud-Migrator pods")
+			cmdStr = fmt.Sprintf("kubectl get pods -n %s", common.CMK8sNamespace)
+			common.SysCall(cmdStr)
+			fmt.Println()
+			fmt.Println("[v]Status of Cloud-Migrator container images")
+			cmdStr = `kubectl get pods -n ` + common.CMK8sNamespace + ` -o jsonpath="{..image}" |\
 				tr -s '[[:space:]]' '\n' |\
 				sort |\
 				uniq`
-				common.SysCall(cmdStr)
-			default:
+			common.SysCall(cmdStr)
 
-			}
 		}
 	},
 }

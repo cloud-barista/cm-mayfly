@@ -1,4 +1,4 @@
-package framework
+package k8s
 
 import (
 	"fmt"
@@ -16,22 +16,13 @@ var weaveScopeCmd = &cobra.Command{
 	Long:  `Subcommand for managing Weave Scope`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		switch common.CMMayflyMode {
-		case common.ModeDockerCompose:
-			fmt.Println("cm-mayfly Docker Compose mode does not support 'uninstall-weave-scope' subcommand.")
+		fmt.Println("")
+		fmt.Println("'./mayfly weave-scope' subcommand provides these subsubcommands:")
+		fmt.Println("")
+		fmt.Println("'./mayfly weave-scope install': Install and expose Weave Scope on your K8s cluster.")
+		fmt.Println("'./mayfly weave-scope uninstall': Uninstall Weave Scope on your K8s cluster.")
+		fmt.Println("")
 
-		case common.ModeKubernetes:
-
-			fmt.Println("")
-			fmt.Println("'./mayfly weave-scope' subcommand provides these subsubcommands:")
-			fmt.Println("")
-			fmt.Println("'./mayfly weave-scope install': Install and expose Weave Scope on your K8s cluster.")
-			fmt.Println("'./mayfly weave-scope uninstall': Uninstall Weave Scope on your K8s cluster.")
-			fmt.Println("")
-
-		default:
-
-		}
 	},
 }
 
