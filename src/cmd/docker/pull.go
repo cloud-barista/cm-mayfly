@@ -16,10 +16,10 @@ var pullCmd = &cobra.Command{
 		fmt.Println("\n[Pull images of Cloud-Migrator System containers]")
 		fmt.Println()
 
-		if common.DockerFilePath == "" {
+		if DockerFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull", common.CMComposeProjectName, common.DockerFilePath)
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull", CMComposeProjectName, DockerFilePath)
 			//fmt.Println(cmdStr)
 			common.SysCall(cmdStr)
 		}
@@ -31,7 +31,7 @@ func init() {
 	dockerCmd.AddCommand(pullCmd)
 
 	pf := pullCmd.PersistentFlags()
-	pf.StringVarP(&common.DockerFilePath, "file", "f", common.DefaultDockerComposeConfig, "User-defined configuration file")
+	pf.StringVarP(&DockerFilePath, "file", "f", DefaultDockerComposeConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 
 	// Here you will define your flags and configuration settings.

@@ -17,27 +17,27 @@ var removeCmd = &cobra.Command{
 		fmt.Println("\n[Remove Cloud-Migrator]")
 		fmt.Println()
 
-		if common.K8sFilePath == "" {
+		if K8sFilePath == "" {
 			fmt.Println("file is required")
 		} else {
 			var cmdStr string
 
-			cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", common.CMK8sNamespace, common.CMHelmReleaseName)
+			cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", CMK8sNamespace, CMHelmReleaseName)
 			common.SysCall(cmdStr)
 
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-spider -n %s", common.CMK8sNamespace)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-spider -n %s", CMK8sNamespace)
 			common.SysCall(cmdStr)
 
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-tumblebug -n %s", common.CMK8sNamespace)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-tumblebug -n %s", CMK8sNamespace)
 			common.SysCall(cmdStr)
 
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-ladybug -n %s", common.CMK8sNamespace)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-ladybug -n %s", CMK8sNamespace)
 			common.SysCall(cmdStr)
 
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-dragonfly -n %s", common.CMK8sNamespace)
+			cmdStr = fmt.Sprintf("kubectl delete pvc cb-dragonfly -n %s", CMK8sNamespace)
 			common.SysCall(cmdStr)
 
-			cmdStr = fmt.Sprintf("kubectl delete pvc data-cm-mayfly-etcd-0 -n %s", common.CMK8sNamespace)
+			cmdStr = fmt.Sprintf("kubectl delete pvc data-cm-mayfly-etcd-0 -n %s", CMK8sNamespace)
 			common.SysCall(cmdStr)
 		}
 
@@ -51,7 +51,7 @@ func init() {
 	k8sCmd.AddCommand(removeCmd)
 
 	pf := removeCmd.PersistentFlags()
-	pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
+	pf.StringVarP(&K8sFilePath, "file", "f", DefaultKubernetesConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 
 	pf.BoolVarP(&volFlag, "volumes", "v", false, "Remove named volumes declared in the volumes section of the Compose file")

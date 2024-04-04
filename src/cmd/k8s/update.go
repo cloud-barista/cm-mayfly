@@ -18,12 +18,12 @@ var updateCmd = &cobra.Command{
 		fmt.Println("\n[Update Cloud-Migrator]")
 		fmt.Println()
 
-		if common.K8sFilePath == "" {
+		if K8sFilePath == "" {
 			fmt.Println("file is required")
 		} else {
 			var cmdStr string
 
-			cmdStr = fmt.Sprintf("helm upgrade --namespace %s --install %s -f %s ../helm-chart", common.CMK8sNamespace, common.CMHelmReleaseName, common.K8sFilePath)
+			cmdStr = fmt.Sprintf("helm upgrade --namespace %s --install %s -f %s ../helm-chart", CMK8sNamespace, CMHelmReleaseName, K8sFilePath)
 			if strings.ToLower(K8sprovider) == "gke" || strings.ToLower(K8sprovider) == "aks" {
 				cmdStr += " --set metricServer.enabled=false"
 			}
@@ -39,7 +39,7 @@ func init() {
 	//rootCmd.AddCommand(updateCmd)
 
 	pf := updateCmd.PersistentFlags()
-	pf.StringVarP(&common.K8sFilePath, "file", "f", common.DefaultKubernetesConfig, "User-defined configuration file")
+	pf.StringVarP(&K8sFilePath, "file", "f", DefaultKubernetesConfig, "User-defined configuration file")
 	pf.StringVarP(&K8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services")
 
 	//	cobra.MarkFlagRequired(pf, "file")

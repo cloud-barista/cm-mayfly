@@ -2,6 +2,7 @@ package docker
 
 import (
 	"fmt"
+
 	"github.com/cm-mayfly/cm-mayfly/src/common"
 	"github.com/spf13/cobra"
 )
@@ -15,10 +16,10 @@ var runCmd = &cobra.Command{
 		fmt.Println("\n[Setup and Run Cloud-Migrator]")
 		fmt.Println()
 
-		if common.DockerFilePath == "" {
+		if DockerFilePath == "" {
 			fmt.Println("--file (-f) argument is required but not provided.")
 		} else {
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up", common.CMComposeProjectName, common.DockerFilePath)
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up", CMComposeProjectName, DockerFilePath)
 			//fmt.Println(cmdStr)
 			common.SysCall(cmdStr)
 
@@ -30,7 +31,7 @@ func init() {
 	dockerCmd.AddCommand(runCmd)
 
 	pf := runCmd.PersistentFlags()
-	pf.StringVarP(&common.DockerFilePath, "file", "f", common.DefaultDockerComposeConfig, "User-defined configuration file")
+	pf.StringVarP(&DockerFilePath, "file", "f", DefaultDockerComposeConfig, "User-defined configuration file")
 	//pf.StringVarP(&k8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services") //@todo
 
 	// runCmd.MarkPersistentFlagRequired("k8sprovider")
