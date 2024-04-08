@@ -1,0 +1,70 @@
+cliSpecVersion: v1
+# Service Definitions (Framework Server Basic informations)
+services:
+  spider: #service name
+    baseurl: http://localhost:1024/spider  # baseurl is Scheme + Host + Base Path
+    auth: #If you need an authentication method, describe the type and username and password in the sub
+      type: basic
+      username: default
+      password: default
+  
+  tumblebug:
+    baseurl: http://localhost:1323/tumblebug
+    auth: 
+      type: basic
+      username: default
+      password: default
+  
+  test:
+    baseurl: http://localhost:1323/test
+    auth: 
+
+# Define rest api actions for each of the services defined above.
+# specify the DATA to use for the API in the CLI.
+serviceActions:
+  spider: #service name
+    ListCloudOS:
+      method: GET
+      resourcePath: /cloudos  
+    RegisterCloudDriver:
+      method: POST
+      resourcePath: /driver
+    ListCloudDriver:
+      method: GET
+      resourcePath: /driver  
+    GetCloudDriver:
+      method: GET
+      resourcePath: /driver/{{driver_name}}
+    UnregisterCloudDriver:
+      method: DELETE
+      resourcePath: /driver/{{driver_name}} 
+    RegisterCloudCredential:
+      method: POST
+      resourcePath: /credential
+    ListCloudCredential:
+      method: GET
+      resourcePath: /credential
+    GetCloudCredential:
+      method: GET
+      resourcePath: /credential/{{credential_name}}
+    UnregisterCloudCredential:
+      method: DELETE
+      resourcePath: /credential/{{credential_name}}
+    RegisterCloudRegion:
+      method: POST
+      resourcePath: /region
+    ListCloudRegion:
+      method: GET
+      resourcePath: /region
+    GetCloudRegion:
+      method: GET
+      resourcePath: /region/{{region_name}}
+    UnregisterCloudRegion:
+      method: DELETE
+      resourcePath: /region/{{region_name}}
+  
+  tumblebug:
+    HealthInfo:
+      method: GET
+      resourcePath: /health
+  
