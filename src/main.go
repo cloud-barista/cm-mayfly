@@ -17,7 +17,10 @@ package main
 
 import (
 	"github.com/cm-mayfly/cm-mayfly/src/cmd"
+	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/apicall"
 	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/docker"
+	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/k8s"
+	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/rest"
 )
 
 func main() {
