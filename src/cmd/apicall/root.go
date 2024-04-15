@@ -6,6 +6,7 @@ package rest
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/src/cmd"
 	"github.com/davecgh/go-spew/spew"
@@ -21,6 +22,7 @@ var method string
 var isInit bool
 var isListMode bool
 var isVerbose bool
+var pathParam string
 
 type ServiceInfo struct {
 	BaseURL string `yaml:"baseurl"`
@@ -29,6 +31,8 @@ type ServiceInfo struct {
 		Username string `yaml:"username"`
 		Password string `yaml:"password"`
 	} `yaml:"auth"`
+	ResourcePath string `yaml:"resourcePath"`
+	Method       string `yaml:"method"`
 }
 
 var serviceInfo ServiceInfo
@@ -43,6 +47,7 @@ var apiCmd = &cobra.Command{
 ./mayfly api --list
 ./mayfly api --service spider --list
 ./mayfly api --service spider --action ListCloudOS
+./mayfly api --service spider --action ListCloudOS --path
 `,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		isInit = false
@@ -84,19 +89,34 @@ var apiCmd = &cobra.Command{
 			if isVerbose {
 				fmt.Println("List Mode")
 			}
-			if serviceName != "" {
+			if serviceName == "" {
+				showServiceList()
+			} else if actionName == "" {
 				showActionList(serviceName)
 			} else {
-				showServiceList()
+				fmt.Printf("Both the service and action were specified.\nThe list no longer exists to lookup.\n")
 			}
 
 			return
 		}
 
+		// 호출할 서비스 정보 처리
 		errParse := parseRequestInfo()
 		if errParse != nil {
 			fmt.Println(errParse)
 			return
+		}
+
+		if isVerbose {
+			//spew.Dump(serviceInfo)
+
+			fmt.Println("")
+			fmt.Println("Base URL:", serviceInfo.BaseURL)
+			fmt.Println("Auth Type:", serviceInfo.Auth.Type)
+			fmt.Println("Username:", serviceInfo.Auth.Username)
+			fmt.Println("Password:", serviceInfo.Auth.Password)
+			fmt.Println("ResourcePath:", serviceInfo.ResourcePath)
+			fmt.Println("Method:", serviceInfo.Method)
 		}
 
 		/*
@@ -202,40 +222,98 @@ func showActionList(serviceName string) {
 
 // 입력 값 기반으로 호출할 서비스 정보를 정리함.
 func parseRequestInfo() error {
+	// 서비스 검증
 	if serviceName == "" {
 		return errors.New("no service is specified to call")
 	}
 
 	if !viper.IsSet("services." + serviceName) {
-		return errors.New("information about the service [" + serviceName + "] you are trying to call does not exist")
+		//return errors.New("information about the service [" + serviceName + "] you are trying to call does not exist")
+		return errors.New("the name of the service[" + serviceName + "] you want to call is not on the list of supported services.\nPlease check the api.yaml configuration file or the list of available services")
 	}
 
+	// 액션 검증
 	if actionName == "" {
 		return errors.New("no action name is specified to call")
 	}
 
 	if !viper.IsSet("serviceActions." + serviceName + "." + actionName) {
-		return errors.New("the requested action[" + actionName + "] does not exist for the service[" + serviceName + "] you are trying to call")
+		return errors.New("the requested action[" + actionName + "] does not exist for the service[" + serviceName + "] you are trying to call\nPlease check the api.yaml configuration file or the list of available actions for the service you want to call.")
 	}
 
+	// 서비스 정보 파싱
 	err := viper.UnmarshalKey("services."+serviceName, &serviceInfo)
 	if err != nil {
 		return err
 	}
 
 	if serviceInfo.BaseURL == "" {
-		return errors.New("couldn't find the BaseURL information for the service to call")
+		return errors.New("couldn't find the BaseURL information for the service to call\nPlease check the api.yaml configuration file")
+	}
+
+	// 액션 정보 파싱
+	err = viper.UnmarshalKey("serviceActions."+serviceName+"."+actionName, &serviceInfo)
+	if err != nil {
+		return err
+	}
+
+	if serviceInfo.ResourcePath == "" {
+		return errors.New("couldn't find the ResourcePath information for the action to call\nPlease check the api.yaml configuration file")
+	}
+
+	// 가변 URI 처리
+	errParam := parsePathParam()
+	if errParam != nil {
+		//fmt.Println(errParam)
+		return errParam
+	}
+
+	return nil
+}
+
+// 가변 경로를 처리 함.
+func parsePathParam() error {
+	if isVerbose {
+		fmt.Println("pathParam:", pathParam)
+		fmt.Println("ResourcePath:", serviceInfo.ResourcePath)
+		fmt.Println("checking path paramter infomation...")
+	}
+
+	//Path 파라메터 처리
+	if strings.Contains(serviceInfo.ResourcePath, "{{") {
+		if pathParam == "" {
+			return errors.New("couldn't find uri path parameter(key:value) information for URI PATH\nThis URI requires the following path parameter information\n" + serviceInfo.ResourcePath)
+		}
+
+		//가변 경로 처리
+		pathParams := make(map[string]string)
+		params := strings.Fields(pathParam)
+		for _, param := range params {
+			keyValue := strings.Split(param, ":")
+			if len(keyValue) == 2 {
+				//key := strings.ToLower(keyValue[0])
+				key := keyValue[0]
+				value := keyValue[1]
+				pathParams[key] = value
+			}
+		}
+
+		// resourcePath의 키를 대소문자 구분하여 치환
+		for key, value := range pathParams {
+			//lowerKey := strings.ToLower(key)
+			placeholder := "{{" + key + "}}"
+			//serviceInfo.ResourcePath = strings.Replace(serviceInfo.ResourcePath, placeholder, value, -1)
+			serviceInfo.ResourcePath = strings.Replace(serviceInfo.ResourcePath, placeholder, value, -1)
+		}
+
+		if strings.Contains(serviceInfo.ResourcePath, "{{") {
+			return errors.New("couldn't find all uri path parameter(key:value) information for URI PATH\nThis URI requires the following addtional path parameter information\nkey names used for URI mapping are case sensitive.\n" + serviceInfo.ResourcePath)
+		}
 	}
 
 	if isVerbose {
-		fmt.Println("Base URL:", serviceInfo.BaseURL)
-		fmt.Println("Auth Type:", serviceInfo.Auth.Type)
-		fmt.Println("Username:", serviceInfo.Auth.Username)
-		fmt.Println("Password:", serviceInfo.Auth.Password)
+		fmt.Println("ResourcePath:", serviceInfo.ResourcePath)
 	}
-
-	// action 정보 검증
-
 	return nil
 }
 
@@ -246,6 +324,7 @@ func init() {
 	apiCmd.PersistentFlags().StringVarP(&actionName, "action", "a", "", "Action to perform")
 	apiCmd.PersistentFlags().StringVarP(&method, "method", "m", "", "HTTP Method")
 	apiCmd.PersistentFlags().BoolVarP(&isVerbose, "verbose", "v", false, "Show more detail information")
+	apiCmd.PersistentFlags().StringVarP(&pathParam, "pathParam", "p", "", "Variable path info set \"key1:value1 key2:value2\" for URIs")
 
 	apiCmd.Flags().BoolVarP(&isListMode, "list", "l", false, "Show Service or Action list")
 
