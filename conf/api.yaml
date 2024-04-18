@@ -15,23 +15,32 @@ services:
       username: default
       password: default
   
-  test:
+  sample:
     baseurl: http://localhost:1323/test
-    auth: 
+    auth: #none
+
 
 # Define rest api actions for each of the services defined above.
 # specify the DATA to use for the API in the CLI.
 serviceActions:
+  sample: #for sample
+    #cb-spider CCIM v0.6.0
+    NormalGetAction:
+      method: GET
+      resourcePath: /sample
+    PathParamGetAction:
+      method: GET
+      resourcePath: /sample/{{param_name}}
   spider: #service name
     ListCloudOS:
       method: GET
-      resourcePath: /cloudos  
+      resourcePath: /cloudos
     RegisterCloudDriver:
       method: POST
       resourcePath: /driver
     ListCloudDriver:
       method: GET
-      resourcePath: /driver  
+      resourcePath: /driver
     GetCloudDriver:
       method: GET
       resourcePath: /driver/{{driver_name}}
@@ -62,6 +71,20 @@ serviceActions:
     UnregisterCloudRegion:
       method: DELETE
       resourcePath: /region/{{region_name}}
+    CreateCloudConnectionConfiguration:
+      method: POST
+      resourcePath: /connectionconfig
+    ListCloudConnectionConfiguration:
+      method: GET
+      resourcePath: /connectionconfig
+    GetCloudConnectionConfiguration:
+      method: GET
+      resourcePath: /connectionconfig/{{config_name}}
+    DeleteCloudConnectionConfiguration:
+      method: DELETE
+      resourcePath: /connectionconfig/{{config_name}}
+
+    #cb-spider CCTM v0.8.9
   
   tumblebug:
     HealthInfo:
