@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/src/cmd"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -23,6 +23,12 @@ var isInit bool
 var isListMode bool
 var isVerbose bool
 var pathParam string
+var queryString string
+
+var client = resty.New()
+var req = client.R()
+var sendData string
+var fileData string
 
 type ServiceInfo struct {
 	BaseURL string `yaml:"baseurl"`
@@ -47,7 +53,7 @@ var apiCmd = &cobra.Command{
 ./mayfly api --list
 ./mayfly api --service spider --list
 ./mayfly api --service spider --action ListCloudOS
-./mayfly api --service spider --action ListCloudOS --path
+./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
 `,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		isInit = false
@@ -73,7 +79,8 @@ var apiCmd = &cobra.Command{
 		//fmt.Println("cliSpecVersion : ", viper.GetString("cliSpecVersion"))
 		//fmt.Println("Loaded configurations:", viper.AllSettings())
 		if isVerbose {
-			spew.Dump(viper.AllSettings())
+			client.SetDebug(true)
+			//spew.Dump(viper.AllSettings())
 		}
 	},
 
@@ -117,6 +124,13 @@ var apiCmd = &cobra.Command{
 			fmt.Println("Password:", serviceInfo.Auth.Password)
 			fmt.Println("ResourcePath:", serviceInfo.ResourcePath)
 			fmt.Println("Method:", serviceInfo.Method)
+		}
+
+		fmt.Println("\nservice calling...")
+		errRest := callRest()
+		if errRest != nil {
+			fmt.Println(errRest)
+			return
 		}
 
 		/*
@@ -268,6 +282,27 @@ func parseRequestInfo() error {
 		return errParam
 	}
 
+	// 쿼리 문자열 처리
+	if queryString != "" {
+		// queryString 값이 ?로 시작하는지 확인
+		startsWithQuestionMark := strings.HasPrefix(queryString, "?")
+
+		// ResourcePath가 ?로 끝나는 경우
+		if strings.HasSuffix(serviceInfo.ResourcePath, "?") {
+			if startsWithQuestionMark {
+				serviceInfo.ResourcePath = serviceInfo.ResourcePath + queryString[1:]
+			} else {
+				serviceInfo.ResourcePath = serviceInfo.ResourcePath + queryString
+			}
+		} else {
+			if startsWithQuestionMark {
+				serviceInfo.ResourcePath = serviceInfo.ResourcePath + queryString
+			} else {
+				serviceInfo.ResourcePath = serviceInfo.ResourcePath + "?" + queryString
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -317,6 +352,74 @@ func parsePathParam() error {
 	return nil
 }
 
+func SetBasicAuth() {
+	if serviceInfo.Auth.Type == "" || strings.ToLower(serviceInfo.Auth.Type) == "none" {
+	} else {
+		// Set basic authentication
+		if serviceInfo.Auth.Username != "" && serviceInfo.Auth.Password != "" {
+			if isVerbose {
+				fmt.Println("setting basic auth")
+				fmt.Println("username : " + serviceInfo.Auth.Username)
+				fmt.Println("password : " + serviceInfo.Auth.Password)
+			}
+			client.SetBasicAuth(serviceInfo.Auth.Username, serviceInfo.Auth.Password)
+		}
+	}
+}
+
+// func SetReqData(req *resty.Request) {
+func SetReqData() {
+	if isVerbose {
+		fmt.Println("request data : \n" + sendData)
+	}
+	req.SetBody(sendData)
+}
+
+func ProcessResultInfo(resp *resty.Response) {
+	if isVerbose {
+		fmt.Println("  Headers:")
+		for key, values := range resp.Header() {
+			for _, value := range values {
+				fmt.Printf("%s: %s\n", key, value)
+			}
+		}
+		fmt.Println("")
+	}
+
+	fmt.Println(string(resp.Body()))
+}
+
+// REST API를 호출한다.
+func callRest() error {
+	var resp *resty.Response
+	var err error
+
+	SetBasicAuth()
+	SetReqData()
+
+	url := serviceInfo.BaseURL + serviceInfo.ResourcePath
+
+	switch strings.ToLower(serviceInfo.Method) {
+	case "get":
+		resp, err = req.Get(url)
+	case "post":
+		resp, err = req.Post(url)
+	case "put":
+		resp, err = req.Put(url)
+	case "delete":
+		resp, err = req.Delete(url)
+	case "patch":
+		resp, err = req.Patch(url)
+	}
+
+	if err != nil {
+		return err
+	}
+	ProcessResultInfo(resp)
+
+	return nil
+}
+
 func init() {
 	apiCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "../conf/api.yaml", "config file (default is ../conf/api.yaml)")
 
@@ -325,8 +428,11 @@ func init() {
 	apiCmd.PersistentFlags().StringVarP(&method, "method", "m", "", "HTTP Method")
 	apiCmd.PersistentFlags().BoolVarP(&isVerbose, "verbose", "v", false, "Show more detail information")
 	apiCmd.PersistentFlags().StringVarP(&pathParam, "pathParam", "p", "", "Variable path info set \"key1:value1 key2:value2\" for URIs")
+	apiCmd.PersistentFlags().StringVarP(&queryString, "queryString", "q", "", "Use if you have a query string to add to URI")
 
 	apiCmd.Flags().BoolVarP(&isListMode, "list", "l", false, "Show Service or Action list")
+	apiCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")
+	apiCmd.PersistentFlags().StringVarP(&fileData, "file", "f", "", "Data to send to the server from file(not yet support)")
 
 	cmd.RootCmd.AddCommand(apiCmd)
 }
