@@ -132,80 +132,6 @@ var apiCmd = &cobra.Command{
 			fmt.Println(errRest)
 			return
 		}
-
-		/*
-					//fmt.Println("ListCloudOS.method:", viper.GetString("serviceActions.spider.ListCloudOS.method"))
-			//fmt.Println("ListCloudOS.resourcePath:", viper.GetString("serviceActions.spider.ListCloudOS.resourcePath"))
-
-			// Spider 서비스 정보를 가져오기
-			spiderService := viper.GetStringMap("services.spider")
-
-			// Spider 서비스 정보가 존재하는지 확인
-			if spiderService != nil {
-				// Spider 서비스 정보에서 필요한 값 추출
-				baseurl, ok := spiderService["baseurl"].(string)
-				if !ok {
-					fmt.Println("Error: baseurl is not a string")
-					return
-				}
-
-				authMap := viper.GetStringMap("services.test.auth")
-				// Spider 서비스 정보 출력
-				fmt.Println("Spider Service:")
-				fmt.Println("Base URL:", baseurl)
-				fmt.Println("Auth Type:", authMap)
-
-				if len(authMap) != 0 {
-					// auth 맵 내부의 필요한 값 추출
-					authType, ok := authMap["type"].(string)
-					if !ok {
-						fmt.Println("Error: auth type is not a string")
-						return
-					}
-					username, ok := authMap["username"].(string)
-					if !ok {
-						fmt.Println("Error: username is not a string")
-						return
-					}
-					password, ok := authMap["password"].(string)
-					if !ok {
-						fmt.Println("Error: password is not a string")
-						return
-					}
-
-					// 추출한 값 출력
-					fmt.Println("Auth Type:", authType)
-					fmt.Println("Username:", username)
-					fmt.Println("Password:", password)
-				}
-			} else {
-				fmt.Println("Spider service not found")
-			}
-		*/
-
-		/*
-			baseURL := viper.GetString("services.spider.baseurl")
-			username := viper.GetString("services.spider.username")
-			password := viper.GetString("services.spider.password")
-
-			fmt.Println("Base URL:", baseURL)
-			fmt.Println("Username:", username)
-			fmt.Println("Password:", password)
-
-			serviceActions := viper.GetStringMap("serviceActions.spider")
-			action := serviceActions[actionName]
-
-			if action != nil {
-				actionMap := action.(map[string]interface{})
-				method := actionMap["method"].(string)
-				resourcePath := actionMap["resourcePath"].(string)
-
-				fmt.Println("Method:", method)
-				fmt.Println("Resource Path:", resourcePath)
-			} else {
-				fmt.Println("Action not found for Spider service")
-			}
-		*/
 	},
 }
 
@@ -315,7 +241,7 @@ func parsePathParam() error {
 	}
 
 	//Path 파라메터 처리
-	if strings.Contains(serviceInfo.ResourcePath, "{{") {
+	if strings.Contains(serviceInfo.ResourcePath, "{") {
 		if pathParam == "" {
 			return errors.New("couldn't find uri path parameter(key:value) information for URI PATH\nThis URI requires the following path parameter information\n" + serviceInfo.ResourcePath)
 		}
@@ -336,12 +262,12 @@ func parsePathParam() error {
 		// resourcePath의 키를 대소문자 구분하여 치환
 		for key, value := range pathParams {
 			//lowerKey := strings.ToLower(key)
-			placeholder := "{{" + key + "}}"
+			placeholder := "{" + key + "}"
 			//serviceInfo.ResourcePath = strings.Replace(serviceInfo.ResourcePath, placeholder, value, -1)
 			serviceInfo.ResourcePath = strings.Replace(serviceInfo.ResourcePath, placeholder, value, -1)
 		}
 
-		if strings.Contains(serviceInfo.ResourcePath, "{{") {
+		if strings.Contains(serviceInfo.ResourcePath, "{") {
 			return errors.New("couldn't find all uri path parameter(key:value) information for URI PATH\nThis URI requires the following addtional path parameter information\nkey names used for URI mapping are case sensitive.\n" + serviceInfo.ResourcePath)
 		}
 	}

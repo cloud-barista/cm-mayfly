@@ -30,7 +30,7 @@ serviceActions:
       resourcePath: /sample
     PathParamGetAction:
       method: GET
-      resourcePath: /sample/{{param_name}}
+      resourcePath: /sample/{param_name}
   spider: #service name
     ListCloudOS:
       method: GET
@@ -43,10 +43,10 @@ serviceActions:
       resourcePath: /driver
     GetCloudDriver:
       method: GET
-      resourcePath: /driver/{{driver_name}}
+      resourcePath: /driver/{driver_name}
     UnregisterCloudDriver:
       method: DELETE
-      resourcePath: /driver/{{driver_name}} 
+      resourcePath: /driver/{driver_name} 
     RegisterCloudCredential:
       method: POST
       resourcePath: /credential
@@ -55,10 +55,10 @@ serviceActions:
       resourcePath: /credential
     GetCloudCredential:
       method: GET
-      resourcePath: /credential/{{credential_name}}
+      resourcePath: /credential/{credential_name}
     UnregisterCloudCredential:
       method: DELETE
-      resourcePath: /credential/{{credential_name}}
+      resourcePath: /credential/{credential_name}
     RegisterCloudRegion:
       method: POST
       resourcePath: /region
@@ -67,10 +67,10 @@ serviceActions:
       resourcePath: /region
     GetCloudRegion:
       method: GET
-      resourcePath: /region/{{region_name}}
+      resourcePath: /region/{region_name}
     UnregisterCloudRegion:
       method: DELETE
-      resourcePath: /region/{{region_name}}
+      resourcePath: /region/{region_name}
     CreateCloudConnectionConfiguration:
       method: POST
       resourcePath: /connectionconfig
@@ -79,10 +79,10 @@ serviceActions:
       resourcePath: /connectionconfig
     GetCloudConnectionConfiguration:
       method: GET
-      resourcePath: /connectionconfig/{{config_name}}
+      resourcePath: /connectionconfig/{config_name}
     DeleteCloudConnectionConfiguration:
       method: DELETE
-      resourcePath: /connectionconfig/{{config_name}}
+      resourcePath: /connectionconfig/{config_name}
 
     #cb-spider CCTM v0.8.9
   
