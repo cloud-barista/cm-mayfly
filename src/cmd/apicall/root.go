@@ -428,7 +428,7 @@ func init() {
 	apiCmd.PersistentFlags().StringVarP(&method, "method", "m", "", "HTTP Method")
 	apiCmd.PersistentFlags().BoolVarP(&isVerbose, "verbose", "v", false, "Show more detail information")
 	apiCmd.PersistentFlags().StringVarP(&pathParam, "pathParam", "p", "", "Variable path info set \"key1:value1 key2:value2\" for URIs")
-	apiCmd.PersistentFlags().StringVarP(&queryString, "queryString", "q", "", "Use if you have a query string to add to URI")
+	apiCmd.PersistentFlags().StringVarP(&queryString, "queryString", "q", "", "Use if you have a query string to add to URIs")
 
 	apiCmd.Flags().BoolVarP(&isListMode, "list", "l", false, "Show Service or Action list")
 	apiCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")
