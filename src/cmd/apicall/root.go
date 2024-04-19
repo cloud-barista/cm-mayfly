@@ -1,7 +1,7 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 */
-package rest
+package apicall
 
 import (
 	"errors"
@@ -54,6 +54,7 @@ var apiCmd = &cobra.Command{
 ./mayfly api --service spider --list
 ./mayfly api --service spider --action ListCloudOS
 ./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
+./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
 `,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		isInit = false
