@@ -26,68 +26,68 @@ serviceActions:
   sample: #for sample
     #cb-spider CCIM v0.6.0
     NormalGetAction:
-      method: GET
+      method: get
       resourcePath: /sample
     PathParamGetAction:
-      method: GET
+      method: get
       resourcePath: /sample/{param_name}
   spider: #service name
     ListCloudOS:
-      method: GET
+      method: get
       resourcePath: /cloudos
     RegisterCloudDriver:
-      method: POST
+      method: post
       resourcePath: /driver
     ListCloudDriver:
-      method: GET
+      method: get
       resourcePath: /driver
     GetCloudDriver:
-      method: GET
+      method: get
       resourcePath: /driver/{driver_name}
     UnregisterCloudDriver:
-      method: DELETE
+      method: delete
       resourcePath: /driver/{driver_name} 
     RegisterCloudCredential:
-      method: POST
+      method: post
       resourcePath: /credential
     ListCloudCredential:
-      method: GET
+      method: get
       resourcePath: /credential
     GetCloudCredential:
-      method: GET
+      method: get
       resourcePath: /credential/{credential_name}
     UnregisterCloudCredential:
-      method: DELETE
+      method: delete
       resourcePath: /credential/{credential_name}
     RegisterCloudRegion:
-      method: POST
+      method: post
       resourcePath: /region
     ListCloudRegion:
-      method: GET
+      method: get
       resourcePath: /region
     GetCloudRegion:
-      method: GET
+      method: get
       resourcePath: /region/{region_name}
     UnregisterCloudRegion:
-      method: DELETE
+      method: delete
       resourcePath: /region/{region_name}
     CreateCloudConnectionConfiguration:
-      method: POST
+      method: post
       resourcePath: /connectionconfig
     ListCloudConnectionConfiguration:
-      method: GET
+      method: get
       resourcePath: /connectionconfig
     GetCloudConnectionConfiguration:
-      method: GET
+      method: get
       resourcePath: /connectionconfig/{config_name}
     DeleteCloudConnectionConfiguration:
-      method: DELETE
+      method: delete
       resourcePath: /connectionconfig/{config_name}
 
     #cb-spider CCTM v0.8.9
   
   tumblebug:
     HealthInfo:
-      method: GET
+      method: get
       resourcePath: /health
   
