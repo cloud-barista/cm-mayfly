@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -40,7 +42,7 @@ var toolCmd = &cobra.Command{
 	Short: "Swagger JSON parsing tool to assist in writing api.yaml files",
 	Long:  `Swagger JSON parsing tool to assist in writing api.yaml files`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("util")
+		//fmt.Println("util")
 		parse()
 	},
 }
@@ -154,14 +156,65 @@ func parse() {
 	fmt.Println("API Version:", swagger.Info.Version)
 	fmt.Println("Base Path:", swagger.BasePath)
 
+	/*
+		// 각 경로에 대한 정보 출력
+		for path, methods := range swagger.Paths {
+			//fmt.Println("resourcePath: ", path)
+			for method, info := range methods {
+				//fmt.Printf("  Method: %s, Description: %s\n", method, info.Description)
+				//fmt.Printf("  Method: %s, Summary: %s\n", method, info.Summary)
+				fmt.Printf("    summary: %s\n", info.Summary)
+				fmt.Printf("      method: %s\n", method)
+				fmt.Printf("      resourcePath: %s\n", path)
+			}
+		}
+	*/
+
+	// Path 순으로 출력을 위해 정렬
+	var paths []string
+	for path := range swagger.Paths {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+
+	tmpActionName := ""
 	// 각 경로에 대한 정보 출력
-	for path, methods := range swagger.Paths {
-		fmt.Println("Path:", path)
+	for _, path := range paths {
+		methods := swagger.Paths[path]
+		//fmt.Println("Path:", path)
 		for method, info := range methods {
-			//fmt.Printf("  Method: %s, Description: %s\n", method, info.Description)
-			fmt.Printf("  Method: %s, Description: %s\n", method, info.Summary)
+			tmpActionName = info.Summary
+			tmpActionName = convertActionlName(tmpActionName)
+
+			//fmt.Printf("    summary: %s\n", tmpActionName)
+			fmt.Printf("    %s:\n", tmpActionName)
+			fmt.Printf("      method: %s\n", method)
+			fmt.Printf("      resourcePath: %s\n", path)
+			fmt.Printf("      description: %q\n", info.Description)
 		}
 	}
+}
+
+func convertActionlName(tmpActionName string) string {
+	//일부 특수 기호들 제거
+	tmpActionName = strings.ReplaceAll(tmpActionName, ":", "-")
+	tmpActionName = strings.ReplaceAll(tmpActionName, "`", "")
+	tmpActionName = strings.ReplaceAll(tmpActionName, "'", "")
+	//tmpActionName = strings.ReplaceAll(tmpActionName, "\n", " ")
+
+	//카멜타입으로 변경
+	tmpActionName = toCamelCase(tmpActionName)
+
+	return tmpActionName
+}
+
+func toCamelCase(str string) string {
+	words := strings.Fields(str) // 문자열을 공백을 기준으로 단어로 분할
+	var result strings.Builder
+	for _, word := range words {
+		result.WriteString(strings.Title(word)) // 각 단어의 첫 글자를 대문자로 만듦
+	}
+	return result.String()
 }
 
 func init() {

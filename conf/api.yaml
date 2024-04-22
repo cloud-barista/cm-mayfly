@@ -28,6 +28,7 @@ serviceActions:
     NormalGetAction:
       method: get
       resourcePath: /sample
+      description: #Use when necessary for user understanding
     PathParamGetAction:
       method: get
       resourcePath: /sample/{param_name}
