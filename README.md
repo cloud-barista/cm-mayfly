@@ -61,7 +61,7 @@ For now, it supports docker / rest sub-commands.
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
 ```
-cm-mayfly/src$ ./mayfly -h
+cm-mayfly/bin$ ./mayfly -h
 
 The mayfly is a tool to operate Cloud-Migrator system.
 
@@ -69,8 +69,10 @@ Usage:
   mayfly [command]
 
 Available Commands:
+  api         Open API calls to the Cloud-Migrator system
   docker      A tool to operate Cloud-Migrator system
   help        Help about any command
+  k8s         A tool to operate Cloud-Migrator system
   rest        rest api call
 
 Flags:
@@ -78,6 +80,11 @@ Flags:
 
 Use "mayfly [command] --help" for more information about a command.
 ```
+
+## docker-compose.yaml
+The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `docker-compose-mode-files` folder.)   
+
+If you want to change the information for each container you want to deploy, modify the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file or use the -f option.   
 
 
 
@@ -104,14 +111,8 @@ Flags:
 Use "mayfly docker [command] --help" for more information about a command.
 ```
    
-## docker-compose.yaml
-The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `docker-compose-mode-files` folder.)   
-
-If you want to change the information for each container you want to deploy, modify the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file or use the -f option.   
-
-
-## docker command examples
-Simple usage examples for docker commands
+## docker subcommand examples
+Simple usage examples for docker subcommand
 ```
  ./mayfly docker pull [-f ../docker-compose-mode-files/docker-compose.yaml]   
  ./mayfly docker run [-f ../docker-compose-mode-files/docker-compose.yaml]   
@@ -159,12 +160,59 @@ Flags:
 Use "mayfly rest [command] --help" for more information about a command.
 ```
 
-## rest command examples
-Simple usage examples for rest commands
+## rest subcommand examples
+Simple usage examples for rest subcommand
 ```
 ./mayfly rest get -u default -p default http://localhost:1323/tumblebug/health
 ./mayfly rest post https://reqres.in/api/users -d '{
                 "name": "morpheus",
                 "job": "leader"
         }'
+```
+
+
+# api subcommand
+The api subcommands are developed to make it easy to use the open APIs of Cloud-Migrator-related frameworks from the CLI.
+
+```
+Call the action of the service defined in api.yaml. For example:
+./mayfly api --help
+./mayfly api --list
+./mayfly api --service spider --list
+./mayfly api --service spider --action ListCloudOS
+./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
+./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
+
+Usage:
+  mayfly api [flags]
+  mayfly api [command]
+
+Available Commands:
+  tool        Swagger JSON parsing tool to assist in writing api.yaml files
+
+Flags:
+  -a, --action string        Action to perform
+  -c, --config string        config file (default is ../conf/api.yaml)
+  -d, --data string          Data to send to the server
+  -f, --file string          Data to send to the server from file(not yet support)
+  -h, --help                 help for api
+  -l, --list                 Show Service or Action list
+  -m, --method string        HTTP Method
+  -p, --pathParam string     Variable path info set "key1:value1 key2:value2" for URIs
+  -q, --queryString string   Use if you have a query string to add to URIs
+  -s, --service string       Service to perform
+  -v, --verbose              Show more detail information
+
+Use "mayfly api [command] --help" for more information about a command.
+```
+
+## api subcommand examples
+Simple usage examples for api subcommand
+```
+./mayfly api --help
+./mayfly api --list
+./mayfly api --service spider --list
+./mayfly api --service spider --action ListCloudOS
+./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
+./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
 ```

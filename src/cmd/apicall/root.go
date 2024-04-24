@@ -46,9 +46,8 @@ var serviceInfo ServiceInfo
 // apiCmd represents the svc command
 var apiCmd = &cobra.Command{
 	Use:   "api",
-	Short: "Open API calls to the Cloud-Migrator system",
-	Long: `Open API calls to the Cloud-Migrator system. For example:
-
+	Short: "Call the Cloud-Migrator system's Open APIs as services and actions",
+	Long: `Call the action of the service defined in api.yaml. For example:
 ./mayfly api --help
 ./mayfly api --list
 ./mayfly api --service spider --list
@@ -353,7 +352,7 @@ func callRest() error {
 }
 
 func init() {
-	apiCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "../conf/api.yaml", "config file (default is ../conf/api.yaml)")
+	apiCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "../conf/api.yaml", "config file")
 
 	apiCmd.PersistentFlags().StringVarP(&serviceName, "service", "s", "", "Service to perform")
 	apiCmd.PersistentFlags().StringVarP(&actionName, "action", "a", "", "Action to perform")
