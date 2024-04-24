@@ -23,3 +23,6 @@ yarn.lock
 # Binary
 src/mayfly
 docker-compose-mode-files/data/*
+
+# IDE's
+*.idea
