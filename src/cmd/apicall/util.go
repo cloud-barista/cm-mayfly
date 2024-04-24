@@ -23,6 +23,7 @@ type Path struct {
 	Produces    []string `json:"produces"`
 	Tags        []string `json:"tags"`
 	Summary     string   `json:"summary"`
+	OperationId string   `json:"operationId"`
 	// 여기에 더 필요한 필드를 추가할 수 있습니다.
 }
 
@@ -183,7 +184,7 @@ func parse() {
 		methods := swagger.Paths[path]
 		//fmt.Println("Path:", path)
 		for method, info := range methods {
-			tmpActionName = info.Summary
+			tmpActionName = info.OperationId
 			tmpActionName = convertActionlName(tmpActionName)
 
 			//fmt.Printf("    summary: %s\n", tmpActionName)
