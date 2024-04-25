@@ -382,7 +382,7 @@ func init() {
 
 	apiCmd.Flags().BoolVarP(&isListMode, "list", "l", false, "Show Service or Action list")
 	apiCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")
-	apiCmd.PersistentFlags().StringVarP(&fileData, "file", "f", "", "Data to send to the server from file(not yet support)")
+	apiCmd.PersistentFlags().StringVarP(&fileData, "file", "f", "", "Data to send to the server from file")
 
 	cmd.RootCmd.AddCommand(apiCmd)
 }
