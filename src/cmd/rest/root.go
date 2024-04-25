@@ -5,6 +5,7 @@ package rest
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	"strings"
 
@@ -34,7 +35,7 @@ var restCmd = &cobra.Command{
 	Long:  `rest api call`,
 	//Args:  cobra.ExactArgs(1),
 
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		//fmt.Println(isVerbose)
 		//fmt.Println("============ 아규먼트 :  " + strconv.Itoa(len(args)))
 		if len(args) != 0 { //하위 커맨드가 실행된 경우에만 실행 그 외에는 도움말만 실행
@@ -44,12 +45,18 @@ var restCmd = &cobra.Command{
 			SetAuthToken() // Authorization: <auth-scheme> <auth-token-value>  // default auth-scheme : Bearer
 			SetBasicAuth() // Authorization: Basic <base64-encoded-value>
 			SetHeaders()
-			SetReqData()
+			//SetReqData()
+			err := SetReqData() // 전송 데이터 처리
+			if err != nil {
+				//fmt.Println(err)
+				return err
+			}
 
 			if isVerbose {
 				fmt.Println("==============================")
 			}
 		}
+		return nil
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
@@ -109,11 +116,26 @@ func SetHeaders() {
 }
 
 // func SetReqData(req *resty.Request) {
-func SetReqData() {
-	if isVerbose {
-		fmt.Println("request data : \n" + sendData)
+func SetReqData() error {
+	if fileData != "" {
+		if isVerbose {
+			fmt.Printf("use [%s] data file\n" + fileData)
+		}
+
+		// 파일에서 데이터 읽기
+		data, err := ioutil.ReadFile(fileData)
+		if err != nil {
+			return err
+		}
+		req.SetBody(data)
+	} else {
+		if isVerbose {
+			fmt.Printf("request data : %s\n" + sendData)
+		}
+		req.SetBody(sendData)
 	}
-	req.SetBody(sendData)
+
+	return nil
 }
 
 func ProcessResultInfo(resp *resty.Response) {

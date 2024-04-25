@@ -6,6 +6,7 @@ package apicall
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/src/cmd"
@@ -299,11 +300,26 @@ func SetBasicAuth() {
 }
 
 // func SetReqData(req *resty.Request) {
-func SetReqData() {
-	if isVerbose {
-		fmt.Println("request data : \n" + sendData)
+func SetReqData() error {
+	if fileData != "" {
+		if isVerbose {
+			fmt.Printf("use [%s] data file\n" + fileData)
+		}
+
+		// 파일에서 데이터 읽기
+		data, err := ioutil.ReadFile(fileData)
+		if err != nil {
+			return err
+		}
+		req.SetBody(data)
+	} else {
+		if isVerbose {
+			fmt.Printf("request data : %s\n" + sendData)
+		}
+		req.SetBody(sendData)
 	}
-	req.SetBody(sendData)
+
+	return nil
 }
 
 func ProcessResultInfo(resp *resty.Response) {
@@ -325,8 +341,11 @@ func callRest() error {
 	var resp *resty.Response
 	var err error
 
-	SetBasicAuth()
-	SetReqData()
+	SetBasicAuth()     // 인증 처리
+	err = SetReqData() // 전송 데이터 처리
+	if err != nil {
+		return err
+	}
 
 	url := serviceInfo.BaseURL + serviceInfo.ResourcePath
 
