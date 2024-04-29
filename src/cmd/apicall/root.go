@@ -29,7 +29,8 @@ var queryString string
 var client = resty.New()
 var req = client.R()
 var sendData string
-var fileData string
+var inputFileData string
+var outputFile string
 
 type ServiceInfo struct {
 	BaseURL string `yaml:"baseurl"`
@@ -301,13 +302,13 @@ func SetBasicAuth() {
 
 // func SetReqData(req *resty.Request) {
 func SetReqData() error {
-	if fileData != "" {
+	if inputFileData != "" {
 		if isVerbose {
-			fmt.Printf("use [%s] data file\n" + fileData)
+			fmt.Printf("use [%s] data file\n" + inputFileData)
 		}
 
 		// 파일에서 데이터 읽기
-		data, err := ioutil.ReadFile(fileData)
+		data, err := ioutil.ReadFile(inputFileData)
 		if err != nil {
 			return err
 		}
@@ -347,6 +348,11 @@ func callRest() error {
 		return err
 	}
 
+	//출력 파일 지정
+	if outputFile != "" {
+		req.SetOutput(outputFile)
+	}
+
 	url := serviceInfo.BaseURL + serviceInfo.ResourcePath
 
 	switch strings.ToLower(serviceInfo.Method) {
@@ -382,7 +388,8 @@ func init() {
 
 	apiCmd.Flags().BoolVarP(&isListMode, "list", "l", false, "Show Service or Action list")
 	apiCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")
-	apiCmd.PersistentFlags().StringVarP(&fileData, "file", "f", "", "Data to send to the server from file")
+	apiCmd.PersistentFlags().StringVarP(&inputFileData, "file", "f", "", "Data to send to the server from file")
+	apiCmd.PersistentFlags().StringVarP(&outputFile, "output", "o", "", "<file> Write to file instead of stdout")
 
 	cmd.RootCmd.AddCommand(apiCmd)
 }

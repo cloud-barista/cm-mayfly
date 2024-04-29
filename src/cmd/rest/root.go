@@ -23,7 +23,9 @@ var username string
 var password string
 var isShowHeaders bool
 var sendData string
-var fileData string
+var inputFileData string
+var outputFile string
+
 var isVerbose bool
 var authToken string
 var authScheme string
@@ -50,6 +52,11 @@ var restCmd = &cobra.Command{
 			if err != nil {
 				//fmt.Println(err)
 				return err
+			}
+
+			//출력 파일 지정
+			if outputFile != "" {
+				req.SetOutput(outputFile)
 			}
 
 			if isVerbose {
@@ -117,13 +124,13 @@ func SetHeaders() {
 
 // func SetReqData(req *resty.Request) {
 func SetReqData() error {
-	if fileData != "" {
+	if inputFileData != "" {
 		if isVerbose {
-			fmt.Printf("use [%s] data file\n" + fileData)
+			fmt.Printf("use [%s] data file\n" + inputFileData)
 		}
 
 		// 파일에서 데이터 읽기
-		data, err := ioutil.ReadFile(fileData)
+		data, err := ioutil.ReadFile(inputFileData)
 		if err != nil {
 			return err
 		}
@@ -212,7 +219,8 @@ func init() {
 
 	// Add flag for post data
 	restCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")
-	restCmd.PersistentFlags().StringVarP(&fileData, "file", "f", "", "Data to send to the server from file")
+	restCmd.PersistentFlags().StringVarP(&inputFileData, "file", "f", "", "Data to send to the server from file")
+	restCmd.PersistentFlags().StringVarP(&outputFile, "output", "o", "", "<file> Write to file instead of stdout")
 
 	restCmd.PersistentFlags().BoolVarP(&isVerbose, "verbose", "v", false, "Show more detail information")
 
