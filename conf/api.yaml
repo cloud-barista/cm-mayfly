@@ -19,7 +19,6 @@ services:
     baseurl: http://localhost:1323/test
     auth: #none
 
-
 # Define rest api actions for each of the services defined above.
 # specify the DATA to use for the API in the CLI.
 serviceActions:
@@ -32,7 +31,7 @@ serviceActions:
     PathParamGetAction:
       method: get
       resourcePath: /sample/{param_name}
-  spider: #service name
+  mc-infra-connector: #service name
     ListCloudOS:
       method: get
       resourcePath: /cloudos
