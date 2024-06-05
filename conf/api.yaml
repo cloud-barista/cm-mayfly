@@ -1,14 +1,14 @@
 cliSpecVersion: v1
 # Service Definitions (Framework Server Basic informations)
 services:
-  mc-infra-connector: #service name
+  cb-spider: #service name
     baseurl: http://localhost:1024/spider  # baseurl is Scheme + Host + Base Path
     auth: #If you need an authentication method, describe the type and username and password in the sub
       type: basic
       username: default
       password: default
   
-  mc-infra-manager:
+  cb-tumblebug:
     baseurl: http://localhost:1323/tumblebug
     auth: 
       type: basic
@@ -31,16 +31,10 @@ serviceActions:
     PathParamGetAction:
       method: get
       resourcePath: /sample/{param_name}
-  mc-infra-connector: #service name
+  cb-spider: #service name
     ListCloudOS:
       method: get
       resourcePath: /cloudos
-    RegisterCloudDriver:
-      method: post
-      resourcePath: /driver
-    ListCloudDriver:
-      method: get
-      resourcePath: /driver
     GetCloudDriver:
       method: get
       resourcePath: /driver/{driver_name}
