@@ -11,14 +11,14 @@ services:
   # CB-Spider
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.8.18
+    image: cloudbaristaorg/cb-spider:0.8.19
     container_name: cb-spider
     platform: linux/amd64
     ports:
       - "0.0.0.0:1024:1024"
       - "0.0.0.0:2048:2048"
-    #networks:
-    #  - migrator_net
+    networks:
+      - spider_net
     volumes:
       - ./conf/cb-spider/:/root/go/src/github.com/cloud-barista/cb-spider/conf/
       - ./data/cb-spider/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
@@ -33,13 +33,6 @@ services:
       #- SERVICE_ADDRESS=
 
 
-  # cm-mayfly:
-  #   image: cm-mayfly:v0.1.0
-  #   container_name: cm-mayfly
-  #   platform: linux/amd64
-  #   stdin_open: true
-  #   tty: true
-
   # CB-Tumblebug
   # https://github.com/cloud-barista/cb-tumblebug/blob/main/scripts/runTumblebug.sh
   cb-tumblebug:
@@ -49,8 +42,9 @@ services:
     ports:
       - "0.0.0.0:1323:1323"
       #- "0.0.0.0:50252:50252"
-    #networks:
-    #  - migrator_net
+    networks:
+      - spider_net
+      - default
     links:
       - cb-spider
     depends_on:
@@ -61,7 +55,7 @@ services:
       - ./data/cb-tumblebug/log/:/app/log/
     environment:
       - SPIDER_REST_URL=http://cb-spider:1024/spider
-      - SELF_ENDPOINT=localhost:1323
+      #- SELF_ENDPOINT=localhost:1323
       - API_USERNAME=default
       - API_PASSWORD=default
       #- SPIDER_CALL_METHOD=REST
@@ -77,7 +71,7 @@ services:
   # cm-beetle
   # https://github.com/cloud-barista/cm-beetle/discussions/73
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.1.1
+    image: cloudbaristaorg/cm-beetle:0.1.2
     container_name: cm-beetle
     platform: linux/amd64
     ports:
@@ -89,3 +83,14 @@ services:
       - API_USERNAME=default
       - API_PASSWORD=default
       - LOGLEVEL=info
+
+
+  # cm-mayfly:
+  #   image: cm-mayfly:v0.1.0
+  #   container_name: cm-mayfly
+  #   platform: linux/amd64
+  #   stdin_open: true
+  #   tty: true
+
+networks:
+  spider_net: #Network for cb-spider isolation
