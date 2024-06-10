@@ -26,8 +26,8 @@ services:
     environment:
       - PLUGIN_SW=OFF
       # if you leave these values empty, REST Auth will be disabled.
-      - API_USERNAME=default
-      - API_PASSWORD=default
+      - API_USERNAME=
+      - API_PASSWORD=
       #- SPIDER_LOG_LEVEL=error
       #- SPIDER_HISCALL_LOG_LEVEL=error
       #- SERVICE_ADDRESS=
