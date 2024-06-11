@@ -45,8 +45,6 @@ services:
     networks:
       - spider_net
       - default
-    links:
-      - cb-spider
     depends_on:
       - cb-spider
     volumes:
@@ -85,8 +83,16 @@ services:
       - LOGLEVEL=info
 
 
+  # cm-butterfly:
+  #   image: cloudbaristaorg/cm-butterfly:v0.1.0
+  #   container_name: cm-butterfly
+  #   platform: linux/amd64
+  #   volumes:
+  #     - ./conf/cb-butterfly/:/root/go/src/github.com/cloud-barista/cb-butterfly/conf/
+
+
   # cm-mayfly:
-  #   image: cm-mayfly:v0.1.0
+  #   image: cloudbaristaorg/cm-mayfly:v0.1.0
   #   container_name: cm-mayfly
   #   platform: linux/amd64
   #   stdin_open: true
