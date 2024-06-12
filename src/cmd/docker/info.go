@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// infoCmd represents the info command
+// infoCmd represents the info command.
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get information of Cloud-Migrator System",

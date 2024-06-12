@@ -6,6 +6,7 @@ package apicall
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/src/cmd"
@@ -28,7 +29,8 @@ var queryString string
 var client = resty.New()
 var req = client.R()
 var sendData string
-var fileData string
+var inputFileData string
+var outputFile string
 
 type ServiceInfo struct {
 	BaseURL string `yaml:"baseurl"`
@@ -299,11 +301,26 @@ func SetBasicAuth() {
 }
 
 // func SetReqData(req *resty.Request) {
-func SetReqData() {
-	if isVerbose {
-		fmt.Println("request data : \n" + sendData)
+func SetReqData() error {
+	if inputFileData != "" {
+		if isVerbose {
+			fmt.Printf("use [%s] data file\n" + inputFileData)
+		}
+
+		// 파일에서 데이터 읽기
+		data, err := ioutil.ReadFile(inputFileData)
+		if err != nil {
+			return err
+		}
+		req.SetBody(data)
+	} else {
+		if isVerbose {
+			fmt.Printf("request data : %s\n" + sendData)
+		}
+		req.SetBody(sendData)
 	}
-	req.SetBody(sendData)
+
+	return nil
 }
 
 func ProcessResultInfo(resp *resty.Response) {
@@ -325,8 +342,16 @@ func callRest() error {
 	var resp *resty.Response
 	var err error
 
-	SetBasicAuth()
-	SetReqData()
+	SetBasicAuth()     // 인증 처리
+	err = SetReqData() // 전송 데이터 처리
+	if err != nil {
+		return err
+	}
+
+	//출력 파일 지정
+	if outputFile != "" {
+		req.SetOutput(outputFile)
+	}
 
 	url := serviceInfo.BaseURL + serviceInfo.ResourcePath
 
@@ -363,7 +388,8 @@ func init() {
 
 	apiCmd.Flags().BoolVarP(&isListMode, "list", "l", false, "Show Service or Action list")
 	apiCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")
-	apiCmd.PersistentFlags().StringVarP(&fileData, "file", "f", "", "Data to send to the server from file(not yet support)")
+	apiCmd.PersistentFlags().StringVarP(&inputFileData, "file", "f", "", "Data to send to the server from file")
+	apiCmd.PersistentFlags().StringVarP(&outputFile, "output", "o", "", "<file> Write to file instead of stdout")
 
 	cmd.RootCmd.AddCommand(apiCmd)
 }

@@ -1,0 +1,102 @@
+#version: "3.3"
+# docker image : https://hub.docker.com/u/cloudbaristaorg
+services:
+# The priority used by Compose to choose which env var value to use:
+# 1. Compose file
+# 2. Shell environment variables
+# 3. Environment file
+# 4. Dockerfile
+# 5. Variable is not defined
+
+  # CB-Spider
+  # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
+  cb-spider:
+    image: cloudbaristaorg/cb-spider:0.8.19
+    container_name: cb-spider
+    platform: linux/amd64
+    ports:
+      - "0.0.0.0:1024:1024"
+      - "0.0.0.0:2048:2048"
+    networks:
+      - spider_net
+    volumes:
+      - ./conf/cb-spider/:/root/go/src/github.com/cloud-barista/cb-spider/conf/
+      - ./data/cb-spider/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
+      - ./data/cb-spider/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
+    environment:
+      - PLUGIN_SW=OFF
+      # if you leave these values empty, REST Auth will be disabled.
+      - API_USERNAME=
+      - API_PASSWORD=
+      #- SPIDER_LOG_LEVEL=error
+      #- SPIDER_HISCALL_LOG_LEVEL=error
+      #- SERVICE_ADDRESS=
+
+
+  # CB-Tumblebug
+  # https://github.com/cloud-barista/cb-tumblebug/blob/main/scripts/runTumblebug.sh
+  cb-tumblebug:
+    image: cloudbaristaorg/cb-tumblebug:0.8.13
+    container_name: cb-tumblebug
+    platform: linux/amd64
+    ports:
+      - "0.0.0.0:1323:1323"
+      #- "0.0.0.0:50252:50252"
+    networks:
+      - spider_net
+      - default
+    depends_on:
+      - cb-spider
+    volumes:
+      - ./conf/cb-tumblebug/:/app/conf/
+      - ./data/cb-tumblebug/meta_db/:/app/meta_db/
+      - ./data/cb-tumblebug/log/:/app/log/
+    environment:
+      - SPIDER_REST_URL=http://cb-spider:1024/spider
+      #- SELF_ENDPOINT=localhost:1323
+      - API_USERNAME=default
+      - API_PASSWORD=default
+      #- SPIDER_CALL_METHOD=REST
+      #- DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
+      #- TERRARIUM_REST_URL=http://$EP_TERRARIUM:8888/terrarium
+      #- CB_NETWORK_SERVICE_ENDPOINT=localhost:8053
+      #- CB_NETWORK_ETCD_ENDPOINTS="localhost:2379"
+      #- AUTOCONTROL_DURATION_MS=10000
+      #- GOLANG_PROTOBUF_REGISTRATION_CONFLICT=ignore
+      #- API_DOC_PATH=/app/src/api/rest/docs/swagger.json
+
+
+  # cm-beetle
+  # https://github.com/cloud-barista/cm-beetle/discussions/73
+  cm-beetle:
+    image: cloudbaristaorg/cm-beetle:0.1.2
+    container_name: cm-beetle
+    platform: linux/amd64
+    ports:
+      - "8056:8056"
+    depends_on:
+      - cb-tumblebug
+    environment:
+      - API_AUTH_ENABLED=true
+      - API_USERNAME=default
+      - API_PASSWORD=default
+      - LOGLEVEL=info
+
+
+  # cm-butterfly:
+  #   image: cloudbaristaorg/cm-butterfly:v0.1.0
+  #   container_name: cm-butterfly
+  #   platform: linux/amd64
+  #   volumes:
+  #     - ./conf/cb-butterfly/:/root/go/src/github.com/cloud-barista/cb-butterfly/conf/
+
+
+  # cm-mayfly:
+  #   image: cloudbaristaorg/cm-mayfly:v0.1.0
+  #   container_name: cm-mayfly
+  #   platform: linux/amd64
+  #   stdin_open: true
+  #   tty: true
+
+networks:
+  spider_net: #Network for cb-spider isolation

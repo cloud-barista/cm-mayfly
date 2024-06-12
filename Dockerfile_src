@@ -1,0 +1,23 @@
+# docker build -t cm-mayfly-src:v0.1.0 . -f ./Dockerfile_src
+
+# 베이스 이미지 선택
+FROM amd64/golang:1.21-alpine
+
+# 컨테이너 내의 작업 디렉토리 설정(RUN / CMD / ENTRYPOINT 명령이 실행될 기본 경로)
+WORKDIR /go/src/github.com/cloud-barista/cb-mayfly
+COPY . ./
+RUN go mod download
+
+
+# 도커 컨테이너에서 실행할 명령어 (이미지 빌드시 실행)
+#RUN 설치 명령어
+#RUN 
+
+# 컨테이너 실행 시 최초 실행될 default 명령 (1개만 가능)
+# 컨테이너 실행 시 명령이 전달되면 CMD는 무시되고 전달 받은 명령이 실행 됨.
+#CMD ["bash"]
+
+# 항상 실행할 명령 (CMD와 비슷)
+# CMD와 달리 컨테이너 실행 시 항상 실행 됨.
+# 컨테이너 실행 시 명령어가 전달되면 ENTRYPOINT먼저 실행 후 전달 받은 명령이 실행 됨.
+#ENTRYPOINT [ "/app/bin/" ]

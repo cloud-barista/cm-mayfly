@@ -5,6 +5,7 @@ package rest
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	"strings"
 
@@ -22,7 +23,9 @@ var username string
 var password string
 var isShowHeaders bool
 var sendData string
-var fileData string
+var inputFileData string
+var outputFile string
+
 var isVerbose bool
 var authToken string
 var authScheme string
@@ -34,7 +37,7 @@ var restCmd = &cobra.Command{
 	Long:  `rest api call`,
 	//Args:  cobra.ExactArgs(1),
 
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		//fmt.Println(isVerbose)
 		//fmt.Println("============ 아규먼트 :  " + strconv.Itoa(len(args)))
 		if len(args) != 0 { //하위 커맨드가 실행된 경우에만 실행 그 외에는 도움말만 실행
@@ -44,12 +47,23 @@ var restCmd = &cobra.Command{
 			SetAuthToken() // Authorization: <auth-scheme> <auth-token-value>  // default auth-scheme : Bearer
 			SetBasicAuth() // Authorization: Basic <base64-encoded-value>
 			SetHeaders()
-			SetReqData()
+			//SetReqData()
+			err := SetReqData() // 전송 데이터 처리
+			if err != nil {
+				//fmt.Println(err)
+				return err
+			}
+
+			//출력 파일 지정
+			if outputFile != "" {
+				req.SetOutput(outputFile)
+			}
 
 			if isVerbose {
 				fmt.Println("==============================")
 			}
 		}
+		return nil
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
@@ -109,11 +123,26 @@ func SetHeaders() {
 }
 
 // func SetReqData(req *resty.Request) {
-func SetReqData() {
-	if isVerbose {
-		fmt.Println("request data : \n" + sendData)
+func SetReqData() error {
+	if inputFileData != "" {
+		if isVerbose {
+			fmt.Printf("use [%s] data file\n" + inputFileData)
+		}
+
+		// 파일에서 데이터 읽기
+		data, err := ioutil.ReadFile(inputFileData)
+		if err != nil {
+			return err
+		}
+		req.SetBody(data)
+	} else {
+		if isVerbose {
+			fmt.Printf("request data : %s\n" + sendData)
+		}
+		req.SetBody(sendData)
 	}
-	req.SetBody(sendData)
+
+	return nil
 }
 
 func ProcessResultInfo(resp *resty.Response) {
@@ -190,7 +219,8 @@ func init() {
 
 	// Add flag for post data
 	restCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")
-	restCmd.PersistentFlags().StringVarP(&fileData, "file", "f", "", "Data to send to the server from file")
+	restCmd.PersistentFlags().StringVarP(&inputFileData, "file", "f", "", "Data to send to the server from file")
+	restCmd.PersistentFlags().StringVarP(&outputFile, "output", "o", "", "<file> Write to file instead of stdout")
 
 	restCmd.PersistentFlags().BoolVarP(&isVerbose, "verbose", "v", false, "Show more detail information")
 
