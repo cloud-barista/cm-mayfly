@@ -14,23 +14,37 @@ services:
       type: basic
       username: default
       password: default
-  
-  sample:
-    baseurl: http://localhost:1323/test
-    auth: #none
+    
+  cm-ant:
+    baseurl: http://localhost:8880
+    auth: 
+      type: basic
+      username: default
+      password: default
+
+  # cm-beetle:
+  #   baseurl: http://localhost:1323/beetle
+  #   auth: 
+  #     type: basic
+  #     username: default
+  #     password: default
+
+  # sample:
+  #   baseurl: http://localhost:1323/test
+  #   auth: #none
 
 # Define rest api actions for each of the services defined above.
 # specify the DATA to use for the API in the CLI.
 serviceActions:
-  sample: #for sample
-    #cb-spider CCIM v0.6.0
-    NormalGetAction:
-      method: get
-      resourcePath: /sample
-      description: #Use when necessary for user understanding
-    PathParamGetAction:
-      method: get
-      resourcePath: /sample/{param_name}
+  # sample: #for sample
+  #   #cb-spider CCIM v0.6.0
+  #   NormalGetAction:
+  #     method: get
+  #     resourcePath: /sample
+  #     description: #Use when necessary for user understanding
+  #   PathParamGetAction:
+  #     method: get
+  #     resourcePath: /sample/{param_name}
   cb-spider: #service name
     ListCloudOS:
       method: get
@@ -336,3 +350,692 @@ serviceActions:
       method: get
       resourcePath: /health
   
+
+  cb-tumblebug:
+    GetAvailableK8sClusterNodeImage:
+      method: get
+      resourcePath: /availableK8sClusterNodeImage
+      description: "Get available kubernetes cluster node image"
+    GetAvailableK8sClusterVersion:
+      method: get
+      resourcePath: /availableK8sClusterVersion
+      description: "Get available kubernetes cluster version"
+    GetCloudInfo:
+      method: get
+      resourcePath: /cloudInfo
+      description: "Get cloud information"
+    GetAllConfig:
+      method: get
+      resourcePath: /config
+      description: "List all configs"
+    PostConfig:
+      method: post
+      resourcePath: /config
+      description: "Create or Update config (SPIDER_REST_URL, DRAGONFLY_REST_URL, ...)"
+    InitAllConfig:
+      method: delete
+      resourcePath: /config
+      description: "Init all configs"
+    GetConfig:
+      method: get
+      resourcePath: /config/{configId}
+      description: "Get config"
+    InitConfig:
+      method: delete
+      resourcePath: /config/{configId}
+      description: "Init config"
+    GetConnConfigList:
+      method: get
+      resourcePath: /connConfig
+      description: "List all registered ConnConfig"
+    GetConnConfig:
+      method: get
+      resourcePath: /connConfig/{connConfigName}
+      description: "Get registered ConnConfig info"
+    RegisterCredential:
+      method: post
+      resourcePath: /credential
+      description: "Post register Credential info"
+    ForwardAnyReqToAny:
+      method: post
+      resourcePath: /forward/{path}
+      description: "Forward any (GET) request to CB-Spider"
+    CheckHTTPVersion:
+      method: get
+      resourcePath: /httpVersion
+      description: "Checks and logs the HTTP version of the incoming request to the server console."
+    InspectResources:
+      method: post
+      resourcePath: /inspectResources
+      description: "Inspect Resources (vNet, securityGroup, sshKey, vm) registered in CB-Tumblebug, CB-Spider, CSP"
+    InspectResourcesOverview:
+      method: get
+      resourcePath: /inspectResourcesOverview
+      description: "Inspect Resources Overview (vNet, securityGroup, sshKey, vm) registered in CB-Tumblebug and CSP for all connections"
+    GetK8sClusterInfo:
+      method: get
+      resourcePath: /k8sClusterInfo
+      description: "Get kubernetes cluster information"
+    LoadCommonResource:
+      method: get
+      resourcePath: /loadCommonResource
+      description: "Load Common Resources from internal asset files (Spec, Image)"
+    LookupImage:
+      method: post
+      resourcePath: /lookupImage
+      description: "Lookup image"
+    LookupImageList:
+      method: post
+      resourcePath: /lookupImages
+      description: "Lookup image list"
+    LookupSpec:
+      method: post
+      resourcePath: /lookupSpec
+      description: "Lookup spec"
+    LookupSpecList:
+      method: post
+      resourcePath: /lookupSpecs
+      description: "Lookup spec list"
+    PostMcisDynamicCheckRequest:
+      method: post
+      resourcePath: /mcisDynamicCheckRequest
+      description: "Check available ConnectionConfig list before create MCIS Dynamically from common spec and image"
+    RecommendVm:
+      method: post
+      resourcePath: /mcisRecommendVm
+      description: "Recommend MCIS plan (filter and priority) Find details from https://github.com/cloud-barista/cb-tumblebug/discussions/1234"
+    GetAllNs:
+      method: get
+      resourcePath: /ns
+      description: "List all namespaces or namespaces' ID"
+    PostNs:
+      method: post
+      resourcePath: /ns
+      description: "Create namespace"
+    DelAllNs:
+      method: delete
+      resourcePath: /ns
+      description: "Delete all namespaces"
+    GetNs:
+      method: get
+      resourcePath: /ns/{nsId}
+      description: "Get namespace"
+    PutNs:
+      method: put
+      resourcePath: /ns/{nsId}
+      description: "Update namespace"
+    DelNs:
+      method: delete
+      resourcePath: /ns/{nsId}
+      description: "Delete namespace"
+    GetBenchmark:
+      method: post
+      resourcePath: /ns/{nsId}/benchmark/mcis/{mcisId}
+      description: "Run MCIS benchmark for a single performance metric and return results"
+    GetAllBenchmark:
+      method: post
+      resourcePath: /ns/{nsId}/benchmarkAll/mcis/{mcisId}
+      description: "Run MCIS benchmark for all performance metrics and return results"
+    GetLatencyBenchmark:
+      method: get
+      resourcePath: /ns/{nsId}/benchmarkLatency/mcis/{mcisId}
+      description: "Run MCIS benchmark for network latency"
+    GetAllCluster:
+      method: get
+      resourcePath: /ns/{nsId}/cluster
+      description: "List all Clusters or Clusters' ID"
+    PostCluster:
+      method: post
+      resourcePath: /ns/{nsId}/cluster
+      description: "Create Cluster"
+    DeleteAllCluster:
+      method: delete
+      resourcePath: /ns/{nsId}/cluster
+      description: "Delete all Clusters"
+    GetCluster:
+      method: get
+      resourcePath: /ns/{nsId}/cluster/{clusterId}
+      description: "Get Cluster"
+    DeleteCluster:
+      method: delete
+      resourcePath: /ns/{nsId}/cluster/{clusterId}
+      description: "Delete Cluster"
+    PostNodeGroup:
+      method: post
+      resourcePath: /ns/{nsId}/cluster/{clusterId}/nodegroup
+      description: "Add a NodeGroup"
+    DeleteNodeGroup:
+      method: delete
+      resourcePath: /ns/{nsId}/cluster/{clusterId}/nodegroup/{nodeGroupName}
+      description: "Remove a NodeGroup"
+    PutChangeAutoscaleSize:
+      method: put
+      resourcePath: /ns/{nsId}/cluster/{clusterId}/nodegroup/{nodeGroupName}/autoscalesize
+      description: "Change a NodeGroup's Autoscale Size"
+    PutSetAutoscaling:
+      method: put
+      resourcePath: /ns/{nsId}/cluster/{clusterId}/nodegroup/{nodeGroupName}/onautoscaling
+      description: "Set a NodeGroup's Autoscaling On/Off"
+    PutClusterUpgrade:
+      method: put
+      resourcePath: /ns/{nsId}/cluster/{clusterId}/upgrade
+      description: "Upgrade a Cluster's version"
+    PostCmdMcis:
+      method: post
+      resourcePath: /ns/{nsId}/cmd/mcis/{mcisId}
+      description: "Send a command to specified MCIS"
+    GetControlMcis:
+      method: get
+      resourcePath: /ns/{nsId}/control/mcis/{mcisId}
+      description: "Control the lifecycle of MCIS (refine, suspend, resume, reboot, terminate)"
+    GetControlMcisVm:
+      method: get
+      resourcePath: /ns/{nsId}/control/mcis/{mcisId}/vm/{vmId}
+      description: "Control the lifecycle of VM (suspend, resume, reboot, terminate)"
+    DelAllDefaultResources:
+      method: delete
+      resourcePath: /ns/{nsId}/defaultResources
+      description: "Delete all Default Resource Objects in the given namespace"
+    PostInstallBenchmarkAgentToMcis:
+      method: post
+      resourcePath: /ns/{nsId}/installBenchmarkAgent/mcis/{mcisId}
+      description: "Install the benchmark agent to specified MCIS"
+    LoadDefaultResource:
+      method: get
+      resourcePath: /ns/{nsId}/loadDefaultResource
+      description: "Load Default Resource from internal asset file"
+    GetAllMcis:
+      method: get
+      resourcePath: /ns/{nsId}/mcis
+      description: "List all MCISs or MCISs' ID"
+    PostMcis:
+      method: post
+      resourcePath: /ns/{nsId}/mcis
+      description: "Create MCIS"
+    DelAllMcis:
+      method: delete
+      resourcePath: /ns/{nsId}/mcis
+      description: "Delete all MCISs"
+    GetMcis:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}
+      description: "Get MCIS object (option: status, accessInfo, vmId)"
+    DelMcis:
+      method: delete
+      resourcePath: /ns/{nsId}/mcis/{mcisId}
+      description: "Delete MCIS"
+    RemoveBastionNodes:
+      method: delete
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/bastion/{bastionVmId}
+      description: "Remove a bastion VM from all vNets"
+    PostMcNLB:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/mcSwNlb
+      description: "Create a special purpose MCIS for NLB and depoly and setting SW NLB"
+    GetAllNLB:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb
+      description: "List all NLBs or NLBs' ID"
+    PostNLB:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb
+      description: "Create NLB"
+    DelAllNLB:
+      method: delete
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb
+      description: "Delete all NLBs"
+    GetNLB:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb/{nlbId}
+      description: "Get NLB"
+    DelNLB:
+      method: delete
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb/{nlbId}
+      description: "Delete NLB"
+    GetNLBHealth:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb/{nlbId}/healthz
+      description: "Get NLB Health"
+    AddNLBVMs:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb/{nlbId}/vm
+      description: "Add VMs to NLB"
+    RemoveNLBVMs:
+      method: delete
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/nlb/{nlbId}/vm
+      description: "Delete VMs from NLB"
+    GetSitesInMcis:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/site
+      description: "Get sites in MCIS"
+    GetMcisGroupIds:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/subgroup
+      description: "List SubGroup IDs in a specified MCIS"
+    GetMcisGroupVms:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/subgroup/{subgroupId}
+      description: "List VMs with a SubGroup label in a specified MCIS"
+    PostMcisSubGroupScaleOut:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/subgroup/{subgroupId}
+      description: "ScaleOut subGroup in specified MCIS"
+    PostMcisVm:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm
+      description: "Create and add homogeneous VMs(subGroup) to a specified MCIS (Set subGroupSize for multiple VMs)"
+    GetBastionNodes:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{targetVmId}/bastion
+      description: "Get bastion nodes for a VM"
+    SetBastionNodes:
+      method: put
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{targetVmId}/bastion/{bastionVmId}
+      description: "Set bastion nodes for a VM"
+    GetMcisVm:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{vmId}
+      description: "Get VM in specified MCIS"
+    DelMcisVm:
+      method: delete
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{vmId}
+      description: "Delete VM in specified MCIS"
+    GetVmDataDisk:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{vmId}/dataDisk
+      description: "Get available dataDisks for a VM"
+    PutVmDataDisk:
+      method: put
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{vmId}/dataDisk
+      description: "Attach/Detach available dataDisk"
+    PostVmDataDisk:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{vmId}/dataDisk
+      description: "Provisioning (Create and attach) dataDisk"
+    PostMcisVmSnapshot:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vm/{vmId}/snapshot
+      description: "Snapshot VM and create a Custom Image Object using the Snapshot"
+    PostMcisVmDynamic:
+      method: post
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vmDynamic
+      description: "Create VM Dynamically and add it to MCIS"
+    GetVpnGcpToAws:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vpn/{vpnId}
+      description: "Get resource info of a site-to-site VPN (Currently, GCP-AWS is supported)"
+    GetRequestStatusOfGcpAwsVpn:
+      method: get
+      resourcePath: /ns/{nsId}/mcis/{mcisId}/vpn/{vpnId}/request/{requestId}
+      description: "Check the status of a specific request by its ID"
+    PostMcisDynamic:
+      method: post
+      resourcePath: /ns/{nsId}/mcisDynamic
+      description: "Create MCIS Dynamically from common spec and image"
+    PostInstallMonitorAgentToMcis:
+      method: post
+      resourcePath: /ns/{nsId}/monitoring/install/mcis/{mcisId}
+      description: "Install monitoring agent (CB-Dragonfly agent) to MCIS"
+    GetMonitorData:
+      method: get
+      resourcePath: /ns/{nsId}/monitoring/mcis/{mcisId}/metric/{metric}
+      description: "Get monitoring data of specified MCIS for specified monitoring metric (cpu, memory, disk, network)"
+    PutMonitorAgentStatusInstalled:
+      method: put
+      resourcePath: /ns/{nsId}/monitoring/status/mcis/{mcisId}/vm/{vmId}
+      description: "Set monitoring agent (CB-Dragonfly agent) installation status installed (for Windows VM only)"
+    GetAllMcisPolicy:
+      method: get
+      resourcePath: /ns/{nsId}/policy/mcis
+      description: "List all MCIS policies"
+    DelAllMcisPolicy:
+      method: delete
+      resourcePath: /ns/{nsId}/policy/mcis
+      description: "Delete all MCIS policies"
+    GetMcisPolicy:
+      method: get
+      resourcePath: /ns/{nsId}/policy/mcis/{mcisId}
+      description: "Get MCIS Policy"
+    PostMcisPolicy:
+      method: post
+      resourcePath: /ns/{nsId}/policy/mcis/{mcisId}
+      description: "Create MCIS Automation policy"
+    DelMcisPolicy:
+      method: delete
+      resourcePath: /ns/{nsId}/policy/mcis/{mcisId}
+      description: "Delete MCIS Policy"
+    PostRegisterCSPNativeVM:
+      method: post
+      resourcePath: /ns/{nsId}/registerCspVm
+      description: "Register existing VM in a CSP to Cloud-Barista MCIS"
+    PostCustomImage:
+      method: post
+      resourcePath: /ns/{nsId}/resources/customImage
+      description: "Register existing Custom Image in a CSP (option=register)"
+    DelAllCustomImage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/customImage
+      description: "Delete all customImages"
+    GetAllCustomImage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/customImage
+      description: "List all customImages or customImages' ID"
+    GetCustomImage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/customImage/{customImageId}
+      description: "Get customImage"
+    DelCustomImage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/customImage/{customImageId}
+      description: "Delete customImage"
+    DelAllDataDisk:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/dataDisk
+      description: "Delete all Data Disks"
+    GetAllDataDisk:
+      method: get
+      resourcePath: /ns/{nsId}/resources/dataDisk
+      description: "List all Data Disks or Data Disks' ID"
+    PostDataDisk:
+      method: post
+      resourcePath: /ns/{nsId}/resources/dataDisk
+      description: "Create Data Disk"
+    GetDataDisk:
+      method: get
+      resourcePath: /ns/{nsId}/resources/dataDisk/{dataDiskId}
+      description: "Get Data Disk"
+    PutDataDisk:
+      method: put
+      resourcePath: /ns/{nsId}/resources/dataDisk/{dataDiskId}
+      description: "Upsize Data Disk"
+    DelDataDisk:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/dataDisk/{dataDiskId}
+      description: "Delete Data Disk"
+    FetchImages:
+      method: post
+      resourcePath: /ns/{nsId}/resources/fetchImages
+      description: "Fetch images"
+    FetchSpecs:
+      method: post
+      resourcePath: /ns/{nsId}/resources/fetchSpecs
+      description: "Fetch specs"
+    FilterSpecsByRange:
+      method: post
+      resourcePath: /ns/{nsId}/resources/filterSpecsByRange
+      description: "Filter specs by range"
+    PostImage:
+      method: post
+      resourcePath: /ns/{nsId}/resources/image
+      description: "Register image"
+    DelAllImage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/image
+      description: "Delete all images"
+    GetAllImage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/image
+      description: "List all images or images' ID"
+    GetImage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/image/{imageId}
+      description: "Get image"
+    PutImage:
+      method: put
+      resourcePath: /ns/{nsId}/resources/image/{imageId}
+      description: "Update image"
+    DelImage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/image/{imageId}
+      description: "Delete image"
+    SearchImage:
+      method: post
+      resourcePath: /ns/{nsId}/resources/searchImage
+      description: "Search image"
+    DelAllSecurityGroup:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/securityGroup
+      description: "Delete all Security Groups"
+    GetAllSecurityGroup:
+      method: get
+      resourcePath: /ns/{nsId}/resources/securityGroup
+      description: "List all Security Groups or Security Groups' ID"
+    PostSecurityGroup:
+      method: post
+      resourcePath: /ns/{nsId}/resources/securityGroup
+      description: "Create Security Group"
+    GetSecurityGroup:
+      method: get
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}
+      description: "Get Security Group"
+    DelSecurityGroup:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}
+      description: "Delete Security Group"
+    PostFirewallRules:
+      method: post
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}/rules
+      description: "Create FirewallRules"
+    DelFirewallRules:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}/rules
+      description: "Delete FirewallRules"
+    GetAllSpec:
+      method: get
+      resourcePath: /ns/{nsId}/resources/spec
+      description: "List all specs or specs' ID"
+    PostSpec:
+      method: post
+      resourcePath: /ns/{nsId}/resources/spec
+      description: "Register spec"
+    DelAllSpec:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/spec
+      description: "Delete all specs"
+    GetSpec:
+      method: get
+      resourcePath: /ns/{nsId}/resources/spec/{specId}
+      description: "Get spec"
+    PutSpec:
+      method: put
+      resourcePath: /ns/{nsId}/resources/spec/{specId}
+      description: "Update spec"
+    DelSpec:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/spec/{specId}
+      description: "Delete spec"
+    GetAllSshKey:
+      method: get
+      resourcePath: /ns/{nsId}/resources/sshKey
+      description: "List all SSH Keys or SSH Keys' ID"
+    PostSshKey:
+      method: post
+      resourcePath: /ns/{nsId}/resources/sshKey
+      description: "Create SSH Key"
+    DelAllSshKey:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/sshKey
+      description: "Delete all SSH Keys"
+    GetSshKey:
+      method: get
+      resourcePath: /ns/{nsId}/resources/sshKey/{sshKeyId}
+      description: "Get SSH Key"
+    PutSshKey:
+      method: put
+      resourcePath: /ns/{nsId}/resources/sshKey/{sshKeyId}
+      description: "Update SSH Key"
+    DelSshKey:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/sshKey/{sshKeyId}
+      description: "Delete SSH Key"
+    GetAllVNet:
+      method: get
+      resourcePath: /ns/{nsId}/resources/vNet
+      description: "List all VNets or VNets' ID"
+    PostVNet:
+      method: post
+      resourcePath: /ns/{nsId}/resources/vNet
+      description: "Create VNet"
+    DelAllVNet:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/vNet
+      description: "Delete all VNets"
+    GetVNet:
+      method: get
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}
+      description: "Get VNet"
+    DelVNet:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}
+      description: "Delete VNet"
+    PostSubnet:
+      method: post
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/subnet
+      description: "Create Subnet"
+    DelSubnet:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/subnet/{subnetId}
+      description: "Delete Subnet"
+    GetObject:
+      method: get
+      resourcePath: /object
+      description: "Get value of an object"
+    DeleteObject:
+      method: delete
+      resourcePath: /object
+      description: "Delete an object"
+    GetObjects:
+      method: get
+      resourcePath: /objects
+      description: "List all objects for a given key"
+    DeleteObjects:
+      method: delete
+      resourcePath: /objects
+      description: "Delete child objects along with the given object"
+    GetProviderList:
+      method: get
+      resourcePath: /provider
+      description: "List all registered Providers"
+    GetRegion:
+      method: get
+      resourcePath: /provider/{providerName}/region/{regionName}
+      description: "Get registered region info"
+    GetReadyz:
+      method: get
+      resourcePath: /readyz
+      description: "Check Tumblebug is ready"
+    GetRegionList:
+      method: get
+      resourcePath: /region
+      description: "List all registered regions"
+    RegisterCspNativeResources:
+      method: post
+      resourcePath: /registerCspResources
+      description: "Register CSP Native Resources (vNet, securityGroup, sshKey, vm) to CB-Tumblebug"
+    RegisterCspNativeResourcesAll:
+      method: post
+      resourcePath: /registerCspResourcesAll
+      description: "Register CSP Native Resources (vNet, securityGroup, sshKey, vm) from all Clouds to CB-Tumblebug"
+    GetRequest:
+      method: get
+      resourcePath: /request/{reqId}
+      description: "Get details of a specific request"
+    DeleteRequest:
+      method: delete
+      resourcePath: /request/{reqId}
+      description: "Delete details of a specific request"
+    GetAllRequests:
+      method: get
+      resourcePath: /requests
+      description: "Get details of all requests with optional filters."
+    DeleteAllRequests:
+      method: delete
+      resourcePath: /requests
+      description: "Delete details of all requests"
+    PutVpnGcpToAws:
+      method: put
+      resourcePath: /stream-response/ns/{nsId}/mcis/{mcisId}/vpn/{vpnId}
+      description: "(To be provided) Update a site-to-site VPN"
+    PostVpnGcpToAws:
+      method: post
+      resourcePath: /stream-response/ns/{nsId}/mcis/{mcisId}/vpn/{vpnId}
+      description: "Create a site-to-site VPN (Currently, GCP-AWS is supported)"
+    DeleteVpnGcpToAws:
+      method: delete
+      resourcePath: /stream-response/ns/{nsId}/mcis/{mcisId}/vpn/{vpnId}
+      description: "Delete a site-to-site VPN (Currently, GCP-AWS is supported)"
+    PostSystemMcis:
+      method: post
+      resourcePath: /systemMcis
+      description: "Create System MCIS Dynamically for Special Purpose"
+    PostUtilToDesignNetwork:
+      method: post
+      resourcePath: /util/net/design
+      description: "Design a hierarchical network configuration of a VPC network or multi-cloud network consisting of multiple VPC networks"
+    PostUtilToValidateNetwork:
+      method: post
+      resourcePath: /util/net/validate
+      description: "Validate a hierarchical configuration of a VPC network or multi-cloud network consisting of multiple VPC networks"
+    CheckResource:
+      method: get
+      resourcePath: /{nsId}/checkResource/{resourceType}/{resourceId}
+      description: "Check resources' existence"
+
+
+  cm-ant:
+    LoadEnvironments:
+      method: get
+      resourcePath: /ant/api/v1/env
+      description: "Get all of the load test environments"
+    GetAllAgentInstallInfo:
+      method: get
+      resourcePath: /ant/api/v1/load/agent
+      description: "Get all agent installation nsId, mcisId, vmId, status."
+    InstallAgent:
+      method: post
+      resourcePath: /ant/api/v1/load/agent
+      description: "Install an agent to collect server metrics during load testing such as CPU and memory."
+    UninstallAgent:
+      method: delete
+      resourcePath: /ant/api/v1/load/agent/{agentInstallInfoId}
+      description: "Uninstall an agent to collect server metrics during load testing such as CPU and memory."
+    LoadExecutionConfigs:
+      method: get
+      resourcePath: /ant/api/v1/load/config
+      description: "Get all the load test execution configurations."
+    LoadExecutionConfig:
+      method: get
+      resourcePath: /ant/api/v1/load/config/{loadTestKey}
+      description: "Get a load test execution config by load test key."
+    LoadTestResult:
+      method: get
+      resourcePath: /ant/api/v1/load/result
+      description: "After start load test, get the result of load test."
+    LoadTestMetrics:
+      method: get
+      resourcePath: /ant/api/v1/load/result/metrics
+      description: "Get the result of metrics for target server."
+    StartLoadTest:
+      method: post
+      resourcePath: /ant/api/v1/load/start
+      description: "Start load test. Load Environment Id must be passed or Load Environment must be defined."
+    LoadExecutionStates:
+      method: get
+      resourcePath: /ant/api/v1/load/state
+      description: "Get all the load test execution state."
+    LoadExecutionState:
+      method: get
+      resourcePath: /ant/api/v1/load/state/{loadTestKey}
+      description: "Get a load test execution state by load test key."
+    StopLoadTest:
+      method: post
+      resourcePath: /ant/api/v1/load/stop
+      description: "After start load test, stop the load test by passing the load test key."
+    InstallLoadTester:
+      method: post
+      resourcePath: /ant/api/v1/load/tester
+      description: "Install load test tester in the delivered load test environment"
+    UninstallLoadTester:
+      method: delete
+      resourcePath: /ant/api/v1/load/tester/{envId}
+      description: "Uninstall load test tester in the delivered load test environment"
