@@ -19,7 +19,8 @@ var configFile string
 
 var serviceName string
 var actionName string
-var method string
+
+// var method string
 var isInit bool
 var isListMode bool
 var isVerbose bool
@@ -381,7 +382,7 @@ func init() {
 
 	apiCmd.PersistentFlags().StringVarP(&serviceName, "service", "s", "", "Service to perform")
 	apiCmd.PersistentFlags().StringVarP(&actionName, "action", "a", "", "Action to perform")
-	apiCmd.PersistentFlags().StringVarP(&method, "method", "m", "", "HTTP Method")
+	//apiCmd.PersistentFlags().StringVarP(&method, "method", "m", "", "HTTP Method")
 	apiCmd.PersistentFlags().BoolVarP(&isVerbose, "verbose", "v", false, "Show more detail information")
 	apiCmd.PersistentFlags().StringVarP(&pathParam, "pathParam", "p", "", "Variable path info set \"key1:value1 key2:value2\" for URIs")
 	apiCmd.PersistentFlags().StringVarP(&queryString, "queryString", "q", "", "Use if you have a query string to add to URIs")
