@@ -345,10 +345,6 @@ serviceActions:
     AnyCall:
       method: post
       resourcePath: /anycall  
-  tumblebug:
-    HealthInfo:
-      method: get
-      resourcePath: /health
   
 
   cb-tumblebug:
