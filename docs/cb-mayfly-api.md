@@ -130,11 +130,9 @@ serviceActions:
 Cloud-Migrator 시스템의 경우 대부분의 프레임워크는 `Swagger` 기반으로 진행되고 있어서 Swagger 형태의 JSON 파일을 제공하고 있으므로 `api.yaml`파일의 설정 작업을 조금은 수월하게 진행할 수 있도록 `tool` 플래그를 제공하고 있으니 유사한 환경의 다른 프레임워크의 정보를 api.yaml에 정의하고 싶다면 tool 플래그를 활용하시기 바랍니다.
 ```
 $ ./mayfly api tool -f 스웨거파일.json
-
-$ ./mayfly api tool -f ./cb-tumblebug.json
 ```
 
-`tool` 플래그의 경우, 내부적으로 각 API의 액션 이름에 `operationId` 필드를 이용하기 때문에 `사용하려는 Swagger JSON 파일에는 반드시 operationId 필드가 정의`되어 있어야 합니다.
+참고로, `tool` 플래그의 경우, 내부적으로 각 API의 액션 이름에 `operationId` 필드를 이용하기 때문에 `사용하려는 Swagger JSON 파일에는 반드시 operationId 필드가 정의`되어 있어야 합니다.   
 **[예시]**
 ```
 "basePath": "/tumblebug",
@@ -145,6 +143,38 @@ $ ./mayfly api tool -f ./cb-tumblebug.json
 			"summary": "Get available kubernetes cluster node image",
 			"operationId": "GetAvailableK8sClusterNodeImage",
 ```
+
+
+
+Swagger 파일을 제공하는 cb-tumblebug의 경우 tool 플래그를 실행하면 아래와같은 형태로 출력됩니다.
+```
+$ ./mayfly api tool -f ./cb-tumblebug.json
+```
+
+**[실행 결과 예시]**
+```
+Base Paht: /tumblebug
+    GetAvailableK8sClusterNodeImage:
+      method: get
+      resourcePath: /availableK8sClusterNodeImage
+      description: "Get available kubernetes cluster node image"
+                . . . .
+                 생략
+                . . . .
+    GetCloudInfo:
+      method: get
+      resourcePath: /cloudInfo
+      description: "Get cloud information"
+    GetAllConfig:
+      method: get
+      resourcePath: /config
+      description: "List all configs"
+                . . . .
+                 생략
+                . . . .
+```
+위 출력 결과를 참고해서 api.yaml 파일을 작성하면됩니다.
+
 
 ## 사용 방법
 -s 또는 --service 플래그를 이용해서 호출을 희망하는 프레임워크를 설정하며, -a 또는 --action 플래그를 이용해서 해당 프레임워크에서 실제 호출하려는 API를 지정합니다.   
@@ -212,6 +242,10 @@ $ ./mayfly api --service <service_name> --action <action_name> --pathParam <key1
 
 $ ./mayfly api -s <service_name> -a <action_name> -p <key1:value1 key2:value2> -queryString <query_string>
 ```
+
+### 환경 설정 파일과 실행 명령의 맵핑 관계
+지금까지 설명드린 api.yaml에 정의되는 방식 및 CLI에서 호출하는 api 서브 커맨드의 맵핑 관계는 다음과 같습니다.
+![apicall](https://github.com/cloud-barista/cm-mayfly/assets/78469943/17fe459b-cdab-402d-b87d-8f4ae12de646)
 
 
 ### 기본 사용 예시 
