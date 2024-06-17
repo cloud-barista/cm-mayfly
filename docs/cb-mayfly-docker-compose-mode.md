@@ -1,13 +1,12 @@
 
-## `cm-mayfly`의 `Docker Compose 모드`를 이용한 Cloud-Migrator 설치 및 실행 가이드
+## `cm-mayfly`의 `Docker Compose`를 이용한 Cloud-Migrator 설치 및 실행 가이드
 
-이 가이드에서는 `cm-mayfly`의 `Docker Compose 모드`를 이용하여 Cloud-Migrator 시스템을 구축 및 실행하는 방법에 대해 소개합니다. 
+이 가이드에서는 `cm-mayfly`의 `docker` 서브 커맨드를 이용하여 `Docker Compose` 기반으로 Cloud-Migrator 시스템을 구축 및 실행하는 방법에 대해 소개합니다. 
 
 
 ## 순서
 1. 개발환경 준비
 1. 필요사항 설치
-   1. Golang
    1. Docker
    1. Docker Compose
 1. cm-mayfly 소스코드 다운로드
@@ -22,30 +21,8 @@
 
 [권장사항]
 - Ubuntu 20.04
-- Golang 1.15 또는 그 이상
 
 ## 필요사항 설치
-
-### Golang 설치
-- https://golang.org/doc/install 에서 설명하는 방법대로 설치합니다.
-
-<details>
-  <summary>[클릭하여 예시 보기]</summary>
-  
-```bash
-# Golang 다운로드
-wget https://go.dev/dl/go1.21.4.linux-amd64.tar.gz
-
-# 기존 Golang 삭제 및 압축파일 해제
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.4.linux-amd64.tar.gz
-
-# ~/.bashrc 또는 ~/.zshrc 등에 다음 라인을 추가
-export PATH=$PATH:/usr/local/go/bin
-
-# 셸을 재시작하고 다음을 실행하여 Go 버전 확인
-go version
-```
-</details>
 
 ### Docker 설치
 - https://docs.docker.com/engine/install/ubuntu/ 에서 설명하는 방법대로 설치합니다.
@@ -91,10 +68,11 @@ sudo apt install docker-compose
 git clone https://github.com/cm-mayfly/cm-mayfly.git
 ```
 
-## 도커 서비스 정의
-Cloud-Migrator 시스템 구성에 필요한 서비스 정보를 `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` 파일에 정의합니다. (현재는 PoC단계라 아직 Cloud-Migrator 시스템의 정식 Docker 이미지가 없기에 유사한 Cloud-Barista의 cb-spider와 cb-tumblebug 도커 이미지를 예시로 제공합니다.)
+## 도커 서비스 정의 확인
+Cloud-Migrator 시스템 구성에 필요한 서비스 정보는 `conf/docker` 폴더 하위에 정의되어 있으니 `cm-mayfly/conf/docker/docker-compose.yaml` 파일 및 `conf/docker/conf` 폴더의 내용들을 살펴 보고 필요한 경우 수정합니다.
 
-## cm-mayfly 소스코드 빌드
+## cm-mayfly 실행파일 또는 소스코드 빌드
+bin 폴더에 최신 실행 파일이 있으니 사용하기 바라며, 소스 빌드가 필요한 경우에는 README에 설명된 go 설치 방법과 build 명령 또는 make 명령의 빌드 방법을 참고합니다.
 ```bash
 cd cm-mayfly/src
 go build -o mayfly main.go
@@ -102,22 +80,18 @@ go build -o mayfly main.go
 
 ## cm-mayfly 이용하여 Cloud-Migrator 실행
 ```bash
-./mayfly
-
-# 모드를 고르는 단계가 나오면, 1: Docker Compose 모드 선택
-
-./mayfly run
+./bin/mayfly docker run
 ```
 
 ## Cloud-Migrator 실행상태 확인
 ```bash
-./mayfly info
+./bin/mayfly docker info
 ```
 
 
 ## Cloud-Migrator 중지
 ```bash
-./mayfly stop
+./bin/mayfly docker stop
 ```
 
 ## [참고] 프레임워크별 컨테이너 구성 및 API Endpoint

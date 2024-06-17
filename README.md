@@ -56,7 +56,7 @@ cm-mayfly/src$ make clean
 
 
 # How to use CM-Mayfly
-For now, it supports docker / rest sub-commands.   
+For now, it supports docker / rest / api sub-commands.   
 
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
@@ -69,10 +69,9 @@ Usage:
   mayfly [command]
 
 Available Commands:
-  api         Open API calls to the Cloud-Migrator system
-  docker      A tool to operate Cloud-Migrator system
+  api         Call the Cloud-Migrator system's Open APIs as services and actions
+  docker      Installing and managing cloud-migrator's infrastructure
   help        Help about any command
-  k8s         A tool to operate Cloud-Migrator system
   rest        rest api call
 
 Flags:
@@ -82,9 +81,9 @@ Use "mayfly [command] --help" for more information about a command.
 ```
 
 ## docker-compose.yaml
-The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `docker-compose-mode-files` folder.)   
+The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/conf/docker/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `conf/docker` folder.)   
 
-If you want to change the information for each container you want to deploy, modify the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file or use the -f option.   
+If you want to change the information for each container you want to deploy, modify the `cm-mayfly/conf/docker/docker-compose.yaml` file or use the -f option.   
 
 
 
@@ -114,11 +113,11 @@ Use "mayfly docker [command] --help" for more information about a command.
 ## docker subcommand examples
 Simple usage examples for docker subcommand
 ```
- ./mayfly docker pull [-f ../docker-compose-mode-files/docker-compose.yaml]   
- ./mayfly docker run [-f ../docker-compose-mode-files/docker-compose.yaml]   
+ ./mayfly docker pull [-f ../conf/docker/docker-compose.yaml]   
+ ./mayfly docker run [-f ../conf/docker/docker-compose.yaml]   
  ./mayfly docker info   
- ./mayfly docker stop [-f ../docker-compose-mode-files/docker-compose.yaml]   
- ./mayfly docker remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i   
+ ./mayfly docker stop [-f ../conf/docker/docker-compose.yaml]   
+ ./mayfly docker remove [-f ../conf/docker/docker-compose.yaml] -v -i   
 ```
 
 
@@ -153,6 +152,7 @@ Flags:
   -I, --head                Show response headers only
   -H, --header strings      Pass custom header(s) to server
   -h, --help                help for rest
+  -o, --output string       <file> Write to file instead of stdout
   -p, --password string     Password for basic authentication
   -u, --user string         Username for basic authentication
   -v, --verbose             Show more detail information
@@ -192,12 +192,13 @@ Available Commands:
 
 Flags:
   -a, --action string        Action to perform
-  -c, --config string        config file (default is ../conf/api.yaml)
+  -c, --config string        config file (default "../conf/api.yaml")
   -d, --data string          Data to send to the server
-  -f, --file string          Data to send to the server from file(not yet support)
+  -f, --file string          Data to send to the server from file
   -h, --help                 help for api
   -l, --list                 Show Service or Action list
   -m, --method string        HTTP Method
+  -o, --output string        <file> Write to file instead of stdout
   -p, --pathParam string     Variable path info set "key1:value1 key2:value2" for URIs
   -q, --queryString string   Use if you have a query string to add to URIs
   -s, --service string       Service to perform
