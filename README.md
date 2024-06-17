@@ -80,6 +80,11 @@ Flags:
 Use "mayfly [command] --help" for more information about a command.
 ```
 
+For more detailed explanations, see the articles below.   
+- [docker sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
+- [rest sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-rest.md)
+- [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-api.md)
+
 ## docker-compose.yaml
 The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/conf/docker/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `conf/docker` folder.)   
 
