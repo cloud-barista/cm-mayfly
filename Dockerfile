@@ -4,7 +4,7 @@
 # ./mayfly rest get -u default -p default http://cb-spider:1024/spider/readyz
 
 # 베이스 이미지 선택
-FROM ubuntu:latest
+FROM ubuntu:latest as prod
 
 # 컨테이너 내의 작업 디렉토리 설정(RUN / CMD / ENTRYPOINT 명령이 실행될 기본 경로)
 WORKDIR /app
