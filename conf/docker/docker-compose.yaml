@@ -12,7 +12,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.9.01
+    image: cloudbaristaorg/cb-spider:0.9.1
     container_name: cb-spider
     platform: linux/amd64
     ports:
@@ -86,13 +86,221 @@ services:
       - LOGLEVEL=info
 
 
-   cm-butterfly:
-     image: cloudbaristaorg/cm-butterfly:0.2.0
-     container_name: cm-butterfly
-     platform: linux/amd64
-     volumes:
-       - ./conf/cb-butterfly/:/root/go/src/github.com/cloud-barista/cb-butterfly/conf/
+  # cm-butterfly
+  # https://github.com/cloud-barista/cm-butterfly
+  # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly
+  cm-butterfly:
+    image: cloudbaristaorg/cm-butterfly:0.2.0
+    container_name: cm-butterfly
+    platform: linux/amd64
+    ports:
+      - "1234:1234"
+    depends_on:
+      - cm-beetle
+    environment:
+      - BEETLE_URL=http://cm-beetle:8056/beetle
+      - HONEYBEE_URL=http://cm-honeybee:8081/honeybee
+      - CICADA_URL=http://cm-cicada:8083/cicada
+      - TUMBLE_URL=http://cb-tumblebug:1323/tumblebug
+      - SPIDER_URL=http://cb-spider:1024/spider
 
+
+  # @TODO - **Airflow 등 연계 시스템 필요함**
+  # cm-honeybee
+  # https://github.com/cloud-barista/cm-honeybee/tree/main/server
+  # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
+  cm-honeybee:
+    image: cloudbaristaorg/cm-honeybee:0.2.0
+    container_name: cm-honeybee
+    platform: linux/amd64
+    ports:
+      # 8081 : Server / 8082 : Agent
+      - "8081:8081"
+      - "8082:8082"
+    depends_on:
+      - cm-honeybee-agent
+    #network_mode: "host"
+
+
+  # **도커 이미지 필요 함**
+  # cm-honeybee Agent
+  # https://github.com/cloud-barista/cm-honeybee/tree/main/agent
+  # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
+  cm-honeybee-agent:
+    #image: cloudbaristaorg/cm-honeybee-agent:0.2.0
+    image: cm-honeybee-agent:latest
+    container_name: cm-honeybee-agent    
+    restart: always
+    privileged: true
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data/:/root/.cm-honeybee-agent:rw
+      - /etc/:/etc/:ro
+      - /usr/lib/os-release:/usr/lib/os-release:ro
+      - /var/:/var/:rw
+      - /run/:/run/:rw
+    #network_mode: "host"
+
+
+  # cm-cicada
+  # https://github.com/cloud-barista/cm-cicada
+  # https://hub.docker.com/r/cloudbaristaorg/cm-cicada
+  cm-cicada:
+    image: cloudbaristaorg/cm-cicada:0.2.0
+    container_name: cm-cicada
+    restart: always
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./_airflow:/_airflow:rw
+      - ./CM-CICADA.db:/CM-CICADA.db:rw
+    #network_mode: "host"
+
+
+  # airflow-redis
+  # used by cm-cicada
+  # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  airflow-redis:
+      container_name: airflow-redis
+      image: redis:7.2-alpine
+      command: redis-server --requirepass airflow_pass --port 6379
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 30s
+        retries: 50
+      restart: always
+
+  # airflow-mysql
+  # used by cm-cicada
+  # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  airflow-mysql:
+      container_name: airflow-mysql
+      image: mysql:8.0-debian
+      cap_add:
+        - SYS_NICE
+      restart: always
+      environment:
+          - MYSQL_ROOT_PASSWORD=airflow_pass
+          - MYSQL_USER=airflow
+          - MYSQL_PASSWORD=airflow_pass
+          - MYSQL_DATABASE=airflow
+      volumes:
+          - ./create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
+          - ./db_data:/var/lib/mysql
+
+  # airflow-server
+  # used by cm-cicada
+  # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  airflow-server:
+      build:
+          context: _airflow ## build Docker file location
+      container_name: airflow-server
+      image: airflow-server:2.9.1
+      restart: always
+      command: >
+          /bin/bash -c "
+              # Wait for MySQL
+              sleep 10
+
+              # Clean up pid
+              rm -f airflow-webserver.pid
+
+              # Set up metadata database
+              airflow db upgrade
+
+              # Create default user
+              airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin
+
+              # Start airflow
+              airflow scheduler &
+              airflow celery worker &
+              airflow celery flower &
+              airflow webserver
+
+              # Keep the server on no matter what
+              sleep infinity
+          "
+      depends_on:
+          - airflow-mysql
+      volumes:
+              - ./airflow-home:/usr/local/airflow
+              - /var/run/docker.sock:/var/run/docker.sock
+      ports:
+          - "5555:5555"
+          - "8080:8080"
+
+  # cm-grasshopper
+  # https://github.com/cloud-barista/cm-grasshopper
+  # https://hub.docker.com/r/cloudbaristaorg/cm-grasshopper
+  cm-grasshopper:
+    image: cloudbaristaorg/cm-grasshopper:0.2.0
+    container_name: cm-grasshopper
+    ports:
+      - "8084:8084"
+    depends_on:
+      - cm-honeybee
+    volumes:
+      - ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
+      - ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
+      - ./software_temp:/software_temp:rw
+      - ./software_log:/software_log:rw
+      - ./playbook:/playbook/:rw
+    #network_mode: "host"
+
+
+  # cm-ant
+  # https://github.com/cloud-barista/cm-ant
+  # https://hub.docker.com/r/cloudbaristaorg/cm-ant
+  cm-ant:
+    container_name: cm-ant
+    image: cloudbaristaorg/cm-ant:0.2.0
+    platform: linux/amd64
+    ports:
+        - 8880:8880
+    #networks:
+    #  - default
+    #  - cm-ant-db-network
+    depends_on:
+      # cb-tumblebug:
+      #   condition: service_healthy
+      ant-postgres:
+        condition: service_healthy
+    environment:
+      - ANT_SPIDER_HOST=http://cb-spider
+      - ANT_SPIDER_PORT=1024
+      - ANT_TUMBLEBUG_HOST=http://cb-tumblebug
+      - ANT_TUMBLEBUG_PORT=1323
+      - ANT_DATABASE_HOST=ant-postgres
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/api/v1/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+
+  # ant-postgres
+  # used by cm-ant
+  ant-postgres:
+    image: timescale/timescaledb:latest-pg16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=cm-ant-user
+      - POSTGRES_PASSWORD=cm-ant-secret
+      - POSTGRES_DB=cm-ant-db
+    #networks:
+    #  - cm-ant-db-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "cm-ant-user", "-d", "cm-ant-db" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   # cm-mayfly:
   #   image: cloudbaristaorg/cm-mayfly:v0.1.0
@@ -101,5 +309,14 @@ services:
   #   stdin_open: true
   #   tty: true
 
+
+# cm-damselfly
+# Does not currently provide a docker image.
+
+# cm-centipede
+# Does not currently provide a docker image.
+# Probably integrated into cm-grasshopper
+
 networks:
   spider_net: #Network for cb-spider isolation
+  #cm-ant-db-network: #Network for cm-ant database isolation
