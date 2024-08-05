@@ -10,8 +10,9 @@ services:
 
   # CB-Spider
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
+  # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.8.19
+    image: cloudbaristaorg/cb-spider:0.9.01
     container_name: cb-spider
     platform: linux/amd64
     ports:
@@ -35,8 +36,9 @@ services:
 
   # CB-Tumblebug
   # https://github.com/cloud-barista/cb-tumblebug/blob/main/scripts/runTumblebug.sh
+  # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.8.13
+    image: cloudbaristaorg/cb-tumblebug:0.9.0
     container_name: cb-tumblebug
     platform: linux/amd64
     ports:
@@ -68,8 +70,9 @@ services:
 
   # cm-beetle
   # https://github.com/cloud-barista/cm-beetle/discussions/73
+  # https://hub.docker.com/r/cloudbaristaorg/cm-beetle
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.1.2
+    image: cloudbaristaorg/cm-beetle:0.2.0
     container_name: cm-beetle
     platform: linux/amd64
     ports:
@@ -83,12 +86,12 @@ services:
       - LOGLEVEL=info
 
 
-  # cm-butterfly:
-  #   image: cloudbaristaorg/cm-butterfly:v0.1.0
-  #   container_name: cm-butterfly
-  #   platform: linux/amd64
-  #   volumes:
-  #     - ./conf/cb-butterfly/:/root/go/src/github.com/cloud-barista/cb-butterfly/conf/
+   cm-butterfly:
+     image: cloudbaristaorg/cm-butterfly:0.2.0
+     container_name: cm-butterfly
+     platform: linux/amd64
+     volumes:
+       - ./conf/cb-butterfly/:/root/go/src/github.com/cloud-barista/cb-butterfly/conf/
 
 
   # cm-mayfly:
