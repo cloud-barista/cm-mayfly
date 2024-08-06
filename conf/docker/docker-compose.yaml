@@ -8,6 +8,83 @@ services:
 # 4. Dockerfile
 # 5. Variable is not defined
 
+
+  # etcd
+  # used by cb-tumblebug
+  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.5.14
+    container_name: etcd
+    ports:
+      - target: 2379       # Port assinged to etcd in the container
+        published: 2379   # Port to be exposed to the host
+        protocol: tcp     # Protocol of the port     
+      - target: 2380      # Port assinged to etcd in the container
+        published: 2380   # Port to be exposed to the host
+        protocol: tcp     # Protocol of the port
+    volumes: 
+      - ./data/etcd/data:/etcd-data
+    entrypoint: /usr/local/bin/etcd
+    command:
+      - --name
+      - s1
+      - --data-dir
+      - /etcd-data
+      - --listen-client-urls
+      - http://0.0.0.0:2379
+      - --advertise-client-urls
+      - http://0.0.0.0:2379
+      - --listen-peer-urls
+      - http://0.0.0.0:2380
+      - --initial-advertise-peer-urls
+      - http://0.0.0.0:2380
+      - --initial-cluster
+      - s1=http://0.0.0.0:2380
+      - --initial-cluster-token
+      - tkn
+      - --initial-cluster-state
+      - new
+      - --log-level
+      - info
+      - --logger
+      - zap
+      - --log-outputs
+      - stderr
+      - --auth-token
+      - simple
+    healthcheck: # for etcd
+      test: [ "CMD", "/usr/local/bin/etcd", "--version"]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # etcd-conf
+  # ./conf/etcd folder : https://github.com/cloud-barista/cb-tumblebug/tree/main/scripts/etcd
+  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
+  etcd-conf:
+    image: alpine:latest
+    container_name: etcd-conf
+    depends_on:
+      - etcd
+    volumes:
+      - ./conf/etcd/:/scripts/etcd/
+    environment:
+      - ETCD_VERSION_TAG=v3.5.14
+      - ETCD_ENDPOINTS=http://etcd:2379
+      - ETCD_PATH=/tmp/etcd-download-test
+      - ETCD_AUTH_ENABLED=true
+      - ETCD_ROOT_PASSWORD=default
+      - ETCD_ADMIN_USERNAME=default
+      - ETCD_ADMIN_PASSWORD=default
+    command: sh -c "sh /scripts/etcd/etcd-conf.sh"
+    healthcheck: # for etcd-conf
+      test: ["CMD", "test", "-f", "/tmp/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # CB-Spider
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
@@ -29,14 +106,23 @@ services:
       # if you leave these values empty, REST Auth will be disabled.
       - API_USERNAME=
       - API_PASSWORD=
+      #- SERVER_ADDRESS=localhost
       #- SPIDER_LOG_LEVEL=error
       #- SPIDER_HISCALL_LOG_LEVEL=error
       #- SERVICE_ADDRESS=
+      #- ID_TRANSFORM_MODE=ON ##????? @todo : tumblebug에 있는 환경 변수인데 용도 파악 필요
+    healthcheck: # for CB-Spider
+      test: [ "CMD", "curl", "-f", "http://localhost:1024/spider/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 
   # CB-Tumblebug
   # https://github.com/cloud-barista/cb-tumblebug/blob/main/scripts/runTumblebug.sh
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
+  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
     image: cloudbaristaorg/cb-tumblebug:0.9.0
     container_name: cb-tumblebug
@@ -49,24 +135,65 @@ services:
       - default
     depends_on:
       - cb-spider
+      - etcd-conf
     volumes:
       - ./conf/cb-tumblebug/:/app/conf/
       - ./data/cb-tumblebug/meta_db/:/app/meta_db/
       - ./data/cb-tumblebug/log/:/app/log/
     environment:
-      - SPIDER_REST_URL=http://cb-spider:1024/spider
-      #- SELF_ENDPOINT=localhost:1323
-      - API_USERNAME=default
-      - API_PASSWORD=default
-      #- SPIDER_CALL_METHOD=REST
-      #- DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
-      #- TERRARIUM_REST_URL=http://$EP_TERRARIUM:8888/terrarium
-      #- CB_NETWORK_SERVICE_ENDPOINT=localhost:8053
-      #- CB_NETWORK_ETCD_ENDPOINTS="localhost:2379"
-      #- AUTOCONTROL_DURATION_MS=10000
-      #- GOLANG_PROTOBUF_REGISTRATION_CONFLICT=ignore
-      #- API_DOC_PATH=/app/src/api/rest/docs/swagger.json
+      # - TB_ROOT_PATH=/app
+      - TB_SPIDER_REST_URL=http://cb-spider:1024/spider
+      #- TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
+      # - TB_SQLITE_URL=localhost:3306 
+      # - TB_SQLITE_DATABASE=cb_tumblebug 
+      # - TB_SQLITE_USER=cb_tumblebug 
+      # - TB_SQLITE_PASSWORD=cb_tumblebug 
+      - TB_ETCD_ENDPOINTS=http://etcd:2379
+      # - TB_ETCD_AUTH_ENABLED=true
+      # - TB_ETCD_USERNAME=default
+      # - TB_ETCD_PASSWORD=default
+      # - TB_ALLOW_ORIGINS=*
+      # - TB_AUTH_ENABLED=true
+      # - TB_API_USERNAME=default
+      # - TB_API_PASSWORD=default
+      # - TB_AUTOCONTROL_DURATION_MS=10000
+      - TB_SELF_ENDPOINT=localhost:1323
+      # - TB_DEFAULT_NAMESPACE=ns01
+      # - TB_DEFAULT_CREDENTIALHOLDER=admin
+      # - TB_LOGFILE_PATH=/app/log/tumblebug.log
+      # - TB_LOGFILE_MAXSIZE=10
+      # - TB_LOGFILE_MAXBACKUPS=3
+      # - TB_LOGFILE_MAXAGE=30
+      # - TB_LOGFILE_COMPRESS=false
+      # - TB_LOGLEVEL=debug
+      # - TB_LOGWRITER=both
+      # - TB_NODE_ENV=development
+    healthcheck: # for CB-Tumblebug
+      test: [ "CMD", "curl", "-f", "http://localhost:1323/tumblebug/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
+
+  # cb-mapui
+  # used by cb-tumblebug
+  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
+  cb-mapui:
+    image: cloudbaristaorg/cb-mapui:0.9.0
+    container_name: cb-mapui
+    ports:
+      - target: 1324
+        published: 1324
+        protocol: tcp
+    # depends_on:
+    #   - cb-tumblebug
+    healthcheck: # for cb-mapui
+      test: ["CMD", "nc", "-vz", "localhost", "1324"]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # cm-beetle
   # https://github.com/cloud-barista/cm-beetle/discussions/73
@@ -109,6 +236,7 @@ services:
   # cm-honeybee
   # https://github.com/cloud-barista/cm-honeybee/tree/main/server
   # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
+  # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
     image: cloudbaristaorg/cm-honeybee:0.2.0
     container_name: cm-honeybee
@@ -116,7 +244,7 @@ services:
     ports:
       # 8081 : Server / 8082 : Agent
       - "8081:8081"
-      - "8082:8082"
+      #- "8082:8082"
     depends_on:
       - cm-honeybee-agent
     #network_mode: "host"
@@ -126,16 +254,18 @@ services:
   # cm-honeybee Agent
   # https://github.com/cloud-barista/cm-honeybee/tree/main/agent
   # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
+  # See https://github.com/cloud-barista/cm-honeybee/blob/main/agent/docker-compose.yaml
   cm-honeybee-agent:
     #image: cloudbaristaorg/cm-honeybee-agent:0.2.0
-    image: cm-honeybee-agent:latest
+    #image: cm-honeybee-agent:latest
+    image: dev4unet/cm-honeybee-agent:0.2.0
     container_name: cm-honeybee-agent    
     restart: always
     privileged: true
     ports:
-      - "8081:8081"
+      - "8082:8082"
     volumes:
-      - ./data/:/root/.cm-honeybee-agent:rw
+      - ./data/cm-honeybee-agent/:/root/.cm-honeybee-agent:rw
       - /etc/:/etc/:ro
       - /usr/lib/os-release:/usr/lib/os-release:ro
       - /var/:/var/:rw
@@ -153,8 +283,8 @@ services:
     ports:
       - "8083:8083"
     volumes:
-      - ./_airflow:/_airflow:rw
-      - ./CM-CICADA.db:/CM-CICADA.db:rw
+      - ./conf/cm-cicada/_airflow:/_airflow:rw
+      - ./data/cm-cicada/CM-CICADA.db:/CM-CICADA.db:rw
     #network_mode: "host"
 
 
@@ -175,6 +305,7 @@ services:
   # airflow-mysql
   # used by cm-cicada
   # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  # ./conf/_airflow/create_airflow_db.sql : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/create_airflow_db.sql
   airflow-mysql:
       container_name: airflow-mysql
       image: mysql:8.0-debian
@@ -187,15 +318,15 @@ services:
           - MYSQL_PASSWORD=airflow_pass
           - MYSQL_DATABASE=airflow
       volumes:
-          - ./create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
-          - ./db_data:/var/lib/mysql
+          - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
+          - ./data/cm-cicada/db_data:/var/lib/mysql
 
   # airflow-server
   # used by cm-cicada
-  # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  # See https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   airflow-server:
       build:
-          context: _airflow ## build Docker file location
+          context: ./conf/_airflow ## build Docker file location
       container_name: airflow-server
       image: airflow-server:2.9.1
       restart: always
@@ -225,7 +356,7 @@ services:
       depends_on:
           - airflow-mysql
       volumes:
-              - ./airflow-home:/usr/local/airflow
+              - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
               - /var/run/docker.sock:/var/run/docker.sock
       ports:
           - "5555:5555"
@@ -242,11 +373,11 @@ services:
     depends_on:
       - cm-honeybee
     volumes:
-      - ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
-      - ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
-      - ./software_temp:/software_temp:rw
-      - ./software_log:/software_log:rw
-      - ./playbook:/playbook/:rw
+      - ./conf/cm-grasshopper/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
+      - ./data/cm-grasshopper/CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
+      - ./data/cm-grasshopper/software_temp:/software_temp:rw
+      - ./data/cm-grasshopper/software_log:/software_log:rw
+      - ./data/cm-grasshopper/playbook:/playbook/:rw
     #network_mode: "host"
 
 
