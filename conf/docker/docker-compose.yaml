@@ -112,7 +112,7 @@ services:
       #- SERVICE_ADDRESS=
       #- ID_TRANSFORM_MODE=ON ##????? @todo : tumblebug에 있는 환경 변수인데 용도 파악 필요
     healthcheck: # for CB-Spider
-      test: [ "CMD", "curl", "-f", "http://localhost:1024/spider/readyz" ]
+      test: [ "CMD", "curl", "-f", "http://cb-spider:1024/spider/readyz" ]
       interval: 1m
       timeout: 5s
       retries: 3
@@ -169,7 +169,7 @@ services:
       # - TB_LOGWRITER=both
       # - TB_NODE_ENV=development
     healthcheck: # for CB-Tumblebug
-      test: [ "CMD", "curl", "-f", "http://localhost:1323/tumblebug/readyz" ]
+      test: [ "CMD", "curl", "-f", "http://cb-tumblebug:1323/tumblebug/readyz" ]
       interval: 1m
       timeout: 5s
       retries: 3
@@ -292,15 +292,17 @@ services:
   # used by cm-cicada
   # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   airflow-redis:
-      container_name: airflow-redis
-      image: redis:7.2-alpine
-      command: redis-server --requirepass airflow_pass --port 6379
-      healthcheck:
-        test: ["CMD", "redis-cli", "ping"]
-        interval: 5s
-        timeout: 30s
-        retries: 50
-      restart: always
+    container_name: airflow-redis
+    image: redis:7.2-alpine
+    command: redis-server --requirepass airflow_pass --port 6379
+    restart: always
+    #ports:
+    #  - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
 
   # airflow-mysql
   # used by cm-cicada
@@ -312,6 +314,8 @@ services:
       cap_add:
         - SYS_NICE
       restart: always
+      #ports:
+      #  - "3306:3306"
       environment:
           - MYSQL_ROOT_PASSWORD=airflow_pass
           - MYSQL_USER=airflow
@@ -330,6 +334,9 @@ services:
       container_name: airflow-server
       image: airflow-server:2.9.1
       restart: always
+      ports:
+          - "5555:5555"
+          - "8080:8080"
       command: >
           /bin/bash -c "
               # Wait for MySQL
@@ -358,9 +365,6 @@ services:
       volumes:
               - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
               - /var/run/docker.sock:/var/run/docker.sock
-      ports:
-          - "5555:5555"
-          - "8080:8080"
 
   # cm-grasshopper
   # https://github.com/cloud-barista/cm-grasshopper
@@ -386,7 +390,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-ant
   cm-ant:
     container_name: cm-ant
-    image: cloudbaristaorg/cm-ant:0.2.0
+    image: cloudbaristaorg/cm-ant:0.2.1
     platform: linux/amd64
     ports:
         - 8880:8880
@@ -417,6 +421,7 @@ services:
   # used by cm-ant
   ant-postgres:
     image: timescale/timescaledb:latest-pg16
+    container_name: ant-postgres
     ports:
       - "5432:5432"
     environment:
@@ -433,12 +438,16 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # cm-mayfly:
+  cm-mayfly:
   #   image: cloudbaristaorg/cm-mayfly:v0.1.0
-  #   container_name: cm-mayfly
-  #   platform: linux/amd64
-  #   stdin_open: true
-  #   tty: true
+    image: dev4unet/cm-mayfly:v0.2.0
+    container_name: cm-mayfly
+    platform: linux/amd64
+    stdin_open: true
+    tty: true
+    networks:
+      - spider_net
+      - default
 
 
 # cm-damselfly
