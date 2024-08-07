@@ -326,7 +326,7 @@ services:
   # See https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   airflow-server:
       build:
-          context: ./conf/_airflow ## build Docker file location
+          context: ./conf/cm-cicada/_airflow ## build Docker file location
       container_name: airflow-server
       image: airflow-server:2.9.1
       restart: always
