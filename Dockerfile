@@ -6,6 +6,8 @@
 # 베이스 이미지 선택
 FROM ubuntu:latest
 
+RUN apt-get update && apt-get install -y iputils-ping curl
+
 # 컨테이너 내의 작업 디렉토리 설정(RUN / CMD / ENTRYPOINT 명령이 실행될 기본 경로)
 WORKDIR /app
 
