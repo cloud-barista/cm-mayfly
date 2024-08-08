@@ -198,19 +198,49 @@ services:
   # cm-beetle
   # https://github.com/cloud-barista/cm-beetle/discussions/73
   # https://hub.docker.com/r/cloudbaristaorg/cm-beetle
+  # See https://github.com/cloud-barista/cm-beetle/blob/main/deployments/docker-compose/docker-compose.yaml#L156
   cm-beetle:
     image: cloudbaristaorg/cm-beetle:0.2.0
     container_name: cm-beetle
     platform: linux/amd64
     ports:
-      - "8056:8056"
+      - target: 8056
+        published: 8056
+        protocol: tcp
     depends_on:
       - cb-tumblebug
+    volumes:
+      - ./conf/cm-beetle/conf/:/app/conf/
+      - ./data/cm-beetle/log/:/app/log/
     environment:
-      - API_AUTH_ENABLED=true
-      - API_USERNAME=default
-      - API_PASSWORD=default
-      - LOGLEVEL=info
+      # - BEETLE_ROOT=/app
+      # - BEETLE_CBSTORE_ROOT=/app
+      # - BEETLE_CBLOG_ROOT=/app
+      - BEETLE_TUMBLEBUG_REST_URL=http://cb-tumblebug:1323/tumblebug
+      # - BEETLE_LOGFILE_PATH=/app/log/beetle.log
+      # - BEETLE_LOGFILE_MAXSIZE=10
+      # - BEETLE_LOGFILE_MAXBACKUPS=3
+      # - BEETLE_LOGFILE_MAXAGE=30
+      # - BEETLE_LOGFILE_COMPRESS=false
+      # - BEETLE_LOGLEVEL=debug
+      # - BEETLE_LOGWRITER=both
+      # - BEETLE_NODE_ENV=development
+      # - BEETLE_SQLITE_URL=localhost:3306
+      # - BEETLE_SQLITE_DATABASE=cm_beetle
+      # - BEETLE_SQLITE_USER=cm_beetle
+      # - BEETLE_SQLITE_PASSWORD=cm_beetle
+      # - BEETLE_API_ALLOW_ORIGINS=*
+      # - BEETLE_API_AUTH_ENABLED=true
+      # - BEETLE_API_USERNAME=default
+      # - BEETLE_API_PASSWORD=default
+      # - BEETLE_AUTOCONTROL_DURATION_MS=10000
+      - BEETLE_SELF_ENDPOINT=localhost:8056
+    healthcheck: # for CM-Beetle
+      test: [ "CMD", "curl", "-f", "http://localhost:1323/beetle/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 
   # cm-butterfly
