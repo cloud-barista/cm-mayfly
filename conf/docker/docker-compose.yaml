@@ -399,14 +399,17 @@ services:
   # cm-grasshopper
   # https://github.com/cloud-barista/cm-grasshopper
   # https://hub.docker.com/r/cloudbaristaorg/cm-grasshopper
+  # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
   cm-grasshopper:
     image: cloudbaristaorg/cm-grasshopper:0.2.0
     container_name: cm-grasshopper
+    restart: always
     ports:
       - "8084:8084"
     depends_on:
       - cm-honeybee
     volumes:
+      - ./conf/cm-grasshopper/conf:/conf
       - ./conf/cm-grasshopper/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       - ./data/cm-grasshopper/CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
       - ./data/cm-grasshopper/software_temp:/software_temp:rw
