@@ -251,6 +251,7 @@ services:
     image: cloudbaristaorg/cm-butterfly:0.2.0
     container_name: cm-butterfly
     platform: linux/amd64
+    restart: always
     ports:
       - "1234:1234"
     depends_on:
@@ -318,6 +319,8 @@ services:
     ports:
       - "8083:8083"
     volumes:
+      #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
+      - ./conf/cm-cicada/conf:/conf:rw
       - ./conf/cm-cicada/_airflow:/_airflow:rw
       - ./data/cm-cicada/CM-CICADA.db:/CM-CICADA.db:rw
     #network_mode: "host"
@@ -331,8 +334,8 @@ services:
     image: redis:7.2-alpine
     command: redis-server --requirepass airflow_pass --port 6379
     restart: always
-    #ports:
-    #  - "6379:6379"
+    ports:
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -349,8 +352,8 @@ services:
       cap_add:
         - SYS_NICE
       restart: always
-      #ports:
-      #  - "3306:3306"
+      ports:
+        - "3306:3306"
       environment:
           - MYSQL_ROOT_PASSWORD=airflow_pass
           - MYSQL_USER=airflow
