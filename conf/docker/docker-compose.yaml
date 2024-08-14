@@ -256,12 +256,20 @@ services:
       - "1234:1234"
     depends_on:
       - cm-beetle
+    volumes:
+      #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
+      - ./conf/cm-butterfly/conf:/app/conf:rw
     environment:
       - BEETLE_URL=http://cm-beetle:8056/beetle
       - HONEYBEE_URL=http://cm-honeybee:8081/honeybee
       - CICADA_URL=http://cm-cicada:8083/cicada
       - TUMBLE_URL=http://cb-tumblebug:1323/tumblebug
       - SPIDER_URL=http://cb-spider:1024/spider
+      #- LoginUser=admin
+      #- LoginEmail=admin
+      #- LoginPassword=admin
+      #- API_USERNAME=default
+      #- API_PASSWORD=default
 
 
   # @TODO - **Airflow 등 연계 시스템 필요함**
