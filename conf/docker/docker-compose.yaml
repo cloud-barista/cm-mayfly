@@ -98,6 +98,7 @@ services:
     networks:
       - spider_net
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cb-spider/:/root/go/src/github.com/cloud-barista/cb-spider/conf/
       - ./data/cb-spider/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
       - ./data/cb-spider/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
@@ -112,7 +113,8 @@ services:
       #- SERVICE_ADDRESS=
       #- ID_TRANSFORM_MODE=ON ##????? @todo : tumblebug에 있는 환경 변수인데 용도 파악 필요
     healthcheck: # for CB-Spider
-      test: [ "CMD", "curl", "-f", "http://cb-spider:1024/spider/readyz" ]
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cb-spider:1024/spider/readyz" ]
+      #test: [ "CMD", "curl", "-f", "http://cb-spider:1024/spider/readyz" ]
       interval: 1m
       timeout: 5s
       retries: 3
@@ -137,6 +139,7 @@ services:
       - cb-spider
       - etcd-conf
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cb-tumblebug/:/app/conf/
       - ./data/cb-tumblebug/meta_db/:/app/meta_db/
       - ./data/cb-tumblebug/log/:/app/log/
@@ -169,7 +172,8 @@ services:
       # - TB_LOGWRITER=both
       # - TB_NODE_ENV=development
     healthcheck: # for CB-Tumblebug
-      test: [ "CMD", "curl", "-f", "http://cb-tumblebug:1323/tumblebug/readyz" ]
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cb-tumblebug:1323/tumblebug/readyz" ]
+      #test: [ "CMD", "curl", "-f", "http://cb-tumblebug:1323/tumblebug/readyz" ]
       interval: 1m
       timeout: 5s
       retries: 3
@@ -289,7 +293,14 @@ services:
     depends_on:
       - cm-honeybee-agent
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     #network_mode: "host"
 
 
@@ -308,11 +319,18 @@ services:
     ports:
       - "8082:8082"
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./data/cm-honeybee-agent/:/root/.cm-honeybee-agent:rw
       - /etc/:/etc/:ro
       - /usr/lib/os-release:/usr/lib/os-release:ro
       - /var/:/var/:rw
       - /run/:/run/:rw
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee-agent:8082/honeybee-agent/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     #network_mode: "host"
 
 
@@ -328,9 +346,16 @@ services:
       - "8083:8083"
     volumes:
       #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
+      - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-cicada/conf:/conf:rw
       - ./conf/cm-cicada/_airflow:/_airflow:rw
       - ./data/cm-cicada/CM-CICADA.db:/CM-CICADA.db:rw
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     #network_mode: "host"
 
 
@@ -426,6 +451,7 @@ services:
     depends_on:
       - cm-honeybee
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-grasshopper/conf:/root/.cm-grasshopper/conf
       #- ./data/cm-honeybee/:/root/.cm-grasshopper/:ro
       - ./data/cm-honeybee/:/root/.cm-grasshopper/honeybee:ro
@@ -445,6 +471,12 @@ services:
           /cm-grasshopper;
         fi
       "
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     #network_mode: "host"
 
 
