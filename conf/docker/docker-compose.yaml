@@ -193,7 +193,8 @@ services:
     # depends_on:
     #   - cb-tumblebug
     healthcheck: # for cb-mapui
-      test: ["CMD", "nc", "-vz", "localhost", "1324"]
+      #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
+      test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
       interval: 1m
       timeout: 5s
       retries: 3
@@ -215,6 +216,7 @@ services:
     depends_on:
       - cb-tumblebug
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-beetle/conf/:/app/conf/
       - ./data/cm-beetle/log/:/app/log/
     environment:
@@ -241,7 +243,8 @@ services:
       # - BEETLE_AUTOCONTROL_DURATION_MS=10000
       - BEETLE_SELF_ENDPOINT=localhost:8056
     healthcheck: # for CM-Beetle
-      test: [ "CMD", "curl", "-f", "http://localhost:1323/beetle/readyz" ]
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
+      #test: [ "CMD", "curl", "-f", "http://localhost:1323/beetle/readyz" ]
       interval: 1m
       timeout: 5s
       retries: 3
