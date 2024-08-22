@@ -33,6 +33,7 @@ var sendData string
 var inputFileData string
 var outputFile string
 
+/*
 type ServiceInfo struct {
 	BaseURL string `yaml:"baseurl"`
 	Auth    struct {
@@ -42,6 +43,23 @@ type ServiceInfo struct {
 	} `yaml:"auth"`
 	ResourcePath string `yaml:"resourcePath"`
 	Method       string `yaml:"method"`
+}
+*/
+
+type ServiceInfo struct {
+	BaseURL      string `yaml:"baseurl"`
+	Auth         Auth   `yaml:"auth"`
+	ResourcePath string `yaml:"resourcePath"`
+	Method       string `yaml:"method"`
+}
+
+// basic : username / password
+// bearer : token
+type Auth struct {
+	Type     string `yaml:"type"`
+	Username string `yaml:"username,omitempty"`
+	Password string `yaml:"password,omitempty"`
+	Token    string `yaml:"token,omitempty"`
 }
 
 var serviceInfo ServiceInfo
@@ -130,6 +148,7 @@ var apiCmd = &cobra.Command{
 			fmt.Println("Auth Type:", serviceInfo.Auth.Type)
 			fmt.Println("Username:", serviceInfo.Auth.Username)
 			fmt.Println("Password:", serviceInfo.Auth.Password)
+			fmt.Println("Token:", serviceInfo.Auth.Token)
 			fmt.Println("ResourcePath:", serviceInfo.ResourcePath)
 			fmt.Println("Method:", serviceInfo.Method)
 		}
@@ -287,17 +306,37 @@ func parsePathParam() error {
 }
 
 func SetBasicAuth() {
-	if serviceInfo.Auth.Type == "" || strings.ToLower(serviceInfo.Auth.Type) == "none" {
-	} else {
-		// Set basic authentication
-		if serviceInfo.Auth.Username != "" && serviceInfo.Auth.Password != "" {
-			if isVerbose {
-				fmt.Println("setting basic auth")
-				fmt.Println("username : " + serviceInfo.Auth.Username)
-				fmt.Println("password : " + serviceInfo.Auth.Password)
-			}
-			client.SetBasicAuth(serviceInfo.Auth.Username, serviceInfo.Auth.Password)
+	// Set basic authentication
+	if serviceInfo.Auth.Username != "" && serviceInfo.Auth.Password != "" {
+		if isVerbose {
+			fmt.Println("setting basic auth")
+			fmt.Println("username : " + serviceInfo.Auth.Username)
+			fmt.Println("password : " + serviceInfo.Auth.Password)
 		}
+		client.SetBasicAuth(serviceInfo.Auth.Username, serviceInfo.Auth.Password)
+	}
+}
+
+// 인증 처리
+func SetAuth() {
+	switch strings.ToLower(serviceInfo.Auth.Type) {
+	case "none", "":
+		// 인증이 필요 없는 경우 아무 것도 하지 않음
+	case "basic":
+		// Set basic authentication
+		SetBasicAuth()
+	case "bearer":
+		// Set Bearer authentication
+		if serviceInfo.Auth.Token != "" {
+			if isVerbose {
+				fmt.Println("Setting bearer auth")
+				fmt.Println("Token : " + serviceInfo.Auth.Token)
+			}
+			client.SetAuthToken(serviceInfo.Auth.Token)
+		}
+	default:
+		SetBasicAuth() // Set basic authentication
+		//fmt.Println("Unknown authentication type:", serviceInfo.Auth.Type)
 	}
 }
 
@@ -343,7 +382,7 @@ func callRest() error {
 	var resp *resty.Response
 	var err error
 
-	SetBasicAuth()     // 인증 처리
+	SetAuth()          // 인증 처리
 	err = SetReqData() // 전송 데이터 처리
 	if err != nil {
 		return err
