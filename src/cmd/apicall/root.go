@@ -33,6 +33,11 @@ var sendData string
 var inputFileData string
 var outputFile string
 
+// auth : About changing credentials from the CLI
+var username string
+var password string
+var authToken string
+
 /*
 type ServiceInfo struct {
 	BaseURL string `yaml:"baseurl"`
@@ -212,6 +217,17 @@ func parseRequestInfo() error {
 	err := viper.UnmarshalKey("services."+serviceName, &serviceInfo)
 	if err != nil {
 		return err
+	}
+
+	// 인증 정보를 CLI로 전달 받았을 경우 처리
+	if authToken != "" {
+		serviceInfo.Auth.Token = authToken
+	}
+	if username != "" {
+		serviceInfo.Auth.Username = username
+	}
+	if password != "" {
+		serviceInfo.Auth.Password = password
 	}
 
 	if serviceInfo.BaseURL == "" {
@@ -418,6 +434,14 @@ func callRest() error {
 
 func init() {
 	apiCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "../conf/api.yaml", "config file")
+
+	// Add flags for basic authentication
+	apiCmd.PersistentFlags().StringVarP(&username, "authUser", "", "", "Username for basic authentication") // - sets the basic authentication header in the HTTP request
+	apiCmd.PersistentFlags().StringVarP(&password, "authPassword", "", "", "Password for basic authentication")
+
+	// 인증 토큰 설정
+	apiCmd.PersistentFlags().StringVarP(&authToken, "authToken", "", "", "sets the auth token of the 'Authorization' header for all HTTP requests.(The default auth scheme is 'Bearer')")
+	//apiCmd.PersistentFlags().StringVarP(&authScheme, "authScheme", "", "", "sets the auth scheme type in the HTTP request.(Exam. OAuth)(The default auth scheme is Bearer)")
 
 	apiCmd.PersistentFlags().StringVarP(&serviceName, "service", "s", "", "Service to perform")
 	apiCmd.PersistentFlags().StringVarP(&actionName, "action", "a", "", "Action to perform")
