@@ -40,17 +40,52 @@ $ ./mayfly api
 api.yaml의 경우 아래와 같은 구조로 되어있습니다.   
 `api.yaml`파일에 RESTful API를 제공하는 각 프레임워크의 서비스 명(services:)과 해당 서비스 하위에 존재할 서비스 액션(serviceActions:)을 지정하는 형태로 되어있습니다.   
 
-### 서비스 정의 
+### 서비스 정의
 `services:` 하위에 `api` 서브 커맨드에서 지원할 프레임워크들의 정보를 서술합니다.   
 예를 들어, 대표 프레임워크인 cb-spider의 경우 `cb-spider:`로 서술합니다.   
 
 `baseurl`에는 해당 프레임워크에서 제공하는 REST API URI의 기본이되는 `스키마 + 호스트 + 베이스 경로`의 조합으로 기입합니다.   
 예를 들어, cb-spider의 경우 localhost에서 1024포트를 사용하고 /spider 하위에 api가 존재한다면 `http://localhost:1024/spider`로 설정하면 됩니다.
+   
+   
+**인증 정보 설정**   
+현재 REST 호출을 위한 인증 절차는 "basic"과 "bearer" 인증을 지원하고 있습니다.   
+해당 프레임워크에서 REST 호출을 위한 username과 password 기반의 기본 인증 절차가 필요한 경우에는 `auth` 영역의 `type`에는 `basic`을 입력하고 `username`과 `password` 항목으로 인증 정보를 지정하면됩니다.   
+만약, `username`과 `password` 값을 api.yaml 파일의 값이 아닌 API 호출 시점에 설정하고 싶다면 `--authUser`와 `--authPassword`를 이용해서 변경 가능합니다.   
+```
+(예시)
+./mayfly api -s 서비스명 -a 액션명 --authUser=User이름 --authPassword=비밀번호
+```
 
-만약, 해당 프레임워크에서 REST 호출을 위한 인증 절차가 필요한 경우에는 `auth` 영역에 `username`과 `password` 항목으로 인증 정보를 지정하며 현재는 basic 타입인  Bear 방식만 제공하기에 `type`에는 basic을 입력합니다.   
-아직은 basic 인증 외의 다른 방식은 지원하고 있지 않기 때문에 사실상 `type` 부분은 중요하지 않으며, `인증 절차가 필요 없는 경우에는 auth 항목 하위의 값을 삭제`하면됩니다.
+해당 프레임워크에서 REST 호출을 위한 `token` 기반의 `bearer` 인증 절차가 필요한 경우에는 `auth` 영역의 `type`에는 `bearer`을 입력하고 `token`에 인증 토큰 정보를 지정하면됩니다.   
+만약, `token` 값을 api.yaml 파일의 값이 아닌 API 호출 시점에 설정하고 싶다면 `--authUser`와 `--authPassword`를 이용해서 변경 가능합니다.   
+```
+(예시)
+./mayfly api -s 서비스명 -a 액션명 --authToken=인증토큰값
+```
 
-**[설정 예시]**
+별도의 인증 절차가 필요 없는 경우 `auth:` 항목만 유지하면됩니다.   
+ `인증 절차가 필요 없는 경우에는 auth: 항목은 유지하고 하위의 내용만 삭제`하면됩니다.
+
+**[인증 정보 설정 예시]**
+```
+  #none authentication method
+    auth: #none
+
+  #basic authentication method
+    auth: 
+      type: "basic"
+      username: "your-username"
+      password: "your-password"
+
+  #Bearer authentication method
+    auth: 
+      type: "bearer"
+      token: "your-bearer-token-here"
+```
+
+
+**[서비스 설정 예시]**
 ```
 services:
   cb-spider: #service name

@@ -212,6 +212,10 @@ Flags:
 Use "mayfly api [command] --help" for more information about a command.
 ```
 
+For more information, see the [API Sub Command Guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-api.md).
+
+
+
 ## api subcommand examples
 Simple usage examples for api subcommand
 ```
@@ -222,3 +226,10 @@ Simple usage examples for api subcommand
 ./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
 ./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
 ```
+
+Examples of changing REST authentication values   
+Example of changing the username and password for basic authentication.   
+`./mayfly api -s cm-ant -a getcostinfo --authUser=test --authPassword=test2`
+
+Example of changing the authentication token for bearer authentication.   
+`./mayfly api -s cm-ant -a getcostinfo --authToken=token`

@@ -16,7 +16,7 @@ services:
       password: default
     
   cm-ant:
-    baseurl: http://localhost:8880
+    baseurl: http://localhost:8880/ant
     auth: 
       type: basic
       username: default
@@ -29,9 +29,23 @@ services:
   #     username: default
   #     password: default
 
-  # sample:
+  # sample: #none authentication method
   #   baseurl: http://localhost:1323/test
   #   auth: #none
+
+  # sample: #basic authentication method
+  #   baseurl: http://localhost:1323/test
+  #   auth: 
+  #     type: "basic"
+  #     username: "your-username"
+  #     password: "your-password"
+
+  # sample: #Bearer authentication method
+  #   baseurl: http://localhost:1323/test
+  #   auth: 
+  #     type: "bearer"
+  #     token: "your-bearer-token-here"
+
 
 # Define rest api actions for each of the services defined above.
 # specify the DATA to use for the API in the CLI.
@@ -979,59 +993,71 @@ serviceActions:
 
 
   cm-ant:
-    LoadEnvironments:
+    GetLoadTestMetrics:
       method: get
-      resourcePath: /ant/api/v1/env
-      description: "Get all of the load test environments"
-    GetAllAgentInstallInfo:
-      method: get
-      resourcePath: /ant/api/v1/load/agent
-      description: "Get all agent installation nsId, mcisId, vmId, status."
-    InstallAgent:
+      resourcePath: /api/v1/load/test/metrics
+      description: "Retrieve load test metrics based on provided parameters."
+    RunLoadTest:
       method: post
-      resourcePath: /ant/api/v1/load/agent
-      description: "Install an agent to collect server metrics during load testing such as CPU and memory."
-    UninstallAgent:
-      method: delete
-      resourcePath: /ant/api/v1/load/agent/{agentInstallInfoId}
-      description: "Uninstall an agent to collect server metrics during load testing such as CPU and memory."
-    LoadExecutionConfigs:
+      resourcePath: /api/v1/load/tests/run
+      description: "Start a load test using the provided load test configuration."
+    GetLoadTestExecutionState:
       method: get
-      resourcePath: /ant/api/v1/load/config
-      description: "Get all the load test execution configurations."
-    LoadExecutionConfig:
-      method: get
-      resourcePath: /ant/api/v1/load/config/{loadTestKey}
-      description: "Get a load test execution config by load test key."
-    LoadTestResult:
-      method: get
-      resourcePath: /ant/api/v1/load/result
-      description: "After start load test, get the result of load test."
-    LoadTestMetrics:
-      method: get
-      resourcePath: /ant/api/v1/load/result/metrics
-      description: "Get the result of metrics for target server."
-    StartLoadTest:
-      method: post
-      resourcePath: /ant/api/v1/load/start
-      description: "Start load test. Load Environment Id must be passed or Load Environment must be defined."
-    LoadExecutionStates:
-      method: get
-      resourcePath: /ant/api/v1/load/state
-      description: "Get all the load test execution state."
-    LoadExecutionState:
-      method: get
-      resourcePath: /ant/api/v1/load/state/{loadTestKey}
-      description: "Get a load test execution state by load test key."
+      resourcePath: /api/v1/load/tests/state/{loadTestKey}
+      description: "Retrieve a load test execution state by load test key."
     StopLoadTest:
       method: post
-      resourcePath: /ant/api/v1/load/stop
-      description: "After start load test, stop the load test by passing the load test key."
-    InstallLoadTester:
+      resourcePath: /api/v1/load/tests/stop
+      description: "Stop a running load test using the provided load test key."
+    GetPriceInfo:
+      method: get
+      resourcePath: /api/v1/price/info
+      description: "Retrieve pricing information for cloud resources based on specified parameters."
+    GetAllMonitoringAgentInfos:
+      method: get
+      resourcePath: /api/v1/load/monitoring/agents
+      description: "Retrieve monitoring agent information based on specified criteria."
+    GetLoadTestExecutionInfo:
+      method: get
+      resourcePath: /api/v1/load/tests/infos/{loadTestKey}
+      description: "Retrieve the load test execution state information for a specific load test key."
+    GetAllLoadTestExecutionState:
+      method: get
+      resourcePath: /api/v1/load/tests/state
+      description: "Retrieve a list of all load test execution states with pagination support."
+    InstallMonitoringAgent:
       method: post
-      resourcePath: /ant/api/v1/load/tester
-      description: "Install load test tester in the delivered load test environment"
-    UninstallLoadTester:
+      resourcePath: /api/v1/load/monitoring/agent/install
+      description: "Install a monitoring agent on specific MCIS."
+    UninstallMonitoringAgent:
+      method: post
+      resourcePath: /api/v1/load/monitoring/agents/uninstall
+      description: "Uninstall monitoring agents from specified VMs or all VMs in an MCIS."
+    GetLoadTestResult:
+      method: get
+      resourcePath: /api/v1/load/test/result
+      description: "Retrieve load test result based on provided parameters."
+    GetAllLoadTestExecutionInfos:
+      method: get
+      resourcePath: /api/v1/load/tests/infos
+      description: "Retrieve a list of all load test execution information with pagination support."
+    UpdateCostInfo:
+      method: post
+      resourcePath: /api/v1/cost/info
+      description: "Update cost information for specified resources, including details such as migration ID, cost resources, and additional AWS info if applicable. The request body must include a valid migration ID and a list of cost resources. If AWS-specific details are provided, ensure all required fields are populated."
+    GetCostInfo:
+      method: get
+      resourcePath: /api/v1/cost/info
+      description: "Retrieve cost information for specified parameters within a defined date range. The date range must be within a 6-month period. Optionally, you can specify cost aggregation type and date order for the results."
+    GetAllLoadGeneratorInstallInfo:
+      method: get
+      resourcePath: /api/v1/load/generators
+      description: "Retrieve a list of all installed load generators with pagination support."
+    InstallLoadGenerator:
+      method: post
+      resourcePath: /api/v1/load/generators
+      description: "Install a load generator either locally or remotely."
+    UninstallLoadGenerator:
       method: delete
-      resourcePath: /ant/api/v1/load/tester/{envId}
-      description: "Uninstall load test tester in the delivered load test environment"
+      resourcePath: /api/v1/load/generators/{loadGeneratorInstallInfoId}
+      description: "Uninstall a previously installed load generator."
