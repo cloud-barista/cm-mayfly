@@ -54,7 +54,7 @@ services:
       - simple
     healthcheck: # for etcd
       test: [ "CMD", "/usr/local/bin/etcd", "--version"]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -115,7 +115,7 @@ services:
     healthcheck: # for CB-Spider
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cb-spider:1024/spider/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://cb-spider:1024/spider/readyz" ]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -174,7 +174,7 @@ services:
     healthcheck: # for CB-Tumblebug
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cb-tumblebug:1323/tumblebug/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://cb-tumblebug:1323/tumblebug/readyz" ]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -195,7 +195,7 @@ services:
     healthcheck: # for cb-mapui
       #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
       test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -244,8 +244,8 @@ services:
       - BEETLE_SELF_ENDPOINT=localhost:8056
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
-      #test: [ "CMD", "curl", "-f", "http://localhost:1323/beetle/readyz" ]
-      interval: 1m
+      #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -293,48 +293,48 @@ services:
       # 8081 : Server / 8082 : Agent
       - "8081:8081"
       #- "8082:8082"
-    depends_on:
-      - cm-honeybee-agent
+    # depends_on:
+    #   - cm-honeybee-agent
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
-      - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
+      # - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz" ]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
     #network_mode: "host"
 
 
-  # **도커 이미지 필요 함**
-  # cm-honeybee Agent
-  # https://github.com/cloud-barista/cm-honeybee/tree/main/agent
-  # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
-  # See https://github.com/cloud-barista/cm-honeybee/blob/main/agent/docker-compose.yaml
-  cm-honeybee-agent:
-    #image: cloudbaristaorg/cm-honeybee-agent:0.2.0
-    #image: cm-honeybee-agent:latest
-    image: dev4unet/cm-honeybee-agent:0.2.0
-    container_name: cm-honeybee-agent    
-    restart: always
-    privileged: true
-    ports:
-      - "8082:8082"
-    volumes:
-      - ./tool/mayfly:/app/tool/mayfly
-      - ./data/cm-honeybee-agent/:/root/.cm-honeybee-agent:rw
-      - /etc/:/etc/:ro
-      - /usr/lib/os-release:/usr/lib/os-release:ro
-      - /var/:/var/:rw
-      - /run/:/run/:rw
-    healthcheck:
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee-agent:8082/honeybee-agent/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    #network_mode: "host"
+  # # **도커 이미지 필요 함**
+  # # cm-honeybee Agent
+  # # https://github.com/cloud-barista/cm-honeybee/tree/main/agent
+  # # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
+  # # See https://github.com/cloud-barista/cm-honeybee/blob/main/agent/docker-compose.yaml
+  # cm-honeybee-agent:
+  #   #image: cloudbaristaorg/cm-honeybee-agent:0.2.0
+  #   #image: cm-honeybee-agent:latest
+  #   image: dev4unet/cm-honeybee-agent:0.2.0
+  #   container_name: cm-honeybee-agent    
+  #   restart: always
+  #   privileged: true
+  #   ports:
+  #     - "8082:8082"
+  #   volumes:
+  #     - ./tool/mayfly:/app/tool/mayfly
+  #     - ./data/cm-honeybee-agent/:/root/.cm-honeybee-agent:rw
+  #     - /etc/:/etc/:ro
+  #     - /usr/lib/os-release:/usr/lib/os-release:ro
+  #     - /var/:/var/:rw
+  #     - /run/:/run/:rw
+  #   healthcheck:
+  #     test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee-agent:8082/honeybee-agent/readyz" ]
+  #     interval: 10m
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 10s
+  #   #network_mode: "host"
 
 
   # cm-cicada
@@ -355,7 +355,7 @@ services:
       - ./data/cm-cicada/CM-CICADA.db:/CM-CICADA.db:rw
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -403,10 +403,11 @@ services:
   # used by cm-cicada
   # See https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   airflow-server:
-      build:
-          context: ./conf/cm-cicada/_airflow ## build Docker file location
+      # build:
+      #     context: ./conf/cm-cicada/_airflow ## build Docker file location
       container_name: airflow-server
-      image: airflow-server:2.9.1
+      # image: airflow-server:2.9.1
+      image: cloudbaristaorg/airflow-server:edge
       restart: always
       ports:
           - "5555:5555"
@@ -456,27 +457,27 @@ services:
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-grasshopper/conf:/root/.cm-grasshopper/conf
-      #- ./data/cm-honeybee/:/root/.cm-grasshopper/:ro
-      - ./data/cm-honeybee/:/root/.cm-grasshopper/honeybee:ro
+      # #- ./data/cm-honeybee/:/root/.cm-grasshopper/:ro
+      # - ./data/cm-honeybee/:/root/.cm-grasshopper/honeybee:ro
       - ./data/cm-grasshopper/log:/root/.cm-grasshopper/log:rw
       #- ./conf/cm-grasshopper/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       #- ./data/cm-honeybee/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       - ./data/cm-grasshopper/software_temp:/software_temp:rw
       - ./data/cm-grasshopper/software_log:/software_log:rw
       - ./data/cm-grasshopper/playbook:/playbook/:rw
-    command: >
-      /bin/sh -c "
-        if [ ! -f /root/.cm-grasshopper/honeybee/honeybee.key ]; then
-          echo 'honeybee.key not found, exiting...';
-          exit 1;
-        else
-          cp /root/.cm-grasshopper/honeybee/honeybee.key /root/.cm-grasshopper/ && echo 'Finished copying the honeybee.key file.';
-          /cm-grasshopper;
-        fi
-      "
+    # command: >
+    #   /bin/sh -c "
+    #     if [ ! -f /root/.cm-grasshopper/honeybee/honeybee.key ]; then
+    #       echo 'honeybee.key not found, exiting...';
+    #       exit 1;
+    #     else
+    #       cp /root/.cm-grasshopper/honeybee/honeybee.key /root/.cm-grasshopper/ && echo 'Finished copying the honeybee.key file.';
+    #       /cm-grasshopper;
+    #     fi
+    #   "
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -508,7 +509,7 @@ services:
       - ANT_DATABASE_HOST=ant-postgres
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/api/v1/readyz" ]
-      interval: 1m
+      interval: 10m
       timeout: 5s
       retries: 5
       start_period: 10s
