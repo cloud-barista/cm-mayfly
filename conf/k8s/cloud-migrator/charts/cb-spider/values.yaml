@@ -1,0 +1,115 @@
+replicaCount: 1
+
+image:
+  repository: cloudbaristaorg/cb-spider
+  pullPolicy: Always
+  tag: "0.9.2"
+
+
+nameOverride: cb-spider
+fullnameOverride: cb-spider
+
+service:
+  type: NodePort
+  port: 1024
+  targetPort: 1024
+  nodePort: 31024
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /spider/readyz
+    port: 1024
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+readinessProbe:
+  httpGet:
+    path: /spider/readyz
+    port: 1024
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+volumes: 
+  - name: spider-volume-db
+    persistentVolumeClaim:
+      claimName: cb-spider
+  - name: spider-volume-config
+    configMap:
+      name: cb-spider
+
+volumeMounts: 
+  - name: spider-volume-db
+    mountPath: /root/go/src/github.com/cloud-barista/cb-spider/meta_db
+  - name: spider-volume-config
+    mountPath: /root/go/src/github.com/cloud-barista/cb-spider/conf
+
+persistence:
+  db:
+    enabled: true
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cb-spider
+
+
+env:
+  - name: SERVICE_ADDRESS
+    value: "cloud-migrator-cb-spider:1024"
+  - name: PLUGIN_SW
+    value: "OFF"
+  - name: API_USERNAME
+    value: ""
+  - name: API_PASSWORD
+    value: ""  
+  - name: CBSPIDER_ROOT
+    value: /root/go/src/github.com/cloud-barista/cb-spider  
+  - name: CBSTORE_ROOT
+    value: /root/go/src/github.com/cloud-barista/cb-spider
+  - name: SPIDER_LOG_LEVEL
+    value: error
+  - name: SPIDER_HISCALL_LOG_LEVEL
+    value: error
+  - name: CID_TRANSFORM_MODE
+    value: "ON"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+########################################
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 75
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

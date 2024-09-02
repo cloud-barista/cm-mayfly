@@ -1,0 +1,87 @@
+replicaCount: 1
+
+nameOverride: "tumblebug-etcd"
+fullnameOverride: "tumblebug-etcd"
+
+image:
+  repository: gcr.io/etcd-development/etcd
+  pullPolicy: IfNotPresent
+  tag: "v3.5.14"
+
+volumes: 
+  - name: tumblebug-etcd-db
+    persistentVolumeClaim:
+      claimName: tumblebug-etcd
+
+volumeMounts: 
+  - name: tumblebug-etcd-db
+    mountPath: /etcd-data
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 2379
+  targetPort: 2379
+  peerPort: 2380
+  peerTargetPort: 2380
+
+livenessProbe:
+  tcpSocket:
+    port: 2379
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+  
+readinessProbe:
+  tcpSocket:
+    port: 2379
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+persistence:
+  enabled: true
+  storageClass: "manual"
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  hostPath: /tmp/cloud-migrator/cb-spider
+
+########################################
+
+imagePullSecrets: []
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

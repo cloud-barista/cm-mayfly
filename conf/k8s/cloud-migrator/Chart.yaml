@@ -1,0 +1,13 @@
+apiVersion: v2
+name: cloud-migrator
+description: A Helm chart for Cloud-Migrator platform
+type: application
+version: 0.3.0
+appVersion: "0.3.0"
+dependencies:
+  - name: cb-spider
+    version: 0.9.2
+    condition: cb-spider.enabled
+  - name: cb-tumblebug
+    version: 0.9.7
+    condition: cb-tumblebug.enabled

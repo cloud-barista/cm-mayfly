@@ -1,0 +1,15 @@
+{{- if and (.Values.persistence.db.enabled) (eq "manual" .Values.persistence.db.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cb-spider.fullname" . }}
+spec:
+  capacity:
+    storage: {{ .Values.persistence.db.size }}
+  accessModes:
+    - {{ .Values.persistence.db.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.db.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.db.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end -}}

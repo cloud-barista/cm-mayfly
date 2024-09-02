@@ -1,0 +1,5 @@
+cb-spider:
+  enabled: true
+
+cb-tumblebug:
+  enabled: true

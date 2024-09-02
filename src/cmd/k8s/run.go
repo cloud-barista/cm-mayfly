@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/src/common"
@@ -30,26 +31,19 @@ var runCmd = &cobra.Command{
 					--k8sprovider=mcks
 					--k8sprovider=minikube
 					--k8sprovider=kubeadm
+
 					`)
 
 				return
 			}
 
-			// For Kubernetes 1.19 and above
+			helmChartPath := filepath.Dir(K8sFilePath)
+
 			cmdStr = fmt.Sprintf("kubectl create ns %s --dry-run=client -o yaml | kubectl apply -f -", CMK8sNamespace)
-			// For Kubernetes 1.18 and below
-			//cmdStr = fmt.Sprintf("kubectl create ns %s --dry-run -o yaml | kubectl apply -f -", common.CMK8sNamespace)
 			common.SysCall(cmdStr)
 
-			// cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s ../helm-chart --debug", common.CMK8sNamespace, common.CMHelmReleaseName, common.K8sFilePath)
-			// if strings.ToLower(k8sprovider) == "gke" {
-			// 	cmdStr += " --set metricServer.enabled=false"
-			// }
-			// //fmt.Println(cmdStr)
-			// common.SysCall(cmdStr)
-
 			if strings.ToLower(K8sprovider) == "gke" || strings.ToLower(K8sprovider) == "eks" || strings.ToLower(K8sprovider) == "aks" {
-				cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s ../helm-chart --debug", CMK8sNamespace, CMHelmReleaseName, K8sFilePath)
+				cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s %s", CMK8sNamespace, CMHelmReleaseName, K8sFilePath, helmChartPath)
 				cmdStr += " --set cb-restapigw.service.type=LoadBalancer"
 				cmdStr += " --set cb-webtool.service.type=LoadBalancer"
 
@@ -59,10 +53,9 @@ var runCmd = &cobra.Command{
 
 				common.SysCall(cmdStr)
 			} else {
-				cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s ../helm-chart --debug", CMK8sNamespace, CMHelmReleaseName, K8sFilePath)
+				cmdStr = fmt.Sprintf("helm install --namespace %s %s -f %s %s", CMK8sNamespace, CMHelmReleaseName, K8sFilePath, helmChartPath)
 				common.SysCall(cmdStr)
 			}
-
 		}
 
 	},
@@ -73,8 +66,8 @@ func init() {
 
 	pf := runCmd.PersistentFlags()
 	pf.StringVarP(&K8sFilePath, "file", "f", DefaultKubernetesConfig, "User-defined configuration file")
-	//pf.StringVarP(&K8sprovider, "k8sprovider", "", common.NotDefined, "Kind of Managed K8s services") //@todo
-
+	pf.StringVarP(&K8sprovider, "k8sprovider", "k", common.NotDefined, "Kind of Managed K8s services")
+	
 	// runCmd.MarkPersistentFlagRequired("k8sprovider")
 
 	//	cobra.MarkFlagRequired(pf, "file")

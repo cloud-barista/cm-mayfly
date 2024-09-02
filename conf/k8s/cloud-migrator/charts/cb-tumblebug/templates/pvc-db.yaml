@@ -1,0 +1,18 @@
+{{- if .Values.persistence.db.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cb-tumblebug.fullname" . }}-db
+  labels:
+    app: {{ template "cb-tumblebug.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.db.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.db.size | quote }}
+  storageClassName: {{ .Values.persistence.db.storageClass }}
+{{- end -}}
