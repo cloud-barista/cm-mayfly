@@ -1,19 +1,19 @@
 replicaCount: 1
 
 image:
-  repository: cloudbaristaorg/cm-honeybee
+  repository: cloudbaristaorg/cm-cicada
   pullPolicy: Always
   tag: "edge"
 
 
-nameOverride: cm-honeybee
-fullnameOverride: cm-honeybee
+nameOverride: cm-cicada
+fullnameOverride: cm-cicada
 
 service:
   type: NodePort
-  port: 8081
-  targetPort: 8081
-  nodePort: 31081
+  port: 8083
+  targetPort: 8083
+  nodePort: 31083
 
 resources:
   requests:
@@ -22,38 +22,37 @@ resources:
 
 livenessProbe:
   httpGet:
-    path: /honeybee/readyz
-    port: 8081
+    path: /cicada/readyz
+    port: 8083
   initialDelaySeconds: 30
   periodSeconds: 30
   timeoutSeconds: 3
 
 readinessProbe:
   httpGet:
-    path: /honeybee/readyz
-    port: 8081
+    path: /cicada/readyz
+    port: 8083
   initialDelaySeconds: 30
   periodSeconds: 30
   timeoutSeconds: 3
 
 volumes: 
-  - name: honeybee-volume-db
+  - name: cicada-volume-db
     persistentVolumeClaim:
-      claimName: cm-honeybee
-  - name: honeybee-volume-config
+      claimName: cm-cicada
+  - name: cicada-volume-config
     configMap:
-      name: cm-honeybee
+      name: cm-cicada
       items:
-        - key: cm-honeybee.yaml
-          path: cm-honeybee.yaml
+        - key: cm-cicada.yaml
+          path: cm-cicada.yaml
 
-## honeybee 는 /root/.cm-honeybee directory 에 private key, public key 그리고 sqlite db 파일이 존재함
 volumeMounts: 
-  - name: honeybee-volume-db
-    mountPath: /root/.cm-honeybee/
-  - name: honeybee-volume-config
-    mountPath: /conf/cm-honeybee.yaml
-    subPath: cm-honeybee.yaml
+  - name: cicada-volume-db
+    mountPath: /root/.cm-cicada/
+  - name: cicada-volume-config
+    mountPath: /conf/cm-cicada.yaml
+    subPath: cm-cicada.yaml
 
 persistence:
   db:
@@ -61,7 +60,7 @@ persistence:
     storageClass: "manual"
     accessMode: ReadWriteOnce
     size: 1Gi
-    hostPath: /tmp/cloud-migrator/cm-honeybee
+    hostPath: /tmp/cloud-migrator/cm-cicada/
 
 env: []
 
@@ -85,6 +84,7 @@ securityContext: {}
 
 ingress:
   enabled: false
+  hosts: []
 
 autoscaling:
   enabled: false

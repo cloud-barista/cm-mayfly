@@ -11,5 +11,8 @@ dependencies:
 - name: cm-honeybee
   repository: ""
   version: 0.2.1
-digest: sha256:20595ab309d1c831fce70df33b6465293c8f7243281c57fe73fda5ecb138439e
-generated: "2024-09-03T15:10:04.591441371+09:00"
+- name: cm-cicada
+  repository: ""
+  version: 0.2.0
+digest: sha256:c4a2fe6e5ce78aa075218c6999c1486cdc364d90f9db4bcbb9dd3b4a72e63376
+generated: "2024-09-03T17:26:16.092724332+09:00"

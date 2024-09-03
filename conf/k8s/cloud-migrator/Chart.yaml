@@ -13,7 +13,10 @@ dependencies:
     condition: cb-tumblebug.enabled
   - name: cm-beetle
     version: 0.2.0
-    condition: cb-beetle.enabled
+    condition: cm-beetle.enabled
   - name: cm-honeybee
     version: 0.2.1
-    condition: cb-honeybee.enabled
+    condition: cm-honeybee.enabled
+  - name: cm-cicada
+    version: 0.2.0
+    condition: cm-cicada.enabled

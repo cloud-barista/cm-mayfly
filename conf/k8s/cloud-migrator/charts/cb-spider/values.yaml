@@ -56,7 +56,7 @@ persistence:
     storageClass: "manual"
     accessMode: ReadWriteOnce
     size: 1Gi
-    hostPath: /tmp/cloud-migrator/cb-spider
+    hostPath: /tmp/cloud-migrator/cb-spider/
 
 
 env:

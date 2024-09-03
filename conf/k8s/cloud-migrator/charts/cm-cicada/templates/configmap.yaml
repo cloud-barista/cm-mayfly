@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cm-cicada.fullname" . }}
+  labels:
+    {{- include "cm-cicada.labels" .  | nindent 4 }}
+data:
+  cm-cicada.yaml: |-
+    {{ range .Files.Lines "files/conf/cm-cicada.yaml" }}
+    {{ . }}
+    {{ end }}

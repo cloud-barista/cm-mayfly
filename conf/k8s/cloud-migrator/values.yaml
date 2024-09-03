@@ -9,3 +9,6 @@ cm-beetle:
 
 cm-honeybee:
   enabled: true
+
+cm-cicada:
+  enabled: true
