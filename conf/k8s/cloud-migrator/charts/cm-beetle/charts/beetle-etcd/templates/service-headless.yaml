@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "beetle-etcd.fullname" . }}-headless
+  labels:
+    {{- include "beetle-etcd.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "beetle-etcd.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: peer
+      port: {{ .Values.service.peerPort }}
+      protocol: TCP
+      targetPort: {{ .Values.service.peerTargetPort }}

@@ -44,9 +44,6 @@ readinessProbe:
   timeoutSeconds: 3
   
 volumes: 
-  - name: tumblebug-volume-db
-    persistentVolumeClaim:
-      claimName: cb-tumblebug-db
   - name: tumblebug-volume-log
     persistentVolumeClaim:
       claimName: cb-tumblebug-log
@@ -55,8 +52,6 @@ volumes:
       name: cb-tumblebug
 
 volumeMounts: 
-  - name: tumblebug-volume-db
-    mountPath: /app/meta_db
   - name: tumblebug-volume-log
     mountPath: /app/log
   - name: tumblebug-volume-config
@@ -64,7 +59,7 @@ volumeMounts:
     
 persistence:
   db:
-    enabled: true
+    enabled: false
     storageClass: "manual"
     accessMode: ReadWriteOnce
     size: 1Gi

@@ -5,5 +5,8 @@ dependencies:
 - name: cb-tumblebug
   repository: ""
   version: 0.9.7
-digest: sha256:2061e15a09aaa2a2f3023b2b7d9288ea4f537b05941e16f83089242fa435ee8d
-generated: "2024-09-02T16:25:02.153476695+09:00"
+- name: cm-beetle
+  repository: ""
+  version: 0.2.0
+digest: sha256:49df2ca4542c9fc96d8f0c44b7f82bcd0c005462ac8d89f1f06aa537e2c298b2
+generated: "2024-09-03T13:41:10.325513571+09:00"

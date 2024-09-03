@@ -3,3 +3,6 @@ cb-spider:
 
 cb-tumblebug:
   enabled: true
+
+cm-beetle:
+  enabled: true

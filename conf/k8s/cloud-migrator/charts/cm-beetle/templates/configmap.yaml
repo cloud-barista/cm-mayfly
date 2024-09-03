@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cm-beetle.fullname" . }}
+  labels:
+    {{- include "cm-beetle.labels" .  | nindent 4 }}
+data:
+  config.yaml: |-
+    {{ range .Files.Lines "files/conf/config.yaml" }}
+    {{ . }}
+    {{ end }}
+  setup.env: |-
+    {{ range .Files.Lines "files/conf/setup.env" }}
+    {{ . }}
+    {{ end }}

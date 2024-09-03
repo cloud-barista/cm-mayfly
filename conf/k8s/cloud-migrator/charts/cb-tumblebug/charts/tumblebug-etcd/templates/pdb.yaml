@@ -7,4 +7,5 @@ metadata:
 spec:
   minAvailable: 1
   selector:
-    {{- include "tumblebug-etcd.selectorLabels" . | nindent 4 }}
+     matchLabels:
+      {{- include "tumblebug-etcd.selectorLabels" . | nindent 6 }}

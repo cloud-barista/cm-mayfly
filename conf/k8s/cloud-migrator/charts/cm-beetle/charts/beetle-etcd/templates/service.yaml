@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "beetle-etcd.fullname" . }}
+  labels:
+    {{- include "beetle-etcd.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: client
+  selector:
+    {{- include "beetle-etcd.selectorLabels" . | nindent 4 }}

@@ -11,3 +11,6 @@ dependencies:
   - name: cb-tumblebug
     version: 0.9.7
     condition: cb-tumblebug.enabled
+  - name: cm-beetle
+    version: 0.2.0
+    condition: cb-beetle.enabled
