@@ -1,0 +1,92 @@
+replicaCount: 1
+
+image:
+  repository: cloudbaristaorg/cm-honeybee
+  pullPolicy: Always
+  tag: "edge"
+
+
+nameOverride: cm-honeybee
+fullnameOverride: cm-honeybee
+
+service:
+  type: NodePort
+  port: 8081
+  targetPort: 8081
+  nodePort: 31081
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /honeybee/readyz
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+readinessProbe:
+  httpGet:
+    path: /honeybee/readyz
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+volumes: 
+  - name: honeybee-volume-db
+    persistentVolumeClaim:
+      claimName: cm-honeybee
+
+## honeybee 는 /root/.cm-honeybee directory 에 private key, public key 그리고 sqlite db 파일이 존재함
+volumeMounts: 
+  - name: honeybee-volume-db
+    mountPath: /root/.cm-honeybee/
+
+persistence:
+  db:
+    enabled: true
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-honeybee
+
+env: []
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+########################################
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 75
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

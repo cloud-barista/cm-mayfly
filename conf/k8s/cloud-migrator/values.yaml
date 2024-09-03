@@ -6,3 +6,6 @@ cb-tumblebug:
 
 cm-beetle:
   enabled: true
+
+cm-honeybee:
+  enabled: true

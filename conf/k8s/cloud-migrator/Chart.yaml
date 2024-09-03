@@ -14,3 +14,6 @@ dependencies:
   - name: cm-beetle
     version: 0.2.0
     condition: cb-beetle.enabled
+  - name: cm-honeybee
+    version: 0.2.1
+    condition: cb-honeybee.enabled

@@ -8,5 +8,8 @@ dependencies:
 - name: cm-beetle
   repository: ""
   version: 0.2.0
-digest: sha256:49df2ca4542c9fc96d8f0c44b7f82bcd0c005462ac8d89f1f06aa537e2c298b2
-generated: "2024-09-03T13:41:10.325513571+09:00"
+- name: cm-honeybee
+  repository: ""
+  version: 0.2.1
+digest: sha256:20595ab309d1c831fce70df33b6465293c8f7243281c57fe73fda5ecb138439e
+generated: "2024-09-03T15:10:04.591441371+09:00"
