@@ -1,18 +1,13 @@
-{{- if .Values.persistence.enabled }}
-kind: PersistentVolumeClaim
 apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "tumblebug-etcd.fullname" . }}
+  name: {{ .Release.Name }}-etcd-data
   labels:
-    app: {{ template "tumblebug-etcd.fullname" . }}
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    release: "{{ .Release.Name }}"
-    heritage: "{{ .Release.Service }}"
+    {{- include "tumblebug-etcd.labels" . | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode | quote }}
   resources:
     requests:
-      storage: {{ .Values.persistence.size | quote }}
-  storageClassName: {{ .Values.persistence.storageClass }}
-{{- end -}}
+      storage: {{ .Values.persistence.size }}
+  storageClassName: {{ .Values.persistence.storageClass | default "manual" }}

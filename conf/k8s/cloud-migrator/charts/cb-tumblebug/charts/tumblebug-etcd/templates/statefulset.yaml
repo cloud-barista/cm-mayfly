@@ -1,13 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "tumblebug-etcd.fullname" . }}
   labels:
     {{- include "tumblebug-etcd.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
+  serviceName: {{ include "tumblebug-etcd.fullname" . }}-headless
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "tumblebug-etcd.selectorLabels" . | nindent 6 }}
@@ -36,11 +35,16 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           command:
             - /usr/local/bin/etcd
           args:
             - --name
-            - s1
+            - {{ printf "$(MY_POD_NAME)" }}
             - --data-dir
             - /etcd-data
             - --listen-client-urls
@@ -50,11 +54,15 @@ spec:
             - --listen-peer-urls
             - http://0.0.0.0:2380
             - --initial-advertise-peer-urls
-            - http://0.0.0.0:2380
+            - http://$(MY_POD_NAME).{{ include "tumblebug-etcd.fullname" . }}-headless.cloud-migrator.svc.cluster.local:2380
             - --initial-cluster
-            - s1=http://0.0.0.0:2380
+            - {{$name := include "tumblebug-etcd.fullname" . }}
+              {{- $replicaCount := .Values.replicaCount | int }}
+              {{- range $i := until $replicaCount }}
+              {{- printf "%s-%d=http://%s-%d.%s-headless.cloud-migrator.svc.cluster.local:2380," $name $i $name $i $name }}
+              {{- end }}
             - --initial-cluster-token
-            - tkn
+            - etcd-cluster
             - --initial-cluster-state
             - new
             - --log-level
@@ -78,14 +86,9 @@ spec:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
-      volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+            - name: etcd-data
+              mountPath: /etcd-data
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -98,3 +101,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: etcd-data
+      spec:
+        accessModes:
+          - {{ .Values.persistence.accessMode | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+        storageClassName: {{ .Values.persistence.storageClass | default "manual" }}

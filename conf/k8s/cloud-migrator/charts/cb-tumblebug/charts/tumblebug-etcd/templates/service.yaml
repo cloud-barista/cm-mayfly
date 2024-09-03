@@ -11,9 +11,5 @@ spec:
       targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
       name: client
-    - port: {{ .Values.service.peerPort }}
-      targetPort: {{ .Values.service.peerTargetPort }}
-      protocol: TCP
-      name: peer
   selector:
     {{- include "tumblebug-etcd.selectorLabels" . | nindent 4 }}

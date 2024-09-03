@@ -6,8 +6,8 @@ image:
   tag: "0.9.7"
 
 imagePullSecrets: []
-nameOverride: "cb-tumblebug"
-fullnameOverride: "cb-tumblebug"
+nameOverride: cb-tumblebug
+fullnameOverride: cb-tumblebug
 
 serviceAccount:
   create: true
