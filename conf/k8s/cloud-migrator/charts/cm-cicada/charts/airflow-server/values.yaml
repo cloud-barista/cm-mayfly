@@ -69,18 +69,13 @@ persistence:
   size: 1Gi
   hostPath: /tmp/cloud-migrator/cm-cicada/airflow/server
 
-command:
-    - /bin/bash
-    
-args: 
-  - -c
-  - |
-    sleep 10 &&
-    rm -f airflow-webserver.pid &&
-    airflow db upgrade &&
-    airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin &&
-    airflow scheduler & airflow celery worker & airflow celery flower & airflow webserver &&
-    sleep infinity
+airflow:
+  username: airflow
+  password: airflow_pass
+  email: odt@test.com
+  firstname: Oncloud
+  lastname: DevTeam
+  role: Admin
 
 env: []
 ##############################################

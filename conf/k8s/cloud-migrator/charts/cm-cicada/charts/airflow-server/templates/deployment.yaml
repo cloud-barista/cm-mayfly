@@ -38,10 +38,21 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             {{- toYaml .Values.env | nindent 12 }}
-          command: 
-            {{- toYaml .Values.command | nindent 12 }}
+          command: ["/bin/bash", "-c"]
           args:
-            {{- toYaml .Values.args | nindent 12 }}
+            - |
+              sleep 15
+              rm -f airflow-webserver.pid
+              
+              airflow db upgrade
+              airflow users create --username {{ .Values.airflow.username }} --password {{ .Values.airflow.password }} --email {{ .Values.airflow.email }} --firstname {{ .Values.airflow.firstname }} --lastname {{ .Values.airflow.lastname }} --role {{ .Values.airflow.role }}
+              airflow webserver
+              airflow db init
+
+              airflow scheduler &
+              airflow celery worker &
+              airflow celery flower &
+              sleep infinity;
           ports:
             - name: server
               containerPort: {{ .Values.service.port }}

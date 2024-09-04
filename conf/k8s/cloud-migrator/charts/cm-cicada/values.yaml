@@ -46,6 +46,8 @@ volumes:
       items:
         - key: cm-cicada.yaml
           path: cm-cicada.yaml
+        - key: dags.py
+          path: dags.py
 
 volumeMounts: 
   - name: cicada-volume-db
@@ -53,6 +55,9 @@ volumeMounts:
   - name: cicada-volume-config
     mountPath: /conf/cm-cicada.yaml
     subPath: cm-cicada.yaml
+  - name: cicada-volume-config
+    mountPath: /usr/local/airflow/dags/dags.py
+    subPath: dags.py
 
 persistence:
   db:

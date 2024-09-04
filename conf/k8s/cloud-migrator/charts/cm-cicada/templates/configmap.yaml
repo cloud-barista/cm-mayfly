@@ -9,3 +9,7 @@ data:
     {{ range .Files.Lines "files/conf/cm-cicada.yaml" }}
     {{ . }}
     {{ end }}
+  dags.py: |-
+    {{ range .Files.Lines "files/airflow/dags/dags.py" }}
+    {{ . }}
+    {{ end }}
