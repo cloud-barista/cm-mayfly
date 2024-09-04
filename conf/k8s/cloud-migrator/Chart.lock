@@ -20,5 +20,8 @@ dependencies:
 - name: cm-ant
   repository: ""
   version: 0.2.2
-digest: sha256:3da5a97bd3de0732d89a4d37b42ac033d0c35e4802e3709af93b104ca96e783f
-generated: "2024-09-04T14:43:46.222277075+09:00"
+- name: cm-butterfly
+  repository: ""
+  version: 0.2.0
+digest: sha256:a8506df55128badb7be35af14bb95061e25ae235ceac58885a6912b9f331cd74
+generated: "2024-09-04T17:42:34.164152446+09:00"

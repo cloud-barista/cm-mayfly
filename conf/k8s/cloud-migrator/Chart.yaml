@@ -26,3 +26,6 @@ dependencies:
   - name: cm-ant
     version: 0.2.2
     condition: cm-ant.enabled
+  - name: cm-butterfly
+    version: 0.2.0
+    condition: cm-butterfly.enabled
