@@ -21,9 +21,18 @@ var runCmd = &cobra.Command{
 		} else {
 			//cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up -d", CMComposeProjectName, DockerFilePath)
 			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up ", CMComposeProjectName, DockerFilePath)
+
+			// If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
+			if len(args) > 0 {
+				cmdStr += args[0]
+
+				// Explicitly passing the service name as a filter (--service) option or argument would be fine.
+				// serviceName := args[0]
+				// cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s", CMComposeProjectName, DockerFilePath, serviceName)
+			}
+
 			fmt.Println(cmdStr)
 			common.SysCall(cmdStr)
-
 		}
 	},
 }

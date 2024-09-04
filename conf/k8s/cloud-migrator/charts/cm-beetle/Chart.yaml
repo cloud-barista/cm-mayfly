@@ -1,0 +1,9 @@
+apiVersion: v2
+name: cm-beetle
+description: CM-Beetle Helm chart for cloud migrator k8s cluster
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+dependencies:
+  - name: beetle-etcd
+    version: ~0.1.0

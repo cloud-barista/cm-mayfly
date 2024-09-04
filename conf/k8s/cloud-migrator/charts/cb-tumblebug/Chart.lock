@@ -1,0 +1,6 @@
+dependencies:
+- name: tumblebug-etcd
+  repository: ""
+  version: ~0.1.0
+digest: sha256:205a0a111f94c67c9353f3e9055bf99952dabfc291a853034fd167a69cd7242b
+generated: "2024-09-02T16:15:16.728304196+09:00"

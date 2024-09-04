@@ -1,0 +1,14 @@
+cb-spider:
+  enabled: true
+
+cb-tumblebug:
+  enabled: true
+
+cm-beetle:
+  enabled: true
+
+cm-honeybee:
+  enabled: true
+
+cm-cicada:
+  enabled: true

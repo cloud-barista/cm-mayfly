@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "airflow-server.fullname" . }}
+  labels:
+    {{- include "airflow-server.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      nodePort: {{ .Values.service.nodePort }}
+      protocol: TCP
+      name: server
+    - port: {{ .Values.service.flowerPort }}
+      targetPort: {{ .Values.service.flowerTargetPort }}
+      nodePort: {{ .Values.service.flowerNodePort }}
+      protocol: TCP
+      name: flower
+  selector:
+    {{- include "airflow-server.selectorLabels" . | nindent 4 }}

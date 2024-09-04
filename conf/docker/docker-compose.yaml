@@ -89,7 +89,8 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.9.1
+    #image: cloudbaristaorg/cb-spider:0.9.2
+    image: cloudbaristaorg/cb-spider:edge
     container_name: cb-spider
     platform: linux/amd64
     ports:
@@ -126,7 +127,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.9.0
+    # image: cloudbaristaorg/cb-tumblebug:0.9.8
+    image: cloudbaristaorg/cb-tumblebug:edge
     container_name: cb-tumblebug
     platform: linux/amd64
     ports:
@@ -184,7 +186,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.9.0
+    image: cloudbaristaorg/cb-mapui:0.9.3
     container_name: cb-mapui
     ports:
       - target: 1324
@@ -255,7 +257,8 @@ services:
   # https://github.com/cloud-barista/cm-butterfly
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly
   cm-butterfly:
-    image: cloudbaristaorg/cm-butterfly:0.2.0
+    # image: cloudbaristaorg/cm-butterfly:0.2.0
+    image: cloudbaristaorg/cm-butterfly:edge    
     container_name: cm-butterfly
     platform: linux/amd64
     restart: always
@@ -297,7 +300,7 @@ services:
     #   - cm-honeybee-agent
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
-      # - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
+      - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz" ]
       interval: 10m
@@ -307,7 +310,7 @@ services:
     #network_mode: "host"
 
 
-  # # **도커 이미지 필요 함**
+  # # **도커 구동 필요 없음**
   # # cm-honeybee Agent
   # # https://github.com/cloud-barista/cm-honeybee/tree/main/agent
   # # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
@@ -489,7 +492,9 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-ant
   cm-ant:
     container_name: cm-ant
-    image: cloudbaristaorg/cm-ant:0.2.1
+    # image: cloudbaristaorg/cm-ant:0.2.1
+    image: cloudbaristaorg/cm-ant:edge
+    
     platform: linux/amd64
     ports:
         - 8880:8880

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cb-spider.fullname" . }}
+  labels:
+    {{- include "cb-spider.labels" .  | nindent 4 }}
+data:
+  calllog_conf.yaml: |-
+    {{ range .Files.Lines "files/conf/calllog_conf.yaml" }}
+    {{ . }}
+    {{ end }}
+  cloud_conf.yaml: |-
+    {{ range .Files.Lines "files/conf/cloud_conf.yaml" }}
+    {{ . }}
+    {{ end }}
+  log_conf.yaml: |-
+    {{ range .Files.Lines "files/conf/log_conf.yaml" }}
+    {{ . }}
+    {{ end }}
+  store_conf.yaml: |-
+    {{ range .Files.Lines "files/conf/store_conf.yaml" }}
+    {{ . }}
+    {{ end }}

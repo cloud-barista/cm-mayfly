@@ -1,0 +1,18 @@
+dependencies:
+- name: cb-spider
+  repository: ""
+  version: 0.9.2
+- name: cb-tumblebug
+  repository: ""
+  version: 0.9.7
+- name: cm-beetle
+  repository: ""
+  version: 0.2.0
+- name: cm-honeybee
+  repository: ""
+  version: 0.2.1
+- name: cm-cicada
+  repository: ""
+  version: 0.2.0
+digest: sha256:c4a2fe6e5ce78aa075218c6999c1486cdc364d90f9db4bcbb9dd3b4a72e63376
+generated: "2024-09-03T17:26:16.092724332+09:00"
