@@ -37,9 +37,9 @@ readinessProbe:
   timeoutSeconds: 3
 
 volumes: 
-  - name: cicada-volume-db
-    persistentVolumeClaim:
-      claimName: cm-cicada
+  # - name: cicada-volume-db
+  #   persistentVolumeClaim:
+  #     claimName: cm-cicada
   - name: cicada-volume-config
     configMap:
       name: cm-cicada
@@ -50,8 +50,8 @@ volumes:
           path: dags.py
 
 volumeMounts: 
-  - name: cicada-volume-db
-    mountPath: /root/.cm-cicada/
+  # - name: cicada-volume-db
+  #   mountPath: /root/.cm-cicada/
   - name: cicada-volume-config
     mountPath: /conf/cm-cicada.yaml
     subPath: cm-cicada.yaml
@@ -61,7 +61,7 @@ volumeMounts:
 
 persistence:
   db:
-    enabled: true
+    enabled: false
     storageClass: "manual"
     accessMode: ReadWriteOnce
     size: 1Gi

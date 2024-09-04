@@ -61,7 +61,6 @@ volumeMounts:
     mountPath: /usr/local/airflow/sample_dags/beetle_test.py
     subPath: beetle_test.py
 
-
 persistence:
   enabled: false
   storageClass: "manual"
