@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cm-honeybee
+description: A Helm chart for cm-honeybee
+type: application
+version: 0.2.1
+appVersion: "0.2.1"

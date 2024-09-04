@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tumblebug-etcd.fullname" . }}-headless
+  labels:
+    {{- include "tumblebug-etcd.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "tumblebug-etcd.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: peer
+      port: {{ .Values.service.peerPort }}
+      protocol: TCP
+      targetPort: {{ .Values.service.peerTargetPort }}

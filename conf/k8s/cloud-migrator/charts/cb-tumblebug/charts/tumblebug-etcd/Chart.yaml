@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tumblebug-etcd
+description: A Helm chart for tumblebug etcd
+type: application
+version: 0.1.0
+appVersion: "3.5.14"

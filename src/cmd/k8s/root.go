@@ -8,24 +8,23 @@ import (
 
 	// "github.com/cm-mayfly/cm-mayfly/src/cmd"
 
+	"github.com/cm-mayfly/cm-mayfly/src/cmd"
 	"github.com/spf13/cobra"
 )
 
 var K8sprovider string
 
-// restCmd represents the rest command
 var k8sCmd = &cobra.Command{
 	Use:   "k8s",
 	Short: "Installing and managing Cloud-Migrator's infrastructure",
 	Long: `Build the environment of the infrastructure required for Cloud-Migrator and monitor the running status of the infrastructure.
 For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 
-- ./mayfly k8s run [-f ../helm-chart/values.yaml]
+- ./mayfly k8s run [-f ../conf/k8s/cloud-migrator/values.yaml]
 - ./mayfly k8s info
-- ./mayfly k8s update [-f ../helm-chart/values.yaml]
-- ./mayfly k8s stop [-f ../helm-chart/values.yaml]
-- ./mayfly k8s remove [-f ../helm-chart/values.yaml]
-
+- ./mayfly k8s update [-f ../conf/k8s/cloud-migrator/values.yaml]
+- ./mayfly k8s stop [-f ../conf/k8s/cloud-migrator/values.yaml]
+- ./mayfly k8s remove [-f ../conf/k8s/cloud-migrator/values.yaml]
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
@@ -34,7 +33,7 @@ For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 }
 
 func init() {
-	//cmd.RootCmd.AddCommand(k8sCmd) // @TODO - k8s 기본 작업 끝나고 주석 해제 필요
+	cmd.RootCmd.AddCommand(k8sCmd)
 
 	// Here you will define your flags and configuration settings.
 

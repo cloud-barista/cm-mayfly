@@ -1,0 +1,101 @@
+replicaCount: 1
+
+image:
+  repository: cloudbaristaorg/cm-cicada
+  pullPolicy: Always
+  tag: "edge"
+
+
+nameOverride: cm-cicada
+fullnameOverride: cm-cicada
+
+service:
+  type: NodePort
+  port: 8083
+  targetPort: 8083
+  nodePort: 31083
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /cicada/readyz
+    port: 8083
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+readinessProbe:
+  httpGet:
+    path: /cicada/readyz
+    port: 8083
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+volumes: 
+  - name: cicada-volume-db
+    persistentVolumeClaim:
+      claimName: cm-cicada
+  - name: cicada-volume-config
+    configMap:
+      name: cm-cicada
+      items:
+        - key: cm-cicada.yaml
+          path: cm-cicada.yaml
+
+volumeMounts: 
+  - name: cicada-volume-db
+    mountPath: /root/.cm-cicada/
+  - name: cicada-volume-config
+    mountPath: /conf/cm-cicada.yaml
+    subPath: cm-cicada.yaml
+
+persistence:
+  db:
+    enabled: true
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-cicada/
+
+env: []
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+########################################
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+  hosts: []
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 75
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

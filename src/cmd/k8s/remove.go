@@ -25,19 +25,7 @@ var removeCmd = &cobra.Command{
 			cmdStr = fmt.Sprintf("helm uninstall --namespace %s %s", CMK8sNamespace, CMHelmReleaseName)
 			common.SysCall(cmdStr)
 
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-spider -n %s", CMK8sNamespace)
-			common.SysCall(cmdStr)
-
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-tumblebug -n %s", CMK8sNamespace)
-			common.SysCall(cmdStr)
-
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-ladybug -n %s", CMK8sNamespace)
-			common.SysCall(cmdStr)
-
-			cmdStr = fmt.Sprintf("kubectl delete pvc cb-dragonfly -n %s", CMK8sNamespace)
-			common.SysCall(cmdStr)
-
-			cmdStr = fmt.Sprintf("kubectl delete pvc data-cm-mayfly-etcd-0 -n %s", CMK8sNamespace)
+			cmdStr = fmt.Sprintf("kubectl delete ns %s", CMK8sNamespace)
 			common.SysCall(cmdStr)
 		}
 

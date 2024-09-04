@@ -1,0 +1,18 @@
+{{- if .Values.persistence.log.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cb-tumblebug.fullname" . }}-log
+  labels:
+    app: {{ template "cb-tumblebug.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.log.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.log.size | quote }}
+  storageClassName: {{ .Values.persistence.log.storageClass }}
+{{- end -}}

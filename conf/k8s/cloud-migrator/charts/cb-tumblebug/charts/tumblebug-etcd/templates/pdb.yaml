@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "tumblebug-etcd.fullname" . }}
+  labels:
+    {{- include "tumblebug-etcd.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+     matchLabels:
+      {{- include "tumblebug-etcd.selectorLabels" . | nindent 6 }}

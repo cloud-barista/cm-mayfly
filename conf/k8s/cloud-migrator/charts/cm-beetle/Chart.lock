@@ -1,0 +1,6 @@
+dependencies:
+- name: beetle-etcd
+  repository: ""
+  version: ~0.1.0
+digest: sha256:2502ce449832072a010f882bbd20f0571bbc1ec89f29e8144f80ab0adfc3fd40
+generated: "2024-09-03T17:27:05.043242923+09:00"

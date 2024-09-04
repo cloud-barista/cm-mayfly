@@ -1,0 +1,119 @@
+replicaCount: 1
+
+image:
+  repository: mysql
+  pullPolicy: IfNotPresent
+  tag: "8.0-debian"
+
+imagePullSecrets: []
+nameOverride: "airflow-mysql"
+fullnameOverride: "airflow-mysql"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 3306
+  targetPort: 3306
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  exec:
+    command:
+      - mysqladmin
+      - ping
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+    
+readinessProbe:
+  exec:
+    command:
+      - mysqladmin
+      - ping
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+
+volumes:
+  - name: airflow-mysql-volume
+    persistentVolumeClaim:
+      claimName: airflow-mysql
+  - name: airflow-mysql-config
+    configMap:
+      name: airflow-mysql
+      items:
+        - key: create_airflow_db.sql
+          path: create_airflow_db.sql
+
+volumeMounts: 
+  - name: airflow-mysql-volume
+    mountPath: /var/lib/mysql
+  - name: airflow-mysql-config
+    mountPath: /docker-entrypoint-initdb.d/create_airflow_db.sql
+    subPath: create_airflow_db.sql
+    readOnly: true
+
+persistence:
+  enabled: true
+  storageClass: "manual"
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  hostPath: /tmp/cloud-migrator/cm-cicada/airflow/mysql
+
+securityContext: 
+  capabilities:
+    add:
+      - SYS_NICE
+
+env: 
+  - name: MYSQL_ROOT_PASSWORD
+    value: airflow_pass
+  - name: MYSQL_USER
+    value: airflow
+  - name: MYSQL_PASSWORD
+    value: airflow_pass
+  - name: MYSQL_DATABASE
+    value: airflow
+  
+
+##########################################################
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

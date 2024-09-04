@@ -1,0 +1,9 @@
+apiVersion: v2
+name: cb-tumblebug
+description: A Helm chart for cb-tumblebug
+type: application
+version: 0.9.7
+appVersion: "0.9.7"
+dependencies:
+  - name: tumblebug-etcd
+    version: ~0.1.0
