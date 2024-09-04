@@ -49,12 +49,21 @@ volumes:
   - name: beetle-volume-config
     configMap:
       name: cm-beetle
+      items:
+        - key: config.yaml
+          path: config.yaml
+        - key: setup.env
+          path: setup.env
 
 volumeMounts: 
   - name: beetle-volume-log
     mountPath: /app/log
   - name: beetle-volume-config
-    mountPath: /app/conf
+    mountPath: /app/conf/config.yaml
+    subPath: config.yaml
+  - name: beetle-volume-config
+    mountPath: /app/conf/setup.env
+    subPath: setup.env
     
 persistence:
   db:

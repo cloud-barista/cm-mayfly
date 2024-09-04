@@ -1,0 +1,130 @@
+replicaCount: 1
+
+image:
+  repository: cloudbaristaorg/cm-ant
+  pullPolicy: Always
+  tag: "edge"
+
+nameOverride: cm-ant
+fullnameOverride: cm-ant
+
+service:
+  type: NodePort
+  port: 8880
+  targetPort: 8880
+  nodePort: 31080
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /ant/api/v1/readyz
+    port: 8880
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+readinessProbe:
+  httpGet:
+    path: /ant/api/v1/readyz
+    port: 8880
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+volumes: 
+  - name: ant-volume-result
+    persistentVolumeClaim:
+      claimName: cm-ant-result
+
+volumeMounts: 
+  - name: ant-volume-result
+    mountPath: /app/result
+
+persistence:
+  db:
+    enabled: false
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-ant/db
+  result:
+    enabled: true
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-ant/result
+
+env:
+  - name: ANT_SPIDER_HOST
+    value: http://cb-spider
+  - name: ANT_TUMBLEBUG_HOST
+    value: http://cb-tumblebug
+  - name: ANT_DATABASE_HOST
+    value: "cm-ant-db"
+  - name: ANT_DATABASE_PORT
+    value: "5432"
+  - name: ANT_DATABASE_USER
+    value: "cm-ant-user"
+  - name: ANT_DATABASE_PASSWORD
+    value: "cm-ant-secret"
+  - name: ANT_DATABASE_NAME
+    value: "cm-ant-db"
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+########################################
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 75
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+###############################################################
+postgresql:
+  volumePermissions:
+    enabled: true
+
+  nameOverride: cm-ant-db
+  fullnameOverride: cm-ant-db
+  global:
+    postgresql:
+      auth:
+        username: cm-ant-user
+        password: cm-ant-secret
+        database: cm-ant-db
+
+  primary:
+    persistence:
+      enabled: false
+      existingClaim: "cm-ant-db"
+###############################################################

@@ -43,17 +43,17 @@ readinessProbe:
   periodSeconds: 10
   timeoutSeconds: 3
 
-volumes:
-  - name: airflow-redis-volume
-    persistentVolumeClaim:
-      claimName: airflow-redis
+volumes: []
+  # - name: airflow-redis-volume
+  #   persistentVolumeClaim:
+  #     claimName: airflow-redis
 
-volumeMounts: 
-  - name: airflow-redis-volume
-    mountPath: /data
+volumeMounts: []
+  # - name: airflow-redis-volume
+  #   mountPath: /data
 
 persistence:
-  enabled: true
+  enabled: false
   storageClass: "manual"
   accessMode: ReadWriteOnce
   size: 1Gi

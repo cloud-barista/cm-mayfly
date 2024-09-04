@@ -1,0 +1,81 @@
+{{- if .Values.persistence.db.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-db
+  labels:
+    app: {{ template "cm-grasshopper.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.db.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.db.size | quote }}
+  storageClassName: {{ .Values.persistence.db.storageClass }}
+{{- end }}
+
+---
+
+{{- if .Values.persistence.swtemp.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-swtemp
+  labels:
+    app: {{ template "cm-grasshopper.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.swtemp.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.swtemp.size | quote }}
+  storageClassName: {{ .Values.persistence.swtemp.storageClass }}
+{{- end }}
+
+---
+
+{{- if .Values.persistence.swlog.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-swlog
+  labels:
+    app: {{ template "cm-grasshopper.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.swlog.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.swlog.size | quote }}
+  storageClassName: {{ .Values.persistence.swlog.storageClass }}
+{{- end }}
+
+---
+
+{{- if .Values.persistence.playbook.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-playbook
+  labels:
+    app: {{ template "cm-grasshopper.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.playbook.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.playbook.size | quote }}
+  storageClassName: {{ .Values.persistence.playbook.storageClass }}
+{{- end }}
