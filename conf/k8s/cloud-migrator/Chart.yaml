@@ -20,3 +20,9 @@ dependencies:
   - name: cm-cicada
     version: 0.2.0
     condition: cm-cicada.enabled
+  - name: cm-grasshopper
+    version: 0.2.0
+    condition: cm-grasshopper.enabled
+  - name: cm-ant
+    version: 0.2.2
+    condition: cm-ant.enabled

@@ -37,9 +37,9 @@ readinessProbe:
   timeoutSeconds: 3
 
 volumes: 
-  - name: honeybee-volume-db
-    persistentVolumeClaim:
-      claimName: cm-honeybee
+  # - name: honeybee-volume-db
+  #   persistentVolumeClaim:
+  #     claimName: cm-honeybee
   - name: honeybee-volume-config
     configMap:
       name: cm-honeybee
@@ -49,15 +49,15 @@ volumes:
 
 ## honeybee 는 /root/.cm-honeybee directory 에 private key, public key 그리고 sqlite db 파일이 존재함
 volumeMounts: 
-  - name: honeybee-volume-db
-    mountPath: /root/.cm-honeybee/
+  # - name: honeybee-volume-db
+  #   mountPath: /root/.cm-honeybee/
   - name: honeybee-volume-config
     mountPath: /conf/cm-honeybee.yaml
     subPath: cm-honeybee.yaml
 
 persistence:
   db:
-    enabled: true
+    enabled: false
     storageClass: "manual"
     accessMode: ReadWriteOnce
     size: 1Gi

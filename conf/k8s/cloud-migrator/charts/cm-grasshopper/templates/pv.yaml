@@ -1,0 +1,69 @@
+{{- if and (.Values.persistence.db.enabled) (eq "manual" .Values.persistence.db.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-db
+spec:
+  capacity:
+    storage: {{ .Values.persistence.db.size }}
+  accessModes:
+    - {{ .Values.persistence.db.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.db.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.db.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end }}
+
+---
+
+{{- if and (.Values.persistence.swtemp.enabled) (eq "manual" .Values.persistence.swtemp.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-swtemp
+spec:
+  capacity:
+    storage: {{ .Values.persistence.swtemp.size }}
+  accessModes:
+    - {{ .Values.persistence.swtemp.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.swtemp.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.swtemp.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end }}
+
+---
+
+{{- if and (.Values.persistence.swlog.enabled) (eq "manual" .Values.persistence.swlog.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-swlog
+spec:
+  capacity:
+    storage: {{ .Values.persistence.swlog.size }}
+  accessModes:
+    - {{ .Values.persistence.swlog.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.swlog.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.swlog.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end }}
+
+---
+
+{{- if and (.Values.persistence.playbook.enabled) (eq "manual" .Values.persistence.playbook.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}-playbook
+spec:
+  capacity:
+    storage: {{ .Values.persistence.playbook.size }}
+  accessModes:
+    - {{ .Values.persistence.playbook.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.playbook.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.playbook.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end }}

@@ -12,3 +12,9 @@ cm-honeybee:
 
 cm-cicada:
   enabled: true
+
+cm-grasshopper:
+  enabled: true
+
+cm-ant:
+  enabled: true

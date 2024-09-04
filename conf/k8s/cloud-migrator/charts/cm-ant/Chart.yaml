@@ -1,0 +1,11 @@
+apiVersion: v2
+name: cm-ant
+description: A Helm chart for cm-ant
+type: application
+version: 0.2.2
+appVersion: "edge"
+
+dependencies:
+  - name: postgresql
+    version: 15.5.22
+    repository: "https://charts.bitnami.com/bitnami"
