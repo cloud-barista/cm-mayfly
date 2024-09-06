@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "airflow-mysql.fullname" . }}
+  labels:
+    {{- include "airflow-mysql.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 0  # 실패 시 재시도 없음
+  activeDeadlineSeconds: 30  # 최대 1시간 실행
+  ttlSecondsAfterFinished: 30  # Job 완료 후 1시간 후 자동 삭제
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: check-empty-dir
+          image: busybox
+          command: ['sh', '-c', 'if [ "$(ls -A /var/lib/mysql)" ]; then echo "Directory not empty"; exit 1; else echo "Directory empty, running initialization";  fi']
+          volumeMounts:
+          - name: airflow-mysql-volume
+            mountPath: /var/lib/mysql
+      containers:
+      - name: airflow-mysql-init-container
+        image: mysql:8.0-debian
+        env: 
+        - name: MYSQL_ROOT_PASSWORD
+          value: airflow_pass
+        - name: MYSQL_USER
+          value: airflow
+        - name: MYSQL_PASSWORD
+          value: airflow_pass
+        volumeMounts:
+          - name: airflow-mysql-volume
+            mountPath: /var/lib/mysql
+          - name: airflow-mysql-config
+            mountPath: /docker-entrypoint-initdb.d/create_airflow_db.sql
+            subPath: create_airflow_db.sql
+            readOnly: true
+      volumes:
+      - name: airflow-mysql-volume
+        persistentVolumeClaim:
+          claimName: airflow-mysql
+      - name: airflow-mysql-config
+        configMap:
+          name: airflow-mysql
+          items:
+            - key: create_airflow_db.sql
+              path: create_airflow_db.sql

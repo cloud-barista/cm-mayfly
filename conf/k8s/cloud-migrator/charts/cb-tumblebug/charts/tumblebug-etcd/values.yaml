@@ -43,7 +43,7 @@ persistence:
   enabled: true
   storageClass: "manual"
   accessMode: ReadWriteOnce
-  size: 2Gi
+  size: 1Gi
   hostPath: /tmp/cloud-migrator/cb-tumblebug/etcd/data
 
 ########################################

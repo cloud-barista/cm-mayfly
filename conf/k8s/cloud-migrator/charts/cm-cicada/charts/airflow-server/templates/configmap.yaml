@@ -6,18 +6,18 @@ metadata:
     {{- include "airflow-server.labels" .  | nindent 4 }}
 data:
   airflow.cfg: |-
-    {{ range .Files.Lines "files/airflow-home/airflow.cfg" }}
+    {{ range .Files.Lines "files/airflow/airflow.cfg" }}
     {{ . }}
     {{ end }}
   dags.py: |-
-    {{ range .Files.Lines "files/airflow-home/dags/dags.py" }}
+    {{ range .Files.Lines "files/airflow/dags/dags.py" }}
     {{ . }}
     {{ end }}
   json_http_request_operator.py: |-
-    {{ range .Files.Lines "files/airflow-home/operators/json_http_request_operator.py" }}
+    {{ range .Files.Lines "files/airflow/operators/json_http_request_operator.py" }}
     {{ . }}
     {{ end }}
   beetle_test.py: |-
-    {{ range .Files.Lines "files/airflow-home/sample_dags/beetle_test.py" }}
+    {{ range .Files.Lines "files/airflow/sample_dags/beetle_test.py" }}
     {{ . }}
     {{ end }}

@@ -14,5 +14,14 @@ dependencies:
 - name: cm-cicada
   repository: ""
   version: 0.2.0
-digest: sha256:c4a2fe6e5ce78aa075218c6999c1486cdc364d90f9db4bcbb9dd3b4a72e63376
-generated: "2024-09-03T17:26:16.092724332+09:00"
+- name: cm-grasshopper
+  repository: ""
+  version: 0.2.0
+- name: cm-ant
+  repository: ""
+  version: 0.2.2
+- name: cm-butterfly
+  repository: ""
+  version: 0.2.0
+digest: sha256:a8506df55128badb7be35af14bb95061e25ae235ceac58885a6912b9f331cd74
+generated: "2024-09-04T17:42:34.164152446+09:00"

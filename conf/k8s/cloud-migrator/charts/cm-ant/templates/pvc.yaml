@@ -1,0 +1,39 @@
+{{- if .Values.persistence.db.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cm-ant.fullname" . }}-db
+  labels:
+    app: {{ template "cm-ant.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.db.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.db.size | quote }}
+  storageClassName: {{ .Values.persistence.db.storageClass }}
+{{- end }}
+
+---
+
+{{- if .Values.persistence.result.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cm-ant.fullname" . }}-result
+  labels:
+    app: {{ template "cm-ant.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.result.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.result.size | quote }}
+  storageClassName: {{ .Values.persistence.result.storageClass }}
+{{- end }}

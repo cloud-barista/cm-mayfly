@@ -44,9 +44,9 @@ readinessProbe:
   timeoutSeconds: 3
 
 volumes:
-  - name: airflow-mysql-volume
-    persistentVolumeClaim:
-      claimName: airflow-mysql
+  # - name: airflow-mysql-volume
+  #   persistentVolumeClaim:
+  #     claimName: airflow-mysql
   - name: airflow-mysql-config
     configMap:
       name: airflow-mysql
@@ -55,15 +55,15 @@ volumes:
           path: create_airflow_db.sql
 
 volumeMounts: 
-  - name: airflow-mysql-volume
-    mountPath: /var/lib/mysql
+  # - name: airflow-mysql-volume
+  #   mountPath: /var/lib/mysql
   - name: airflow-mysql-config
     mountPath: /docker-entrypoint-initdb.d/create_airflow_db.sql
     subPath: create_airflow_db.sql
     readOnly: true
 
 persistence:
-  enabled: true
+  enabled: false
   storageClass: "manual"
   accessMode: ReadWriteOnce
   size: 1Gi

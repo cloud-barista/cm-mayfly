@@ -1,0 +1,133 @@
+replicaCount: 1
+
+image:
+  repository: cloudbaristaorg/cm-grasshopper
+  pullPolicy: Always
+  tag: "edge"
+
+
+nameOverride: cm-grasshopper
+fullnameOverride: cm-grasshopper
+
+service:
+  type: NodePort
+  port: 8084
+  targetPort: 8084
+  nodePort: 31084
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /grasshopper/readyz
+    port: 8084
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+readinessProbe:
+  httpGet:
+    path: /grasshopper/readyz
+    port: 8084
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+volumes: 
+  # - name: grasshopper-volume-db
+  #   persistentVolumeClaim:
+  #     claimName: cm-grasshopper-db
+  - name: grasshopper-volume-swtemp
+    persistentVolumeClaim:
+      claimName: cm-grasshopper-swtemp
+  - name: grasshopper-volume-swlog
+    persistentVolumeClaim:
+      claimName: cm-grasshopper-swlog
+  - name: grasshopper-volume-playbook
+    persistentVolumeClaim:
+      claimName: cm-grasshopper-playbook
+  - name: grasshopper-volume-config
+    configMap:
+      name: cm-grasshopper
+      items:
+        - key: cm-grasshopper.yaml
+          path: cm-grasshopper.yaml
+
+volumeMounts: 
+  # - name: grasshopper-volume-db
+  #   mountPath: /root/.cm-grasshopper/
+  - name: grasshopper-volume-swtemp
+    mountPath: /software_temp/
+  - name: grasshopper-volume-swlog
+    mountPath: /software_log/
+  - name: grasshopper-volume-playbook
+    mountPath: /playbook/
+  - name: grasshopper-volume-config
+    mountPath: /conf/cm-grasshopper.yaml
+    subPath: cm-grasshopper.yaml
+
+persistence:
+  db:
+    enabled: false
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-grasshopper/
+  swtemp:
+    enabled: true
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-grasshopper/swtemp/
+  swlog:
+    enabled: true
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-grasshopper/swlog/
+  playbook:
+    enabled: true
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-grasshopper/playbook/
+
+env: []
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+########################################
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 75
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,33 @@
+{{- if and (.Values.persistence.db.enabled) (eq "manual" .Values.persistence.db.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cm-ant.fullname" . }}-db
+spec:
+  capacity:
+    storage: {{ .Values.persistence.db.size }}
+  accessModes:
+    - {{ .Values.persistence.db.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.db.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.db.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end }}
+
+---
+
+{{- if and (.Values.persistence.result.enabled) (eq "manual" .Values.persistence.result.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cm-ant.fullname" . }}-result
+spec:
+  capacity:
+    storage: {{ .Values.persistence.result.size }}
+  accessModes:
+    - {{ .Values.persistence.result.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.result.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.result.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end }}
