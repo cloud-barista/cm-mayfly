@@ -17,7 +17,7 @@
 아래 방법으로 실행 파일을 다운로드하거나 README를 참고하여 최신 소스 코드를 빌드하세요.   
 
 ```bash
-$ wget https://github.com/cloud-barista/cm-mayfly/raw/main/bin/mayfly
+$ wget https://github.com/cloud-barista/cm-mayfly/raw/main/mayfly
 $ chmod +x mayfly
 ```
 

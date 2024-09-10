@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
@@ -23,7 +24,8 @@ var updateCmd = &cobra.Command{
 		} else {
 			var cmdStr string
 
-			cmdStr = fmt.Sprintf("helm upgrade --namespace %s --install %s -f %s ../helm-chart", CMK8sNamespace, CMHelmReleaseName, K8sFilePath)
+			helmChartPath := filepath.Dir(K8sFilePath)
+			cmdStr = fmt.Sprintf("helm upgrade --namespace %s --install %s -f %s %s", CMK8sNamespace, CMHelmReleaseName, K8sFilePath, helmChartPath)
 			if strings.ToLower(K8sprovider) == "gke" || strings.ToLower(K8sprovider) == "aks" {
 				cmdStr += " --set metricServer.enabled=false"
 			}

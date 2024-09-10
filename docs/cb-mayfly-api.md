@@ -13,11 +13,11 @@
 ## 실행 환경 구축
 `cm-mayfly`의 `api` 서브 커맨드를 사용하기 위해서는 실행 파일을 다운로드하거나 소스를 빌드하는 방법이 있습니다.
 
-`./bin` 폴더에 실행 파일이 있으며, `./conf` 폴더에 `api.yaml` 환경 설정 파일이 존재하므로 간단하게는 git에서 소스를 내려 받은 후 `./bin` 폴더에서 실행하면 됩니다.
+최상위 폴더에 실행 파일이 있으며, `./conf` 폴더에 `api.yaml` 환경 설정 파일이 존재하므로 git에서 소스를 내려 받은 후 mayfly 폴더에서 실행하면 됩니다.
 
 ```bash
 $ git clone https://github.com/cm-mayfly/cm-mayfly.git
-$ cd cm-mayfly/bin
+$ cd cm-mayfly
 $ ./mayfly api
 ```
 

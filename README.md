@@ -61,7 +61,7 @@ For now, it supports docker / rest / api sub-commands.
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
 ```
-cm-mayfly/bin$ ./mayfly -h
+cm-mayfly$ ./mayfly -h
 
 The mayfly is a tool to operate Cloud-Migrator system.
 

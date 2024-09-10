@@ -13,7 +13,7 @@ WORKDIR /app
 
 # 파일 복사 src -> dest
 COPY conf /app/conf
-COPY bin /app/bin
+COPY ./mayfly /app/
 
 # 도커 컨테이너에서 실행할 명령어 (이미지 빌드시 실행)
 #RUN 설치 명령어

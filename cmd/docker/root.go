@@ -17,11 +17,11 @@ var dockerCmd = &cobra.Command{
 	Long: `Build the environment of the infrastructure required for cloud-migrator and monitor the running status of the infrastructure.
 For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 
-- ./mayfly docker pull [-f ../docker-compose-mode-files/docker-compose.yaml]
-- ./mayfly docker run [-f ../docker-compose-mode-files/docker-compose.yaml]
+- ./mayfly docker pull [-f ./conf/docker/docker-compose.yaml]
+- ./mayfly docker run [-f ./conf/docker/docker-compose.yaml]
 - ./mayfly docker info
-- ./mayfly docker stop [-f ../docker-compose-mode-files/docker-compose.yaml]
-- ./mayfly docker remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i
+- ./mayfly docker stop [-f ./conf/docker/docker-compose.yaml]
+- ./mayfly docker remove [-f ./conf/docker/docker-compose.yaml] -v -i
 
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {

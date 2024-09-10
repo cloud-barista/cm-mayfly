@@ -12,7 +12,7 @@ var DockerFilePath string
 const (
 
 	// DefaultDockerComposeConfig is a variable that holds path to docker-compose.yaml
-	//DefaultDockerComposeConfig = "../docker-compose-mode-files/docker-compose.yaml"
+	//DefaultDockerComposeConfig = "./conf/docker/docker-compose.yaml"
 	DefaultDockerComposeConfig = "./conf/docker/docker-compose.yaml"
 
 	// CMComposeProjectName is a variable that holds the default COMPOSE_PROJECT_NAME that CM-Mayfly will use.
