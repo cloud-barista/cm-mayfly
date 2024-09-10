@@ -3,7 +3,7 @@ package docker
 import (
 	"fmt"
 
-	"github.com/cm-mayfly/cm-mayfly/src/common"
+	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
 

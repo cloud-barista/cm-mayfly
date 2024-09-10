@@ -16,11 +16,11 @@ limitations under the License.
 package main
 
 import (
-	"github.com/cm-mayfly/cm-mayfly/src/cmd"
-	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/apicall"
-	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/docker"
-	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/k8s"
-	_ "github.com/cm-mayfly/cm-mayfly/src/cmd/rest"
+	"github.com/cm-mayfly/cm-mayfly/cmd"
+	_ "github.com/cm-mayfly/cm-mayfly/cmd/apicall"
+	_ "github.com/cm-mayfly/cm-mayfly/cmd/docker"
+	_ "github.com/cm-mayfly/cm-mayfly/cmd/k8s"
+	_ "github.com/cm-mayfly/cm-mayfly/cmd/rest"
 )
 
 func main() {

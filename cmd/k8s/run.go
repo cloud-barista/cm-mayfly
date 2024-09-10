@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cm-mayfly/cm-mayfly/src/common"
+	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +67,7 @@ func init() {
 	pf := runCmd.PersistentFlags()
 	pf.StringVarP(&K8sFilePath, "file", "f", DefaultKubernetesConfig, "User-defined configuration file")
 	pf.StringVarP(&K8sprovider, "k8sprovider", "k", common.NotDefined, "Kind of Managed K8s services")
-	
+
 	// runCmd.MarkPersistentFlagRequired("k8sprovider")
 
 	//	cobra.MarkFlagRequired(pf, "file")

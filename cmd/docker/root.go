@@ -1,30 +1,28 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 */
-package k8s
+package docker
 
 import (
 	"fmt"
 
-	// "github.com/cm-mayfly/cm-mayfly/src/cmd"
-
-	"github.com/cm-mayfly/cm-mayfly/src/cmd"
+	"github.com/cm-mayfly/cm-mayfly/cmd"
 	"github.com/spf13/cobra"
 )
 
-var K8sprovider string
-
-var k8sCmd = &cobra.Command{
-	Use:   "k8s",
-	Short: "Installing and managing Cloud-Migrator's infrastructure",
-	Long: `Build the environment of the infrastructure required for Cloud-Migrator and monitor the running status of the infrastructure.
+// restCmd represents the rest command
+var dockerCmd = &cobra.Command{
+	Use:   "docker",
+	Short: "Installing and managing cloud-migrator's infrastructure",
+	Long: `Build the environment of the infrastructure required for cloud-migrator and monitor the running status of the infrastructure.
 For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 
-- ./mayfly k8s run [-f ../conf/k8s/cloud-migrator/values.yaml]
-- ./mayfly k8s info
-- ./mayfly k8s update [-f ../conf/k8s/cloud-migrator/values.yaml]
-- ./mayfly k8s stop [-f ../conf/k8s/cloud-migrator/values.yaml]
-- ./mayfly k8s remove [-f ../conf/k8s/cloud-migrator/values.yaml]
+- ./mayfly docker pull [-f ../docker-compose-mode-files/docker-compose.yaml]
+- ./mayfly docker run [-f ../docker-compose-mode-files/docker-compose.yaml]
+- ./mayfly docker info
+- ./mayfly docker stop [-f ../docker-compose-mode-files/docker-compose.yaml]
+- ./mayfly docker remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i
+
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
@@ -33,7 +31,7 @@ For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(k8sCmd)
+	cmd.RootCmd.AddCommand(dockerCmd)
 
 	// Here you will define your flags and configuration settings.
 

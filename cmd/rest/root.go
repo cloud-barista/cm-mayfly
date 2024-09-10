@@ -9,7 +9,7 @@ import (
 
 	"strings"
 
-	"github.com/cm-mayfly/cm-mayfly/src/cmd"
+	"github.com/cm-mayfly/cm-mayfly/cmd"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"

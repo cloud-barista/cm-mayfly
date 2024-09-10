@@ -9,7 +9,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/cm-mayfly/cm-mayfly/src/cmd"
+	"github.com/cm-mayfly/cm-mayfly/cmd"
+	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -433,7 +434,8 @@ func callRest() error {
 }
 
 func init() {
-	apiCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "../conf/api.yaml", "config file")
+	//apiCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "./conf/api.yaml", "config file")
+	apiCmd.PersistentFlags().StringVarP(&configFile, "config", "c", common.API_FILE, "config file")
 
 	// Add flags for basic authentication
 	apiCmd.PersistentFlags().StringVarP(&username, "authUser", "", "", "Username for basic authentication") // - sets the basic authentication header in the HTTP request

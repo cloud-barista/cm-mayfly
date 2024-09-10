@@ -74,7 +74,7 @@ Cloud-Migrator 시스템 구성에 필요한 서비스 정보는 `conf/docker` �
 ## cm-mayfly 실행파일 또는 소스코드 빌드
 bin 폴더에 최신 실행 파일이 있으니 사용하기 바라며, 소스 빌드가 필요한 경우에는 README에 설명된 go 설치 방법과 build 명령 또는 make 명령의 빌드 방법을 참고합니다.
 ```bash
-cd cm-mayfly/src
+cd cm-mayfly
 go build -o mayfly main.go
 ```
 

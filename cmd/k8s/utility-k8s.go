@@ -9,7 +9,7 @@ var (
 
 const (
 	// DefaultKubernetesConfig is a variable that holds path to cloud-migrator/values.yaml
-	DefaultKubernetesConfig string = "../conf/k8s/cloud-migrator/values.yaml"
+	DefaultKubernetesConfig string = "./conf/k8s/cloud-migrator/values.yaml"
 
 	// CMK8sNamespace is a variable that holds the K8s namespace that CM-Mayfly will use.
 	CMK8sNamespace string = "cloud-migrator"

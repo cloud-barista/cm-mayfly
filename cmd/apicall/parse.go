@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 	"github.com/tidwall/gjson"
 )
@@ -86,5 +87,5 @@ func toCamelCase(str string) string {
 
 func init() {
 	apiCmd.AddCommand(parseCmd)
-	parseCmd.PersistentFlags().StringVarP(&swaggerFile, "file", "f", "../conf/swagger.json", "Swagger JSON file full path")
+	parseCmd.PersistentFlags().StringVarP(&swaggerFile, "file", "f", common.SWAG_FILE, "Swagger JSON file full path")
 }
