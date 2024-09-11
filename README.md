@@ -19,8 +19,8 @@ If you have any difficulties in using CM-Mayfly, please let us know.
 ## CM-Mayfly Execution and Development Environment
 - `Ubuntu 20.04` or later
   - Tested by Ubuntu 20.04
-- `Golang 1.19` or later
-  - Tested by go version go1.19.2 linux/amd64
+- `Golang 1.23` or later
+  - Tested by go version go version go1.23.1 linux/amd64
 - `Docker Compose v2.21` or later
   - Tested by Docker version 24.0.7, build afdd53b and Docker Compose version v2.21.0
 
