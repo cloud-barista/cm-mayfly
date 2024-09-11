@@ -21,10 +21,10 @@ var removeCmd = &cobra.Command{
 			fmt.Println("file is required")
 		} else {
 			var cmdStr string
-			if volFlag && imgFlag {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v --rmi all", CMComposeProjectName, DockerFilePath)
+			if volFlag && imgFlag || allFlag {
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --volumes --rmi all", CMComposeProjectName, DockerFilePath)
 			} else if volFlag {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down -v", CMComposeProjectName, DockerFilePath)
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --volumes", CMComposeProjectName, DockerFilePath)
 			} else if imgFlag {
 				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --rmi all", CMComposeProjectName, DockerFilePath)
 			} else {
@@ -40,6 +40,7 @@ var removeCmd = &cobra.Command{
 	},
 }
 
+var allFlag bool
 var volFlag bool
 var imgFlag bool
 
@@ -50,6 +51,7 @@ func init() {
 	pf.StringVarP(&DockerFilePath, "file", "f", DefaultDockerComposeConfig, "User-defined configuration file")
 	//	cobra.MarkFlagRequired(pf, "file")
 
+	pf.BoolVarP(&allFlag, "all", "", false, "Remove all images and volumes and networks")
 	pf.BoolVarP(&volFlag, "volumes", "v", false, "Remove named volumes declared in the volumes section of the Compose file")
 	pf.BoolVarP(&imgFlag, "images", "i", false, "Remove all images")
 

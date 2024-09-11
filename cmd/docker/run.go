@@ -31,7 +31,7 @@ var runCmd = &cobra.Command{
 				// cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s", CMComposeProjectName, DockerFilePath, serviceName)
 			}
 
-			fmt.Println(cmdStr)
+			// fmt.Println(cmdStr)
 			common.SysCall(cmdStr)
 		}
 	},

@@ -19,7 +19,16 @@ var stopCmd = &cobra.Command{
 		if DockerFilePath == "" {
 			fmt.Println("file is required")
 		} else {
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop", CMComposeProjectName, DockerFilePath)
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop ", CMComposeProjectName, DockerFilePath)
+			// If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
+			if len(args) > 0 {
+				cmdStr += args[0]
+
+				// Explicitly passing the service name as a filter (--service) option or argument would be fine.
+				// serviceName := args[0]
+				// cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", CMComposeProjectName, DockerFilePath, serviceName)
+			}
+
 			//fmt.Println(cmdStr)
 			common.SysCall(cmdStr)
 
