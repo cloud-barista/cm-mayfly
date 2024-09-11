@@ -13,11 +13,11 @@
 ## 실행 환경 구축
 `cm-mayfly`의 `api` 서브 커맨드를 사용하기 위해서는 실행 파일을 다운로드하거나 소스를 빌드하는 방법이 있습니다.
 
-`./bin` 폴더에 실행 파일이 있으며, `./conf` 폴더에 `api.yaml` 환경 설정 파일이 존재하므로 간단하게는 git에서 소스를 내려 받은 후 `./bin` 폴더에서 실행하면 됩니다.
+최상위 폴더에 실행 파일이 있으며, `./conf` 폴더에 `api.yaml` 환경 설정 파일이 존재하므로 git에서 소스를 내려 받은 후 mayfly 폴더에서 실행하면 됩니다.
 
 ```bash
 $ git clone https://github.com/cm-mayfly/cm-mayfly.git
-$ cd cm-mayfly/bin
+$ cd cm-mayfly
 $ ./mayfly api
 ```
 
@@ -29,9 +29,6 @@ $ ./mayfly api
 
 ## 환경 파일 수정 및 경로
 `api` 서브 커맨드는 호출할 서버의 정보를 비롯하여 서비스 명칭과 API 명칭 파악을 위해 내부적으로 `./conf/api.yaml` 환경 파일을 이용하기에 `api.yaml` 파일의 환경 정보가 사용하려는 시스템의 인프라 정보와 일치하도록 ``각 프레임워크의 실제 서버 IP및 Port 등의 정보에 맞게 수정``하시기 바랍니다.
-
-기본 `환경 파일의 경로의 경우`, 현재는 `bin` 폴더 또는 `src` 폴더에서 접근하도록 되어 있기에 현재 폴더 기준으로 상위 폴더가 아닌 **하위 폴더의 conf 폴더**로 접근하므로 **반드시 `../conf/api.yaml` 경로에 존재**해야 합니다.   
-
 
 만약, 다른 경로나 다른 환경 파일을 이용하고 싶은 경우 매번 --config 플래그 옵션을 사용하여 다른 경로의 설정 파일을 지정할 수 있습니다.
 
@@ -235,7 +232,7 @@ Available Commands:
 
 Flags:
   -a, --action string        Action to perform
-  -c, --config string        config file (default "../conf/api.yaml")
+  -c, --config string        config file (default "./conf/api.yaml")
   -d, --data string          Data to send to the server
   -f, --file string          Data to send to the server from file
   -h, --help                 help for api
@@ -258,7 +255,7 @@ Use "mayfly api [command] --help" for more information about a command.
 --data (-d) : 서버에 전송할 데이터를 지정합니다.   
 --file (-f) : 서버에 전송할 데이터가 포함된 파일을 지정합니다.   
 --output (-o) : 서버 응답을 파일에 저장합니다.   
---config (-c) : 사용할 환경 설정 파일을 지정합니다. (기본값 "../conf/api.yaml")
+--config (-c) : 사용할 환경 설정 파일을 지정합니다. (기본값 "./conf/api.yaml")
 --list (-l) : 사용 가능한 서비스 목록 또는 액션 목록을 조회합니다.   
 
 

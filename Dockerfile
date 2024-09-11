@@ -13,13 +13,13 @@ WORKDIR /app
 
 # 파일 복사 src -> dest
 COPY conf /app/conf
-COPY bin /app/bin
+COPY ./mayfly /app/
 
 # 도커 컨테이너에서 실행할 명령어 (이미지 빌드시 실행)
 #RUN 설치 명령어
 #RUN 
 
-WORKDIR /app/bin
+WORKDIR /app/
 # 컨테이너 실행 시 최초 실행될 default 명령 (1개만 가능)
 # 컨테이너 실행 시 명령이 전달되면 CMD는 무시되고 전달 받은 명령이 실행 됨.
 CMD ["bash"]

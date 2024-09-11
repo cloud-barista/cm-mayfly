@@ -19,8 +19,8 @@ If you have any difficulties in using CM-Mayfly, please let us know.
 ## CM-Mayfly Execution and Development Environment
 - `Ubuntu 20.04` or later
   - Tested by Ubuntu 20.04
-- `Golang 1.19` or later
-  - Tested by go version go1.19.2 linux/amd64
+- `Golang 1.23` or later
+  - Tested by go version go version go1.23.1 linux/amd64
 - `Docker Compose v2.21` or later
   - Tested by Docker version 24.0.7, build afdd53b and Docker Compose version v2.21.0
 
@@ -34,24 +34,24 @@ If you have any difficulties in using CM-Mayfly, please let us know.
 ```Shell
 $ git clone https://github.com/cloud-barista/cm-mayfly.git
 
-$ cd cm-mayfly/src
+$ cd cm-mayfly
 
 (Setup dependencies)
-cm-mayfly/src$ go get -u
+cm-mayfly$ go get -u
 
 (Build a binary for mayfly)
-cm-mayfly/src$ go build -o mayfly
+cm-mayfly$ go build -o mayfly
 
 (Build a binary for mayfly using Makerfile)
-cm-mayfly/src$ make
-cm-mayfly/src$ make win
-cm-mayfly/src$ make mac
-cm-mayfly/src$ make linux-arm
-cm-mayfly/src$ make win86
-cm-mayfly/src$ make mac-arm
+cm-mayfly$ make
+cm-mayfly$ make win
+cm-mayfly$ make mac
+cm-mayfly$ make linux-arm
+cm-mayfly$ make win86
+cm-mayfly$ make mac-arm
 
 (Delete all a binary for mayfly using Makerfile)
-cm-mayfly/src$ make clean
+cm-mayfly$ make clean
 ```
 
 
@@ -61,7 +61,7 @@ For now, it supports docker / rest / api sub-commands.
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
 ```
-cm-mayfly/bin$ ./mayfly -h
+cm-mayfly$ ./mayfly -h
 
 The mayfly is a tool to operate Cloud-Migrator system.
 
@@ -118,11 +118,11 @@ Use "mayfly docker [command] --help" for more information about a command.
 ## docker subcommand examples
 Simple usage examples for docker subcommand
 ```
- ./mayfly docker pull [-f ../conf/docker/docker-compose.yaml]   
- ./mayfly docker run [-f ../conf/docker/docker-compose.yaml]   
+ ./mayfly docker pull [-f ./conf/docker/docker-compose.yaml]   
+ ./mayfly docker run [-f ./conf/docker/docker-compose.yaml]   
  ./mayfly docker info   
- ./mayfly docker stop [-f ../conf/docker/docker-compose.yaml]   
- ./mayfly docker remove [-f ../conf/docker/docker-compose.yaml] -v -i   
+ ./mayfly docker stop [-f ./conf/docker/docker-compose.yaml]   
+ ./mayfly docker remove [-f ./conf/docker/docker-compose.yaml] -v -i   
 ```
 
 
@@ -197,7 +197,7 @@ Available Commands:
 
 Flags:
   -a, --action string        Action to perform
-  -c, --config string        config file (default "../conf/api.yaml")
+  -c, --config string        config file (default "./conf/api.yaml")
   -d, --data string          Data to send to the server
   -f, --file string          Data to send to the server from file
   -h, --help                 help for api

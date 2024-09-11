@@ -1,30 +1,35 @@
-.PHONY: default
-default:
-	@cd src && $(MAKE) default
+.PHONY: default linux-arm win win86 mac mac-arm clean for-docker
 
-.PHONY: linux-arm
+# Default build commands
+default: for-docker
+	go build -o ./mayfly
+
+# Build commands for Linux ARM
 linux-arm:
-	@cd src && $(MAKE) linux-arm
+	GOOS=linux GOARCH=arm go build -o ./mayfly
 
-#windows 64bint
-.PHONY: win
+# Build commands for Windows 64bit
 win:
-	@cd src && $(MAKE) win
+	GOOS=windows GOARCH=amd64 go build -o ./mayfly.exe
 
-#windows 32bit
-.PHONY: win86
+# Build commands for Windows 32bit
 win86:
-	@cd src && $(MAKE) win86
+	GOOS=windows GOARCH=386 go build -o ./mayfly.exe
 
-.PHONY: mac
+# Build commands for macOS 64bit
 mac:
-	@cd src && $(MAKE) mac
+	GOOS=darwin GOARCH=amd64 go build -o ./mayfly
 
-.PHONY: mac-arm
+# Build commands for macOS ARM64
 mac-arm:
-	@cd src && $(MAKE) mac-arm
+	GOOS=darwin GOARCH=arm64 go build -o ./mayfly
 
-.PHONY: clean
+# CGO_ENABLED=0 - for Alpine Linux (issue #19)
+# Using mayfly instead of curl for health checks on docker containers
+for-docker:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./conf/docker/tool/mayfly
+
+
+#Deleting all build files
 clean:
-	@cd src && $(MAKE) clean
-
+	rm -v ./mayfly ./mayfly.exe
