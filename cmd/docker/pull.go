@@ -16,7 +16,7 @@ var pullCmd = &cobra.Command{
 		fmt.Println("\n[Pull images of Cloud-Migrator System containers]")
 		fmt.Println()
 
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull", ProjectName, DockerFilePath)
+		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull %s", ProjectName, DockerFilePath, ServiceName)
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)
 	},

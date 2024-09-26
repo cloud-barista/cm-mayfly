@@ -17,16 +17,16 @@ var runCmd = &cobra.Command{
 		fmt.Println()
 
 		//cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up -d", ProjectName, DockerFilePath)
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up ", ProjectName, DockerFilePath)
+		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s", ProjectName, DockerFilePath, ServiceName)
 
-		// If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
-		if len(args) > 0 {
-			cmdStr += args[0]
+		// // If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
+		// if len(args) > 0 {
+		// 	cmdStr += args[0]
 
-			// Explicitly passing the service name as a filter (--service) option or argument would be fine.
-			// serviceName := args[0]
-			// cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s", ProjectName, DockerFilePath, serviceName)
-		}
+		// 	// Explicitly passing the service name as a filter (--service) option or argument would be fine.
+		// 	// serviceName := args[0]
+		// 	// cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s", ProjectName, DockerFilePath, serviceName)
+		// }
 
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)
@@ -35,4 +35,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	dockerCmd.AddCommand(runCmd)
+
+	// ServiceName is used when you want to specify only a specific service
+	runCmd.Flags().StringVarP(&ServiceName, "service", "s", "", "Want to target only one specific service(Default : all)")
 }

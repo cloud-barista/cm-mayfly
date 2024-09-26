@@ -17,6 +17,9 @@ var DockerFilePath string
 // ProjectName is a variable that holds docker compose project name.
 var ProjectName string
 
+// ServiceName is used when you want to specify only a specific service
+var ServiceName string
+
 // restCmd represents the rest command
 var dockerCmd = &cobra.Command{
 	Use:   "docker",
@@ -52,4 +55,7 @@ func init() {
 
 	// Add flags for Docker Compose project name
 	dockerCmd.PersistentFlags().StringVarP(&ProjectName, "project-name", "p", common.ComposeProjectName, "User-defined docker compose porject name")
+
+	// ServiceName is used when you want to specify only a specific service
+	dockerCmd.PersistentFlags().StringVarP(&ServiceName, "service", "s", "", "Want to target specific services only(Default : all)")
 }
