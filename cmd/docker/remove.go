@@ -18,17 +18,18 @@ var removeCmd = &cobra.Command{
 		fmt.Println()
 
 		var cmdStr string
+		var removeOptions string
 		if volFlag && imgFlag || allFlag {
-			cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --volumes --rmi all", ProjectName, DockerFilePath)
+			removeOptions = "--volumes --rmi all"
 		} else if volFlag {
-			cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --volumes", ProjectName, DockerFilePath)
+			removeOptions = "--volumes"
 		} else if imgFlag {
-			cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --rmi all", ProjectName, DockerFilePath)
+			removeOptions = "--rmi all"
 		} else {
-			cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down", ProjectName, DockerFilePath)
+			removeOptions = ""
 		}
 
-		cmdStr += " " + ServiceName
+		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s %s", ProjectName, DockerFilePath, removeOptions, ServiceName)
 
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)
