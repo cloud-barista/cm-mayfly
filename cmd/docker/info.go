@@ -15,6 +15,8 @@ var infoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("\n[Get info for Cloud-Migrator runtimes]")
 		fmt.Println()
+		SysCallDockerComposePs()
+		fmt.Println("")
 
 		fmt.Println("[v]Status of Cloud-Migrator runtime images")
 		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s images %s", ProjectName, DockerFilePath, ServiceName)
