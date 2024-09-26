@@ -7,8 +7,15 @@ import (
 	"fmt"
 
 	"github.com/cm-mayfly/cm-mayfly/cmd"
+	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
+
+// DockerFilePath is a variable that holds path to the docker-compose.yaml.
+var DockerFilePath string
+
+// ProjectName is a variable that holds docker compose project name.
+var ProjectName string
 
 // restCmd represents the rest command
 var dockerCmd = &cobra.Command{
@@ -30,16 +37,19 @@ For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 	},
 }
 
+// SysCallDockerComposePs executes `docker-compose ps` command via system call.
+func SysCallDockerComposePs() {
+	fmt.Println("\n[v]Status of Cloud-Migrator runtimes")
+	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps", ProjectName, DockerFilePath)
+	common.SysCall(cmdStr)
+}
+
 func init() {
 	cmd.RootCmd.AddCommand(dockerCmd)
 
-	// Here you will define your flags and configuration settings.
+	// Add flags for Docker Compose yaml File Path
+	dockerCmd.PersistentFlags().StringVarP(&DockerFilePath, "file", "f", common.DefaultDockerComposeConfig, "User-defined configuration file")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// restCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// restCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Add flags for Docker Compose project name
+	dockerCmd.PersistentFlags().StringVarP(&ProjectName, "project-name", "p", common.ComposeProjectName, "User-defined docker compose porject name")
 }
