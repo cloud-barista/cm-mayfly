@@ -16,8 +16,11 @@ var runCmd = &cobra.Command{
 		fmt.Println("\n[Setup and Run Cloud-Migrator]")
 		fmt.Println()
 
-		//cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up -d", ProjectName, DockerFilePath)
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s", ProjectName, DockerFilePath, ServiceName)
+		detachModeOption := ""
+		if DetachMode {
+			detachModeOption = "-d"
+		}
+		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s %s", ProjectName, DockerFilePath, detachModeOption, ServiceName)
 
 		// // If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
 		// if len(args) > 0 {
@@ -33,9 +36,14 @@ var runCmd = &cobra.Command{
 	},
 }
 
+var DetachMode bool
+
 func init() {
 	dockerCmd.AddCommand(runCmd)
 
-	// ServiceName is used when you want to specify only a specific service
-	runCmd.Flags().StringVarP(&ServiceName, "service", "s", "", "Want to target only one specific service(Default : all)")
+	// background mode
+	runCmd.Flags().BoolVarP(&DetachMode, "detach", "d", false, "Detached mode: Run containers in the background")
+
+	// // ServiceName is used when you want to specify only a specific service
+	// runCmd.Flags().StringVarP(&ServiceName, "service", "s", "", "Want to target only one specific service(Default : all)")
 }
