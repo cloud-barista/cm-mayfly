@@ -498,17 +498,16 @@ services:
   cm-ant:
     container_name: cm-ant
     # image: cloudbaristaorg/cm-ant:0.2.1
-    image: cloudbaristaorg/cm-ant:edge
-    
+    image: cloudbaristaorg/cm-ant:edge    
     platform: linux/amd64
     ports:
         - 8880:8880
-    #networks:
-    #  - default
-    #  - cm-ant-db-network
+    networks:
+      - spider_net
+      - default
     depends_on:
-      # cb-tumblebug:
-      #   condition: service_healthy
+      cb-tumblebug:
+        condition: service_healthy
       ant-postgres:
         condition: service_healthy
     environment:
@@ -518,7 +517,7 @@ services:
       - ANT_TUMBLEBUG_PORT=1323
       - ANT_DATABASE_HOST=ant-postgres
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/api/v1/readyz" ]
+      test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/readyz" ]
       interval: 10m
       timeout: 5s
       retries: 5
@@ -546,6 +545,45 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+
+
+
+  # mc-data-manger
+  # https://github.com/cloud-barista/mc-data-manager
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  # https://hub.docker.com/r/cloudbaristaorg/mc-data-manager
+  mc-data-manger:
+    container_name: mc-data-manger
+    image: cloudbaristaorg/mc-data-manager:edge
+    platform: linux/amd64
+    tty: true
+    ports:
+      - "3300:3300"
+    restart : always
+    volumes:
+      - ./data/mc-data-manger:/app/data/
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - ./conf/mc-data-manger/.env
+    depends_on:
+      - mc-data-manger-init-chown-volumes
+    # healthcheck:
+    #   test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
+    #   interval: 10m
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 10s
+
+  mc-data-manger-init-chown-volumes:
+    image: busybox
+    command: ["sh", "-c", "chown -R ${UID:-0}:${GID:-0} /app/data"]
+    volumes:
+      - ./data/mc-data-manger:/app/data/
+    user: root
+    env_file:
+      - ./conf/mc-data-manger/.env
+    init: true
+
 
   cm-mayfly:
   #   image: cloudbaristaorg/cm-mayfly:v0.1.0
