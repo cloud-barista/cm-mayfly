@@ -42,6 +42,11 @@ services:
     baseurl: http://localhost:8084/grasshopper
     auth: 
 
+  cm-butterfly:
+    version: main
+    baseurl: http://localhost:123/butterfly
+    auth: 
+
   # sample: #none authentication method
   #   baseurl: http://localhost:1323/test
   #   auth: #none
