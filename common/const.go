@@ -10,7 +10,7 @@ const (
 const (
 	DefaultDockerComposeConfig = "./conf/docker/docker-compose.yaml"
 
-	// CMComposeProjectName is a variable that holds the default COMPOSE_PROJECT_NAME that cloud-migrator will use.
+	// ComposeProjectName is a variable that holds the default COMPOSE_PROJECT_NAME that cloud-migrator will use.
 	ComposeProjectName string = "cloud-migrator"
 )
 

@@ -258,33 +258,110 @@ services:
       start_period: 10s
 
 
-  # cm-butterfly
+  # # cm-butterfly
+  # # https://github.com/cloud-barista/cm-butterfly
+  # # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly
+  # cm-butterfly:
+  #   # image: cloudbaristaorg/cm-butterfly:0.2.0
+  #   image: cloudbaristaorg/cm-butterfly:edge    
+  #   container_name: cm-butterfly
+  #   platform: linux/amd64
+  #   restart: always
+  #   ports:
+  #     - "1234:1234"
+  #   depends_on:
+  #     - cm-beetle
+  #   volumes:
+  #     #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
+  #     - ./conf/cm-butterfly/conf:/app/conf:rw
+  #   environment:
+  #     - BEETLE_URL=http://cm-beetle:8056/beetle
+  #     - HONEYBEE_URL=http://cm-honeybee:8081/honeybee
+  #     - CICADA_URL=http://cm-cicada:8083/cicada
+  #     - TUMBLE_URL=http://cb-tumblebug:1323/tumblebug
+  #     - SPIDER_URL=http://cb-spider:1024/spider
+  #     #- LoginUser=admin
+  #     #- LoginEmail=admin
+  #     #- LoginPassword=admin
+  #     #- API_USERNAME=default
+  #     #- API_PASSWORD=default
+
+
+  # cm-butterfly (api)
   # https://github.com/cloud-barista/cm-butterfly
-  # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly
-  cm-butterfly:
-    # image: cloudbaristaorg/cm-butterfly:0.2.0
-    image: cloudbaristaorg/cm-butterfly:edge    
-    container_name: cm-butterfly
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/scripts/docker-compose.yaml
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/api/.env.sample to .env <-- share to cm-butterfly-db
+  # https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf
+  # https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/api.yaml.sample to api.yaml
+  # https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
+  # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
+  cm-butterfly-api:
+    image: cloudbaristaorg/cm-butterfly-api:latest
+    container_name: cm-butterfly-api
     platform: linux/amd64
     restart: always
+    networks:
+      - cm-butterfly-network
     ports:
-      - "1234:1234"
+      - target: 4000
+        published: 4000
+        protocol: tcp
     depends_on:
-      - cm-beetle
+      - cm-butterfly-db
+    env_file:
+      - ./conf/cm-butterfly/api/.env
     volumes:
-      #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
-      - ./conf/cm-butterfly/conf:/app/conf:rw
+      - ./conf/cm-butterfly/api/conf:/conf/
     environment:
-      - BEETLE_URL=http://cm-beetle:8056/beetle
-      - HONEYBEE_URL=http://cm-honeybee:8081/honeybee
-      - CICADA_URL=http://cm-cicada:8083/cicada
-      - TUMBLE_URL=http://cb-tumblebug:1323/tumblebug
-      - SPIDER_URL=http://cb-spider:1024/spider
-      #- LoginUser=admin
-      #- LoginEmail=admin
-      #- LoginPassword=admin
-      #- API_USERNAME=default
-      #- API_PASSWORD=default
+      USER_AUTH_DATA_PATH: /conf/user.dat 
+      USER_AUTH_CONF_PATH: /conf/authsetting.yaml
+      MENU_CONF_DATA_PATH: /conf/menu.yaml
+
+
+
+  # cm-butterfly (front)
+  # https://github.com/cloud-barista/cm-butterfly
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/scripts/docker-compose.yaml
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
+  # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
+  cm-butterfly-front:
+    image: cloudbaristaorg/cm-butterfly-front:latest
+    container_name: cm-butterfly-front
+    platform: linux/amd64
+    restart: always
+    networks:
+      - cm-butterfly-network
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+    depends_on:
+      - cm-butterfly-api
+    volumes:
+      - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+
+
+  # cm-butterfly (db)
+  # https://github.com/cloud-barista/cm-butterfly
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/api/.env.sample to .env
+  cm-butterfly-db:
+    container_name: cm-butterfly-db
+    image: postgres:14-alpine
+    networks:
+      - cm-butterfly-network
+    ports:
+      - target: 5432
+        published: 543
+        protocol: tcp
+    env_file:
+      - ./conf/cm-butterfly/api/.env
+    volumes:
+      - cm-butterfly-db:/var/lib/postgresql/data
+    user: root
+    # environment:
+    #   POSTGRES_DB: ${POSTGRES_DB}
+    #   POSTGRES_USER: ${POSTGRES_USER}
+    #   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
 
   # @TODO - **Airflow 등 연계 시스템 필요함**
@@ -313,36 +390,6 @@ services:
       retries: 3
       start_period: 10s
     #network_mode: "host"
-
-
-  # # **도커 구동 필요 없음**
-  # # cm-honeybee Agent
-  # # https://github.com/cloud-barista/cm-honeybee/tree/main/agent
-  # # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
-  # # See https://github.com/cloud-barista/cm-honeybee/blob/main/agent/docker-compose.yaml
-  # cm-honeybee-agent:
-  #   #image: cloudbaristaorg/cm-honeybee-agent:0.2.0
-  #   #image: cm-honeybee-agent:latest
-  #   image: dev4unet/cm-honeybee-agent:0.2.0
-  #   container_name: cm-honeybee-agent    
-  #   restart: always
-  #   privileged: true
-  #   ports:
-  #     - "8082:8082"
-  #   volumes:
-  #     - ./tool/mayfly:/app/tool/mayfly
-  #     - ./data/cm-honeybee-agent/:/root/.cm-honeybee-agent:rw
-  #     - /etc/:/etc/:ro
-  #     - /usr/lib/os-release:/usr/lib/os-release:ro
-  #     - /var/:/var/:rw
-  #     - /run/:/run/:rw
-  #   healthcheck:
-  #     test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee-agent:8082/honeybee-agent/readyz" ]
-  #     interval: 10m
-  #     timeout: 5s
-  #     retries: 3
-  #     start_period: 10s
-  #   #network_mode: "host"
 
 
   # cm-cicada
@@ -498,17 +545,16 @@ services:
   cm-ant:
     container_name: cm-ant
     # image: cloudbaristaorg/cm-ant:0.2.1
-    image: cloudbaristaorg/cm-ant:edge
-    
+    image: cloudbaristaorg/cm-ant:edge    
     platform: linux/amd64
     ports:
         - 8880:8880
-    #networks:
-    #  - default
-    #  - cm-ant-db-network
+    networks:
+      - spider_net
+      - default
     depends_on:
-      # cb-tumblebug:
-      #   condition: service_healthy
+      cb-tumblebug:
+        condition: service_healthy
       ant-postgres:
         condition: service_healthy
     environment:
@@ -518,7 +564,7 @@ services:
       - ANT_TUMBLEBUG_PORT=1323
       - ANT_DATABASE_HOST=ant-postgres
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/api/v1/readyz" ]
+      test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/readyz" ]
       interval: 10m
       timeout: 5s
       retries: 5
@@ -538,7 +584,7 @@ services:
       - POSTGRES_PASSWORD=cm-ant-secret
       - POSTGRES_DB=cm-ant-db
     #networks:
-    #  - cm-ant-db-network
+      # - cm-ant-db-network
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "cm-ant-user", "-d", "cm-ant-db" ]
       interval: 30s
@@ -546,6 +592,52 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+
+
+
+  # mc-data-manger
+  # https://github.com/cloud-barista/mc-data-manager
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  # https://hub.docker.com/r/cloudbaristaorg/mc-data-manager
+  mc-data-manger:
+    container_name: mc-data-manger
+    image: cloudbaristaorg/mc-data-manager:edge
+    platform: linux/amd64
+    tty: true
+    ports:
+      - "3300:3300"
+    restart : always
+    volumes:
+      #- ./data/mc-data-manger:/app/data/
+      - ./conf/mc-data-manger/data:/app/data/
+      - ./data/mc-data-manger/log:/app/data/data/var/log
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - ./conf/mc-data-manger/.env
+    depends_on:
+      - mc-data-manger-init-chown-volumes
+    # healthcheck:
+    #   test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
+    #   interval: 10m
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 10s
+
+
+  # mc-data-manger init-chown-volumes
+  # https://github.com/cloud-barista/mc-data-manager
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  mc-data-manger-init-chown-volumes:
+    image: busybox
+    command: ["sh", "-c", "chown -R ${UID:-0}:${GID:-0} /app/data"]
+    volumes:
+      #- ./data/mc-data-manger:/app/data/
+      - ./conf/mc-data-manger/data:/app/data/
+    user: root
+    env_file:
+      - ./conf/mc-data-manger/.env
+    init: true
+
 
   cm-mayfly:
   #   image: cloudbaristaorg/cm-mayfly:v0.1.0
@@ -568,4 +660,8 @@ services:
 
 networks:
   spider_net: #Network for cb-spider isolation
+  cm-butterfly-network: #Network for web isolation
   #cm-ant-db-network: #Network for cm-ant database isolation
+
+volumes:
+  cm-butterfly-db:
