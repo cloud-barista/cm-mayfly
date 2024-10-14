@@ -97,10 +97,12 @@ $ cd cm-mayfly
 ```
 
 ## 2. Prerequisites
-Some subsystems require preliminary setup.
+Some subsystems require initial setup for configuration.
+
 ### mc-datamanager
-The `mc-data-manager` subsystem `requires authentication information` to use CSP.
-If you want to use mc-data-manager, make sure to refer to the contents of the `./conf/docker/conf/mc-data-manger/data/var/run/data-manager/profile/profile.json` file and `register the authentication information for each CSP`.
+The `mc-data-manager` subsystem `requires authentication information to use CSP`. Currently, only the configuration method using the `profile.json file` is supported. Therefore, if you wish to use mc-data-manager, `make sure to register the CSP-specific authentication information` in the `./conf/docker/conf/mc-data-manger/data/var/run/data-manager/profile/profile.json` file before setting up the infrastructure.   
+
+If necessary, you can also modify the contents of the profile.json file after the infrastructure has been set up.
 
 
 ## 3. Building a Docker-based infrastructure
