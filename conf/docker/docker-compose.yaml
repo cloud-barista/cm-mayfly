@@ -606,6 +606,7 @@ services:
   # mc-data-manger
   # https://github.com/cloud-barista/mc-data-manager
   # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
   # https://hub.docker.com/r/cloudbaristaorg/mc-data-manager
   mc-data-manger:
     container_name: mc-data-manger
@@ -617,24 +618,26 @@ services:
     restart : always
     volumes:
       #- ./data/mc-data-manger:/app/data/
+      #- ./data/mc-data-manger/log:/app/data/data/var/log
       - ./conf/mc-data-manger/data:/app/data/
-      - ./data/mc-data-manger/log:/app/data/data/var/log
       - /etc/localtime:/etc/localtime:ro
     env_file:
       - ./conf/mc-data-manger/.env
     depends_on:
       - mc-data-manger-init-chown-volumes
-    # healthcheck:
-    #   test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
-    #   interval: 10m
-    #   timeout: 5s
-    #   retries: 5
-    #   start_period: 10s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://mc-data-manger:3300/readyZ"]
+      # test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
+      interval: 10m
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 
   # mc-data-manger init-chown-volumes
   # https://github.com/cloud-barista/mc-data-manager
   # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
   mc-data-manger-init-chown-volumes:
     image: busybox
     command: ["sh", "-c", "chown -R ${UID:-0}:${GID:-0} /app/data"]
