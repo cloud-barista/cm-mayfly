@@ -3,7 +3,7 @@ cliSpecVersion: v1
 services:
   cb-spider: #service name
     version: 0.9.4
-    baseurl: http://localhost:1024/spider  # baseurl is Scheme + Host + Base Path
+    baseurl: http://cb-spider:1024/spider  # baseurl is Scheme + Host + Base Path
     auth: #If you need an authentication method, describe the type and username and password in the sub
       type: basic
       username: 
@@ -11,7 +11,7 @@ services:
   
   cb-tumblebug:
     version: 0.9.12
-    baseurl: http://localhost:1323/tumblebug
+    baseurl: http://cb-tumblebug:1323/tumblebug
     auth: 
       type: basic
       username: default
@@ -19,27 +19,27 @@ services:
 
   cm-beetle:
     version: 0.2.2
-    baseurl: http://localhost:8056/beetle
+    baseurl: http://cm-beetle:8056/beetle
     auth: 
 
   cm-ant:
     version: 0.2.2
-    baseurl: http://localhost:8880/ant
+    baseurl: http://cm-ant:8880/ant
     auth:  
 
   cm-honeybee:
     version: 0.2.7
-    baseurl: http://localhost:8081/honeybee
+    baseurl: http://cm-honeybee:8081/honeybee
     auth: 
 
   cm-cicada:
     version: main
-    baseurl: http://localhost:8083/cicada
+    baseurl: http://cm-cicada:8083/cicada
     auth: 
 
   cm-grasshopper:
     version: main
-    baseurl: http://localhost:8084/grasshopper
+    baseurl: http://cm-grasshopper:8084/grasshopper
     auth: 
 
   # sample: #none authentication method
