@@ -19,7 +19,8 @@ import (
 	"github.com/cm-mayfly/cm-mayfly/cmd"
 	_ "github.com/cm-mayfly/cm-mayfly/cmd/apicall"
 	_ "github.com/cm-mayfly/cm-mayfly/cmd/docker"
-	_ "github.com/cm-mayfly/cm-mayfly/cmd/k8s"
+
+	//_ "github.com/cm-mayfly/cm-mayfly/cmd/k8s"
 	_ "github.com/cm-mayfly/cm-mayfly/cmd/rest"
 )
 

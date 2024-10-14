@@ -1,19 +1,19 @@
 ## API 서브 명령 사용 가이드
-이 가이드에서는 `cm-mayfly`의 `api` 서브 커맨드를 이용하여 `Name` 기반으로 Cloud-Migrator 시스템의 RESTful API를 실행하는 방법에 대해 소개합니다.    
+이 가이드에서는 `cm-mayfly`의 `api` 서브 커맨드를 이용하여 Cloud-Migrator 시스템의 RESTful API를 `API Name` 기반으로 호출하는 방법에 대해 소개합니다.    
 
-`api` 서브 커맨드는 `rest` 서브 커맨드처럼 복잡한 Bear 인증 설정 및 URI를 외울 필요 없이 호출하려는 서비스의 이름(프레임워크 이름)과 액션 이름(호출할 API 이름)의 조합으로 Cloud-Migrator 시스템에서 제공하는 간단한 REST API들을 호출할 수 있도록 가볍게 제공되는 유틸성 기능입니다.
+`api` 서브 커맨드는 Cloud-Migrator의 서브 시스템들이 제공하는 REST API를 `rest` 서브 커맨드처럼 복잡한 Bear 인증 설정 및 URI를 직접 외울 필요 없이 `호출하려는 서비스의 이름`(서브 시스템 이름)과 `액션 이름`(호출할 API 이름)으로 REST API를 간단하게 호출할 수 있도록 가볍게 제공되는 유틸성 기능입니다.   
+참고로, 서브 시스템은 cb-spider나 cb-tumblebug처럼 Cloud-Migrator 시스템을 구성하고 있는 프레임워크들입니다.
 
 ## 순서
 1. 실행 환경 구축
 1. 환경 파일 수정 및 경로
-1. 환경 파일 구조
+1. 환경설정(api.yaml) 파일 구조
 1. 사용 방법
 
 
 ## 실행 환경 구축
-`cm-mayfly`의 `api` 서브 커맨드를 사용하기 위해서는 실행 파일을 다운로드하거나 소스를 빌드하는 방법이 있습니다.
-
-최상위 폴더에 실행 파일이 있으며, `./conf` 폴더에 `api.yaml` 환경 설정 파일이 존재하므로 git에서 소스를 내려 받은 후 mayfly 폴더에서 실행하면 됩니다.
+`api` 서브 커맨드를 사용하기 위해서는 실행 파일을 다운로드하거나 소스를 빌드하는 방법이 있습니다.
+간단하게 git으로 소스를 내려 받은 후 실행하면 됩니다.
 
 ```bash
 $ git clone https://github.com/cm-mayfly/cm-mayfly.git
@@ -21,24 +21,25 @@ $ cd cm-mayfly
 $ ./mayfly api
 ```
 
-
 만약, 소스를 수정하였거나 최신 소스를 직접 빌드하고 싶은 경우에는 README 설명을 참고하여 빌드하세요.   
 [How to build mayfly binary file from souce code](https://github.com/MZC-CSC/cm-mayfly/tree/develop?tab=readme-ov-file#how-to-build-mayfly-binary-file-from-souce-code)
 
 
 
 ## 환경 파일 수정 및 경로
-`api` 서브 커맨드는 호출할 서버의 정보를 비롯하여 서비스 명칭과 API 명칭 파악을 위해 내부적으로 `./conf/api.yaml` 환경 파일을 이용하기에 `api.yaml` 파일의 환경 정보가 사용하려는 시스템의 인프라 정보와 일치하도록 ``각 프레임워크의 실제 서버 IP및 Port 등의 정보에 맞게 수정``하시기 바랍니다.
+`api` 서브 커맨드는 호출할 서브 시스템의 정보를 비롯하여 서비스 명칭과 API 명칭 파악을 위해 `./conf/api.yaml` 환경 파일을 이용합니다.
+따라서, 반드시 `api.yaml` 파일의 환경 정보가 사용하려는 시스템의 인프라 정보와 일치하도록 ``각 서브 시스템의 실제 서버 IP및 Port 등의 정보에 맞게 수정``하시기 바랍니다.
 
-만약, 다른 경로나 다른 환경 파일을 이용하고 싶은 경우 매번 --config 플래그 옵션을 사용하여 다른 경로의 설정 파일을 지정할 수 있습니다.
+만약, 기본 파일이 아닌 사용자가 원하는 환경 설정 파일을 이용하고 싶은 경우에는 `mayfly`를 실행할 때 --config 플래그 옵션을 이용하여 원하는 환경 설정 파일을 지정할 수 있습니다.
 
 
-## 환경 파일 구조
-api.yaml의 경우 아래와 같은 구조로 되어있습니다.   
-`api.yaml`파일에 RESTful API를 제공하는 각 프레임워크의 서비스 명(services:)과 해당 서비스 하위에 존재할 서비스 액션(serviceActions:)을 지정하는 형태로 되어있습니다.   
+## 환경설정(api.yaml) 파일 구조
+api.yaml 파일의 경우 아래와 같은 구조로 되어있습니다.   
+RESTful API를 제공하는 각 서브 시스템의 `서비스 명(services:)`과 서브 시스템에서 제공하는 API에 대한 `서비스 액션(serviceActions:)`을 지정하는 형태로 되어있습니다.   
+
 
 ### 서비스 정의
-`services:` 하위에 `api` 서브 커맨드에서 지원할 프레임워크들의 정보를 서술합니다.   
+`services:` 하위에 api 서브 커맨드에서 지원할 `서브 시스템들의 정보`를 서술합니다.   
 예를 들어, 대표 프레임워크인 cb-spider의 경우 `cb-spider:`로 서술합니다.   
 
 `baseurl`에는 해당 프레임워크에서 제공하는 REST API URI의 기본이되는 `스키마 + 호스트 + 베이스 경로`의 조합으로 기입합니다.   
@@ -46,25 +47,28 @@ api.yaml의 경우 아래와 같은 구조로 되어있습니다.
    
    
 **인증 정보 설정**   
-현재 REST 호출을 위한 인증 절차는 "basic"과 "bearer" 인증을 지원하고 있습니다.   
-해당 프레임워크에서 REST 호출을 위한 username과 password 기반의 기본 인증 절차가 필요한 경우에는 `auth` 영역의 `type`에는 `basic`을 입력하고 `username`과 `password` 항목으로 인증 정보를 지정하면됩니다.   
+현재 mayfly에서는 REST 호출을 위한 "basic"과 "bearer" 인증을 지원하고 있으며, 서브 시스템에 따라서는 REST API를 호출할 때 인증 정보가 필요한 경우도 있고 인증 정보가 필요 없는 경우도 있습니다.   
+
+[basic인증]   
+REST 호출을 위한 username과 password 기반의 기본 인증 절차가 필요한 경우에는 `auth` 영역의 `type`에는 `basic`을 입력하고 `username`과 `password` 항목으로 인증 정보를 지정하면됩니다.   
 만약, `username`과 `password` 값을 api.yaml 파일의 값이 아닌 API 호출 시점에 설정하고 싶다면 `--authUser`와 `--authPassword`를 이용해서 변경 가능합니다.   
 ```
-(예시)
+(호출 시점 인증 정보 지정 예시)
 ./mayfly api -s 서비스명 -a 액션명 --authUser=User이름 --authPassword=비밀번호
 ```
 
-해당 프레임워크에서 REST 호출을 위한 `token` 기반의 `bearer` 인증 절차가 필요한 경우에는 `auth` 영역의 `type`에는 `bearer`을 입력하고 `token`에 인증 토큰 정보를 지정하면됩니다.   
+[bearer인증]   
+서브 시스템에서 REST 호출을 위한 `token` 기반의 `bearer` 인증 절차가 필요한 경우에는 `auth` 영역의 `type`에는 `bearer`을 입력하고 `token`에 인증 토큰 정보를 지정하면됩니다.   
 만약, `token` 값을 api.yaml 파일의 값이 아닌 API 호출 시점에 설정하고 싶다면 `--authUser`와 `--authPassword`를 이용해서 변경 가능합니다.   
 ```
-(예시)
+(호출 시점 인증 정보 지정 예시)
 ./mayfly api -s 서비스명 -a 액션명 --authToken=인증토큰값
 ```
 
-별도의 인증 절차가 필요 없는 경우 `auth:` 항목만 유지하면됩니다.   
- `인증 절차가 필요 없는 경우에는 auth: 항목은 유지하고 하위의 내용만 삭제`하면됩니다.
+[REST 인증이 필요 없는 경우]   
+REST 호출에 별도의 인증 절차가 필요 없는 경우에는 `auth: 항목은 유지하고 하위의 내용만 삭제`하면됩니다.
 
-**[인증 정보 설정 예시]**
+**[다양한 인증 정보 설정 예시]**
 ```
   #none authentication method
     auth: #none
@@ -97,7 +101,7 @@ services:
 ### 서비스의 액션 정의 
 `serviceActions:` 영역은 `services:` 에서 정의된 특정 서비스에서 제공하는 REST API들에 대해서 액션으로 정의하는 영역입니다.   
 
-예를 들어, 위에서 설명했던 `cb-spider:` 서비스(프레임워크)에서 제공하는 
+예를 들어, 위에서 설명했던 `cb-spider:` 서비스에서 제공하는 
 API들을 정의하고 싶다면 아래처럼 정의합니다.
 ```
 serviceActions:
@@ -159,13 +163,13 @@ serviceActions:
       resourcePath: /driver/{driver_name}
 ```
 
-Cloud-Migrator 시스템의 경우 대부분의 프레임워크는 `Swagger` 기반으로 진행되고 있어서 Swagger 형태의 JSON 파일을 제공하고 있으므로 `api.yaml`파일의 설정 작업을 조금은 수월하게 진행할 수 있도록 `tool` 플래그를 제공하고 있으니 유사한 환경의 다른 프레임워크의 정보를 api.yaml에 정의하고 싶다면 tool 플래그를 활용하시기 바랍니다.
+Cloud-Migrator 시스템의 경우 대부분의 프레임워크는 `Swagger` 기반으로 진행되고 있어서 Swagger 형태의 JSON 파일을 제공하고 있으므로 `api.yaml`파일의 설정 작업을 조금은 수월하게 진행할 수 있도록 `tool` 플래그를 제공하고 있으니 유사한 환경의 다른 프레임워크의 정보를 api.yaml에 정의하고 싶다면 `tool 플래그를 활용`하시기 바랍니다.
 ```
-$ ./mayfly api tool -f 스웨거파일.json
+$ ./mayfly api tool -f Swagger파일.json
 ```
 
 참고로, `tool` 플래그의 경우, 내부적으로 각 API의 액션 이름에 `operationId` 필드를 이용하기 때문에 `사용하려는 Swagger JSON 파일에는 반드시 operationId 필드가 정의`되어 있어야 합니다.   
-**[예시]**
+**[Swagger JSON 파일 예시]**
 ```
 "basePath": "/tumblebug",
 "paths": {
@@ -209,11 +213,11 @@ Base Paht: /tumblebug
 
 
 ## 사용 방법
--s 또는 --service 플래그를 이용해서 호출을 희망하는 프레임워크를 설정하며, -a 또는 --action 플래그를 이용해서 해당 프레임워크에서 실제 호출하려는 API를 지정합니다.   
+먼저 -s 또는 --service 플래그를 이용해서 호출을 희망하는 서비스(서브 시스템)를 지정하며, -a 또는 --action 플래그를 이용해서 해당 서비스에서 제공하는 API 중 호출하고 싶은 API를 지정합니다. 호출할 서비스 이름이나 액션 이름을 모를 경우 --list 플래그를 활용하시기 바랍니다.   
 
 만약, 호출하려는 액션의 URI 경로가 가변 경로인 경우 --pathParam으로 경로 설정이 가능하며, 전달할 JSON Data 가 있는 경우 --data 또는 --file 플래그를 이용할 수 있습니다.   
 
-그 외 일부 편의를 위한 플래그가 제공됩니다.
+아래는 사용 가능 커맨드와 플래그를 비롯한 일부 예시입니다.
 ```
 Call the action of the service defined in api.yaml. For example:
 $ ./mayfly api --help

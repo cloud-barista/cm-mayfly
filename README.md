@@ -11,9 +11,11 @@ If you have any difficulties in using CM-Mayfly, please let us know.
 ```
 
 ## CM-Mayfly Overview
-- This is a operate tool that supports installing, running, shutting down, providing status information, and open api service call the Cloud-Migrator system.
-- As a proof-of-concept phase, only the `Docker Compose V2` mode method is currently available first.
-- Support for k8s and the ability to make REST calls and Rest-based service calls will be developed in small increments.
+This management tool provides and is expected to provide the following features:
+- Builds and controls the infrastructure of the Cloud-Migrator system.
+- Monitors the execution status of the sub-framework.
+- Provides the ability to call REST APIs offered by the sub-framework.
+- Kubernetes (k8s) will be supported in the future.
 
 
 ## CM-Mayfly Execution and Development Environment
@@ -31,26 +33,22 @@ If you have any difficulties in using CM-Mayfly, please let us know.
 
 
 ## How to build mayfly binary file from souce code
+Build a binary for mayfly using Makerfile
 ```Shell
 $ git clone https://github.com/cloud-barista/cm-mayfly.git
-
 $ cd cm-mayfly
 
-(Setup dependencies)
-cm-mayfly$ go get -u
+Choose one of the commands below for the target OS you want to build for.
+$ cm-mayfly$ make
+$ cm-mayfly$ make win
+$ cm-mayfly$ make mac
+$ cm-mayfly$ make linux-arm
+$ cm-mayfly$ make win86
+$ cm-mayfly$ make mac-arm
+```
 
-(Build a binary for mayfly)
-cm-mayfly$ go build -o mayfly
-
-(Build a binary for mayfly using Makerfile)
-cm-mayfly$ make
-cm-mayfly$ make win
-cm-mayfly$ make mac
-cm-mayfly$ make linux-arm
-cm-mayfly$ make win86
-cm-mayfly$ make mac-arm
-
-(Delete all a binary for mayfly using Makerfile)
+## How to delete mayfly all binary files
+```Shell
 cm-mayfly$ make clean
 ```
 
@@ -61,7 +59,7 @@ For now, it supports docker / rest / api sub-commands.
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
 ```
-cm-mayfly$ ./mayfly -h
+$ ./mayfly -h
 
 The mayfly is a tool to operate Cloud-Migrator system.
 
@@ -85,11 +83,44 @@ For more detailed explanations, see the articles below.
 - [rest sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-rest.md)
 - [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-api.md)
 
+
+# How to Build a Cloud-Migrator Infrastructure
+A quick guide on how to easily build a Cloud-Migrator infrastructure.   
+If you need a more detailed explanation, check out the article below.   
+- [docker sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
+
+
+## 1. Download cm-mayfly
+```
+$ git clone https://github.com/cloud-barista/cm-mayfly.git
+$ cd cm-mayfly
+```
+
+## 2. Prerequisites
+Some subsystems require initial setup for configuration.
+
+### mc-datamanager
+The `mc-data-manager` subsystem `requires authentication information to use CSP`. Currently, only the configuration method using the `profile.json file` is supported. Therefore, if you wish to use mc-data-manager, `make sure to register the CSP-specific authentication information` in the `./conf/docker/conf/mc-data-manger/data/var/run/data-manager/profile/profile.json` file before setting up the infrastructure.   
+
+If necessary, you can also modify the contents of the profile.json file after the infrastructure has been set up.
+
+
+## 3. Building a Docker-based infrastructure
+```
+$ ./cm-mayfly docker run
+```
+
+## 4. Checking the subsystem running status
+```
+$ ./cm-mayfly docker info
+```
+
+
+<!-- 
 ## docker-compose.yaml
 The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/conf/docker/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `conf/docker` folder.)   
 
 If you want to change the information for each container you want to deploy, modify the `cm-mayfly/conf/docker/docker-compose.yaml` file or use the -f option.   
-
 
 
 # docker subcommand
@@ -233,3 +264,4 @@ Example of changing the username and password for basic authentication.
 
 Example of changing the authentication token for bearer authentication.   
 `./mayfly api -s cm-ant -a getcostinfo --authToken=token`
+-->
