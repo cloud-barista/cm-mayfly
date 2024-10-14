@@ -311,11 +311,19 @@ services:
     env_file:
       - ./conf/cm-butterfly/api/.env
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-butterfly/api/conf:/conf/
     environment:
       USER_AUTH_DATA_PATH: /conf/user.dat 
       USER_AUTH_CONF_PATH: /conf/authsetting.yaml
       MENU_CONF_DATA_PATH: /conf/menu.yaml
+    healthcheck: # for butterfly-api
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz" ]
+      #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
+      interval: 10m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 
 
@@ -639,16 +647,16 @@ services:
     init: true
 
 
-  cm-mayfly:
-  #   image: cloudbaristaorg/cm-mayfly:v0.1.0
-    image: dev4unet/cm-mayfly:v0.2.0
-    container_name: cm-mayfly
-    platform: linux/amd64
-    stdin_open: true
-    tty: true
-    networks:
-      - spider_net
-      - default
+  # cm-mayfly:
+  # #   image: cloudbaristaorg/cm-mayfly:v0.1.0
+  #   image: dev4unet/cm-mayfly:v0.2.0
+  #   container_name: cm-mayfly
+  #   platform: linux/amd64
+  #   stdin_open: true
+  #   tty: true
+  #   networks:
+  #     - spider_net
+  #     - default
 
 
 # cm-damselfly
