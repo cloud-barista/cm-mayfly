@@ -74,6 +74,13 @@ $ make
 Cloud-Migrator 시스템 구성에 필요한 정보는 `./conf/docker` 폴더 하위에 정의되어 있으니 시스템 구성전에 `./conf/docker/docker-compose.yaml` 파일 및 `./conf/docker/conf` 폴더의 내용들을 살펴 보고 필요한 경우 수정합니다.
 
 
+### mc-datamanager 인증 정보 설정
+mc-data-manger 서브 시스템은 `CSP를 이용하기 위한 인증 정보가 필요`합니다.
+현재는 profile.json 파일을 이용한 설정 방식만 제공하므로 mc-datamanager를 이용하고 싶으면 인프라 구축전에 반드시 `./conf/docker/conf/mc-data-manger/data/var/run/data-manager/profile/profile.json` 파일에 `CSP별 인증 정보를 등록`하세요.
+
+필요한 경우, 인프라 구축 후에 위 `profile.json` 파일의 내용을 수정해도 됩니다.
+
+
 ## Cloud-Migrator 인프라 구축
 아래 명령을 실행하면 도커 기반 인프라가 자동으로 구축됩니다.
 ```bash
