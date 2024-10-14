@@ -618,8 +618,8 @@ services:
     restart : always
     volumes:
       #- ./data/mc-data-manger:/app/data/
-      #- ./data/mc-data-manger/log:/app/data/data/var/log
       - ./conf/mc-data-manger/data:/app/data/
+      - ./data/mc-data-manger/log:/app/data/var/log
       - /etc/localtime:/etc/localtime:ro
     env_file:
       - ./conf/mc-data-manger/.env
