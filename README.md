@@ -68,8 +68,8 @@ Usage:
 
 Available Commands:
   api         Call the Cloud-Migrator system's Open APIs as services and actions
-  docker      Installing and managing cloud-migrator's infrastructure
   help        Help about any command
+  infra       Installing and managing cloud-migrator's infrastructure
   rest        rest api call
 
 Flags:
@@ -79,7 +79,7 @@ Use "mayfly [command] --help" for more information about a command.
 ```
 
 For more detailed explanations, see the articles below.   
-- [docker sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
 - [rest sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-rest.md)
 - [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-api.md)
 
@@ -87,7 +87,7 @@ For more detailed explanations, see the articles below.
 # How to Build a Cloud-Migrator Infrastructure
 A quick guide on how to easily build a Cloud-Migrator infrastructure.   
 If you need a more detailed explanation, check out the article below.   
-- [docker sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
 
 
 ## 1. Download cm-mayfly
@@ -107,12 +107,12 @@ If necessary, you can also modify the contents of the profile.json file after th
 
 ## 3. Building a Docker-based infrastructure
 ```
-$ ./cm-mayfly docker run
+$ ./cm-mayfly infra run
 ```
 
 ## 4. Checking the subsystem running status
 ```
-$ ./cm-mayfly docker info
+$ ./cm-mayfly infra info
 ```
 
 
@@ -130,8 +130,8 @@ Use the -h option at the end of the sub-command requiring assistance, or executi
 
 ```
 Usage:
-  mayfly docker [flags]
-  mayfly docker [command]
+  mayfly infra [flags]
+  mayfly infra [command]
 
 Available Commands:
   info        Get information of Cloud-Migrator System
@@ -143,17 +143,17 @@ Available Commands:
 Flags:
   -h, --help   help for docker
 
-Use "mayfly docker [command] --help" for more information about a command.
+Use "mayfly infra [command] --help" for more information about a command.
 ```
    
 ## docker subcommand examples
 Simple usage examples for docker subcommand
 ```
- ./mayfly docker pull [-f ./conf/docker/docker-compose.yaml]   
- ./mayfly docker run [-f ./conf/docker/docker-compose.yaml]   
- ./mayfly docker info   
- ./mayfly docker stop [-f ./conf/docker/docker-compose.yaml]   
- ./mayfly docker remove [-f ./conf/docker/docker-compose.yaml] -v -i   
+ ./mayfly infra pull [-f ./conf/docker/docker-compose.yaml]   
+ ./mayfly infra run [-f ./conf/docker/docker-compose.yaml]   
+ ./mayfly infra info   
+ ./mayfly infra stop [-f ./conf/docker/docker-compose.yaml]   
+ ./mayfly infra remove [-f ./conf/docker/docker-compose.yaml] -v -i   
 ```
 
 

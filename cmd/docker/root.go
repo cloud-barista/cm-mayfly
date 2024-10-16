@@ -22,17 +22,19 @@ var ServiceName string
 
 // restCmd represents the rest command
 var dockerCmd = &cobra.Command{
-	Use:   "docker",
+	Use:   "infra",
 	Short: "Installing and managing cloud-migrator's infrastructure",
 	Long: `Build the environment of the infrastructure required for cloud-migrator and monitor the running status of the infrastructure.
-For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
+For example, you can install and run, stop, update and ... Cloud-Migrator runtimes.
 
-- ./mayfly docker pull [-f ./conf/docker/docker-compose.yaml]
-- ./mayfly docker run [-f ./conf/docker/docker-compose.yaml]
-- ./mayfly docker info
-- ./mayfly docker stop [-f ./conf/docker/docker-compose.yaml]
-- ./mayfly docker remove [-f ./conf/docker/docker-compose.yaml] -v -i
-
+- ./mayfly infra install
+- ./mayfly infra run
+- ./mayfly infra run -d
+- ./mayfly infra run -d -s cb-tumblebug
+- ./mayfly infra info
+- ./mayfly infra stop
+- ./mayfly infra update
+- ./mayfly infra remove -v -i
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
