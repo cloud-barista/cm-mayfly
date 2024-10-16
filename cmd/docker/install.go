@@ -9,11 +9,11 @@ import (
 
 // pullCmd represents the pull command
 var pullCmd = &cobra.Command{
-	Use:   "pull",
-	Short: "Pull images of Cloud-Migrator System containers",
-	Long:  `Pull images of Cloud-Migrator System containers`,
+	Use:   "install",
+	Short: "Install the Docker images of the subsystems that make up the Cloud-Migrator system.",
+	Long:  `Install the Docker images of the subsystems that make up the Cloud-Migrator system.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("\n[Pull images of Cloud-Migrator System containers]")
+		fmt.Println("\n[Install the Docker images of the subsystems that make up the Cloud-Migrator system.]")
 		fmt.Println()
 
 		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull %s", ProjectName, DockerFilePath, ServiceName)
