@@ -10,10 +10,10 @@ import (
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Setup and Run Cloud-Migrator System",
-	Long:  `Setup and Run Cloud-Migrator System`,
+	Short: "Install and Run Cloud-Migrator System",
+	Long:  `Install and Run Cloud-Migrator System`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("\n[Setup and Run Cloud-Migrator]")
+		fmt.Println("\n[Install and Run Cloud-Migrator System]")
 		fmt.Println()
 
 		detachModeOption := ""

@@ -13,6 +13,7 @@
 1. [환경설정 확인 및 변경](#환경설정-확인-및-변경)
 1. [Cloud-Migrator 인프라 구축](#cloud-migrator-인프라-구축)
 1. [Cloud-Migrator 실행상태 확인](#cloud-migrator-실행상태-확인)
+1. [Cloud-Migrator 업데이트](#cloud-migrator-업데이트)
 1. [Cloud-Migrator 삭제(인프라 구축 환경 정리)](#cloud-migrator-삭제인프라-구축-환경-정리)
 1. [Docker 전체 환경 정리](#docker-전체-환경-정리)
 
@@ -82,24 +83,30 @@ mc-data-manger 서브 시스템은 `CSP를 이용하기 위한 인증 정보가 
 
 
 ## Cloud-Migrator 인프라 구축
-아래 명령을 실행하면 도커 기반 인프라가 자동으로 구축됩니다.
+아래 명령을 실행하면 도커 기반 인프라가 자동으로 구축되며 실행 과정이 화면에 출력됩니다.
 ```bash
-$ ./mayfly docker run
+$ ./mayfly infra run
 ```
 
-만약, Cloud-Migrator 시스템을 구축하려는 시스템 환경이 Clean한 환경이 아니라 `./mayfly docker run` 명령만으로는 충돌로 인해 설치 문제가 발생할 경우에는 [Docker 전체 환경 정리](#docker-전체-환경-정리) 섹션의 내용을 확인해서 시스템 환경을 먼저 깔끔하게 정리 후 실행하는 것을 추천드립니다.
+만약, Cloud-Migrator 시스템을 구축하려는 시스템 환경이 Clean한 환경이 아니라서 `./mayfly infra run` 명령만으로는 제대로 실행되지 않는 설치 문제가 발생할 경우에는 [Docker 전체 환경 정리](#docker-전체-환경-정리) 섹션의 내용을 확인해서 시스템 환경을 먼저 깔끔하게 정리 후 실행하는 것을 추천드립니다.   
+
+
+설치 과정을 보고 싶지 않다면 -d 옵션이나 --detach 플래그를 사용해서 설치 과정을 백그라운드로 실행할 수 있습니다.
+```bash
+$ ./mayfly infra run -d
+```
 
 
 특정 프레임워크만 실행하고 싶으면 아래처럼 실행합니다.   
 예를 들어, cb-tumbleug을 실행하고 싶은 경우..
 ```bash
-$ ./mayfly docker run cb-tumblebug
+$ ./mayfly infra run cb-tumblebug
 ```
 
 ## Cloud-Migrator 실행상태 확인
 설치된 인프라 및 서브 프레임워크들의 상태를 확인할 수 있습니다.
 ```bash
-$ ./mayfly docker info
+$ ./mayfly infra info
 ```
 
 실행 결과 예시
@@ -145,17 +152,25 @@ etcd                gcr.io/etcd-development/etcd     v3.5.14             13b1359
 ```
 
 
+## Cloud-Migrator 업데이트
+Cloud-Migrator 서브 시스템들의 최신 버전으로 업데이트하고 싶은 경우 update 명령으로 현재 환경을 최신 버전으로 재구축할 수 있습니다.
+```bash
+$ ./mayfly infra update
+```
+
+
+
 ## Cloud-Migrator 중지
 일부 또는 전체 프레임워크를 잠시 중지할 때 사용합니다.
 ```bash
-$ ./mayfly docker stop
+$ ./mayfly infra stop
 ```
 
 
 특정 프레임워크만 중지하고 싶으면 아래처럼 실행합니다.   
 예를 들어, cb-tumbleug을 중지하고 싶은 경우..
 ```bash
-$ ./mayfly docker stop cb-tumbleug
+$ ./mayfly infra stop cb-tumbleug
 ```
 
 
@@ -164,32 +179,32 @@ $ ./mayfly docker stop cb-tumbleug
 
 아래 명령으로 실행된 모든 컨테이너가 종료 및 삭제되며 생성된 네트워크도 삭제됩니다.
 ```bash
-$ ./mayfly docker remove
+$ ./mayfly infra remove
 ```
 
 사용된 이미지도 함께 삭제합니다.
 ```bash
-$ ./mayfly docker remove --images
+$ ./mayfly infra remove --images
 또는
-$ ./mayfly docker remove -i
+$ ./mayfly infra remove -i
 ```
 
 생성된 볼륨된 함께 삭제합니다.   
 (주의) 볼륨이 삭제되면 저장된 데이터도 모두 삭제됩니다.
 ```bash
-$ ./mayfly docker remove --volumes
+$ ./mayfly infra remove --volumes
 또는
-$ ./mayfly docker remove -v
+$ ./mayfly infra remove -v
 ```
 
 컨테이너를 비롯하여 네트워크 및 이미지와 볼륨 등 모든 자원을 삭제합니다.   
 완전히 최초 상태로 재구축하고 싶거나 더 이상 필요 없을 때 사용하세요.
 ```bash
-./mayfly docker remove --images --volumes
+./mayfly infra remove --images --volumes
 또는 
-./mayfly docker remove -i -v
+./mayfly infra remove -i -v
 또는
-./mayfly docker remove --all
+./mayfly infra remove --all
 ```
 
 ## Docker 전체 환경 정리
