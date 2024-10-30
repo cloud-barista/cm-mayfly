@@ -182,25 +182,25 @@ services:
       start_period: 10s
 
 
-  # cb-mapui
-  # used by cb-tumblebug
-  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
-  cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.9.3
-    container_name: cb-mapui
-    ports:
-      - target: 1324
-        published: 1324
-        protocol: tcp
-    # depends_on:
-    #   - cb-tumblebug
-    healthcheck: # for cb-mapui
-      #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
-      test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
-      interval: 10m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+  # # cb-mapui
+  # # used by cb-tumblebug
+  # # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
+  # cb-mapui:
+  #   image: cloudbaristaorg/cb-mapui:0.9.3
+  #   container_name: cb-mapui
+  #   ports:
+  #     - target: 1324
+  #       published: 1324
+  #       protocol: tcp
+  #   # depends_on:
+  #   #   - cb-tumblebug
+  #   healthcheck: # for cb-mapui
+  #     #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
+  #     test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
+  #     interval: 10m
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 10s
 
   # cm-beetle
   # https://github.com/cloud-barista/cm-beetle/discussions/73
@@ -288,15 +288,16 @@ services:
 
 
   # cm-butterfly (api)
+  # If the configuration file location is different, uncomment the lines in the environment section as needed.
   # https://github.com/cloud-barista/cm-butterfly
   # https://github.com/cloud-barista/cm-butterfly/blob/main/scripts/docker-compose.yaml
   # https://github.com/cloud-barista/cm-butterfly/blob/main/api/.env.sample to .env <-- share to cm-butterfly-db
   # https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf
-  # https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/api.yaml.sample to api.yaml
-  # https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
+  # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/api.yaml.sample to api.yaml
+  # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
-    image: cloudbaristaorg/cm-butterfly-api:latest
+    image: cloudbaristaorg/cm-butterfly-api:edge
     container_name: cm-butterfly-api
     platform: linux/amd64
     restart: always
@@ -312,11 +313,13 @@ services:
       - ./conf/cm-butterfly/api/.env
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
-      - ./conf/cm-butterfly/api/conf:/conf/
-    environment:
-      USER_AUTH_DATA_PATH: /conf/user.dat 
-      USER_AUTH_CONF_PATH: /conf/authsetting.yaml
-      MENU_CONF_DATA_PATH: /conf/menu.yaml
+      #- ./conf/cm-butterfly/api/conf:/conf/
+      - ./conf/cm-butterfly/api/conf/authsetting.yaml:/conf/authsetting.yaml
+      #- ./conf/cm-butterfly/api/conf/api.yaml:/conf/api.yaml
+    # environment:
+    #   USER_AUTH_DATA_PATH: /conf/user.dat 
+    #   USER_AUTH_CONF_PATH: /conf/authsetting.yaml
+    #   MENU_CONF_DATA_PATH: /conf/menu.yaml
     healthcheck: # for butterfly-api
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
@@ -333,7 +336,7 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    image: cloudbaristaorg/cm-butterfly-front:latest
+    image: cloudbaristaorg/cm-butterfly-front:edge
     container_name: cm-butterfly-front
     platform: linux/amd64
     restart: always
@@ -603,36 +606,36 @@ services:
 
 
 
-  # mc-data-manger
-  # [required] /conf/mc-data-manger/data/var/run/data-manager/profile/sample.json -> profile.json copy
-  # https://github.com/cloud-barista/mc-data-manager
-  # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
-  # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
-  # https://hub.docker.com/r/cloudbaristaorg/mc-data-manager
-  mc-data-manger:
-    container_name: mc-data-manger
-    image: cloudbaristaorg/mc-data-manager:edge
-    platform: linux/amd64
-    tty: true
-    ports:
-      - "3300:3300"
-    restart : always
-    volumes:
-      #- ./data/mc-data-manger:/app/data/
-      - ./conf/mc-data-manger/data:/app/data/
-      - ./data/mc-data-manger/log:/app/data/var/log
-      - /etc/localtime:/etc/localtime:ro
-    env_file:
-      - ./conf/mc-data-manger/.env
-    depends_on:
-      - mc-data-manger-init-chown-volumes
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://mc-data-manger:3300/readyZ"]
-      # test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
-      interval: 10m
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+  # # mc-data-manger
+  # # [required] /conf/mc-data-manger/data/var/run/data-manager/profile/sample.json -> profile.json copy
+  # # https://github.com/cloud-barista/mc-data-manager
+  # # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  # # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
+  # # https://hub.docker.com/r/cloudbaristaorg/mc-data-manager
+  # mc-data-manger:
+  #   container_name: mc-data-manger
+  #   image: cloudbaristaorg/mc-data-manager:edge
+  #   platform: linux/amd64
+  #   tty: true
+  #   ports:
+  #     - "3300:3300"
+  #   restart : always
+  #   volumes:
+  #     #- ./data/mc-data-manger:/app/data/
+  #     - ./conf/mc-data-manger/data:/app/data/
+  #     - ./data/mc-data-manger/log:/app/data/var/log
+  #     - /etc/localtime:/etc/localtime:ro
+  #   env_file:
+  #     - ./conf/mc-data-manger/.env
+  #   depends_on:
+  #     - mc-data-manger-init-chown-volumes
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://mc-data-manger:3300/readyZ"]
+  #     # test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
+  #     interval: 10m
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
 
 
   # mc-data-manger init-chown-volumes
@@ -663,8 +666,30 @@ services:
   #     - default
 
 
-# cm-damselfly
-# Does not currently provide a docker image.
+# # cm-damselfly
+# # Does not currently provide a docker image.
+#   # cm-damselfly
+#   # https://github.com/cloud-barista/cm-damselfly
+#   cm-damselfly:
+#     # image: cloudbaristaorg/cm-damselfly:edge
+#     image: dev4unet/cm-damselfly:edge
+#     container_name: cm-damselfly
+#     platform: linux/amd64
+#     ports:
+#       - target: 8088
+#         published: 8088
+#         protocol: tcp
+#     volumes:
+#       - ./tool/mayfly:/app/tool/mayfly
+#       #- ./conf/cm-damselfly/conf:/app/conf/
+#     healthcheck: # for CM-Beetle
+#       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz" ]
+#       interval: 10m
+#       timeout: 5s
+#       retries: 3
+#       start_period: 10s
+
+
 
 # cm-centipede
 # Does not currently provide a docker image.
