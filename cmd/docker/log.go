@@ -9,7 +9,7 @@ import (
 
 // pullCmd represents the pull command
 var logCmd = &cobra.Command{
-	Use:   "log",
+	Use:   "logs",
 	Short: "View output from Cloud-Migrator system containers",
 	Long:  `View output from Cloud-Migrator system containers`,
 	Run: func(cmd *cobra.Command, args []string) {
