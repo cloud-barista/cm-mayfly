@@ -9,14 +9,6 @@ services:
 # 5. Variable is not defined
 
 
-
-
-  test:
-    image: ubuntu:latest
-    container_name: test
-    stdin_open: true
-    tty: true
-
   # cb-mapui
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
