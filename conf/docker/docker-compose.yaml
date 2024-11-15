@@ -89,7 +89,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.9.8
+    image: cloudbaristaorg/cb-spider:0.10.0
     #image: cloudbaristaorg/cb-spider:edge
     container_name: cb-spider
     platform: linux/amd64
@@ -127,7 +127,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.9.22
+    image: cloudbaristaorg/cb-tumblebug:0.10.0
     #image: cloudbaristaorg/cb-tumblebug:edge
     container_name: cb-tumblebug
     platform: linux/amd64
@@ -187,7 +187,7 @@ services:
   # # used by cb-tumblebug
   # # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   # cb-mapui:
-  #   image: cloudbaristaorg/cb-mapui:0.9.13
+  #   image: cloudbaristaorg/cb-mapui:0.10.0
   #   container_name: cb-mapui
   #   ports:
   #     - target: 1324
@@ -356,8 +356,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
   # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
-    #image: cloudbaristaorg/cm-honeybee:0.2.0
-    image: cloudbaristaorg/cm-honeybee:edge
+    image: cloudbaristaorg/cm-honeybee:0.2.10
+    #image: cloudbaristaorg/cm-honeybee:edge
     container_name: cm-honeybee
     platform: linux/amd64
     ports:
@@ -382,7 +382,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-damselfly
   cm-damselfly:
     # image: cloudbaristaorg/cm-damselfly:edge
-    image: cloudbaristaorg/cm-damselfly:0.2.0    
+    image: cloudbaristaorg/cm-damselfly:0.2.1
     container_name: cm-damselfly
     platform: linux/amd64
     ports:
@@ -509,7 +509,6 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-grasshopper
   # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
   cm-grasshopper:
-    #image: cloudbaristaorg/cm-grasshopper:0.2.0
     #image: cloudbaristaorg/cm-grasshopper:0.2.1
     image: cloudbaristaorg/cm-grasshopper:edge
     container_name: cm-grasshopper
@@ -553,7 +552,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-ant
   cm-ant:
     container_name: cm-ant
-    image: cloudbaristaorg/cm-ant:0.2.5
+    image: cloudbaristaorg/cm-ant:0.2.6
     #image: cloudbaristaorg/cm-ant:edge
     platform: linux/amd64
     ports:
