@@ -9,25 +9,6 @@ services:
 # 5. Variable is not defined
 
 
-  # cb-mapui
-  # used by cb-tumblebug
-  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
-  cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.10.0
-    container_name: cb-mapui
-    ports:
-      - target: 1324
-        published: 1324
-        protocol: tcp
-    # depends_on:
-    #   - cb-tumblebug
-    healthcheck: # for cb-mapui
-      #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
-      test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
-      interval: 10m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
   # mc-data-manger
   # [required] /conf/mc-data-manger/data/var/run/data-manager/profile/sample.json -> profile.json copy
