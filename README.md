@@ -143,7 +143,7 @@ $ ./cm-mayfly infra update -s "cb-spider cb-tumblebug"
 
 You can check the logs of the entire system using the `logs` command.
 ```
-$ ./cm-mayfly infra logs -s cb-spider
+$ ./cm-mayfly infra logs
 ```
 
 You can `logs` a specific service using the `-s` flag.
