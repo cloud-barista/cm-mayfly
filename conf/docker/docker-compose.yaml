@@ -127,7 +127,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.10.0
+    image: cloudbaristaorg/cb-tumblebug:0.10.1
     #image: cloudbaristaorg/cb-tumblebug:edge
     container_name: cb-tumblebug
     platform: linux/amd64
@@ -268,8 +268,8 @@ services:
   # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
-    #image: cloudbaristaorg/cm-butterfly-api:edge
-    image: cloudbaristaorg/cm-butterfly-api:0.2.2
+    image: cloudbaristaorg/cm-butterfly-api:edge
+    #image: cloudbaristaorg/cm-butterfly-api:0.2.3
     #image: csescsta/cm-butterfly-api:20241112101651-develop
     container_name: cm-butterfly-api
     platform: linux/amd64
@@ -309,8 +309,8 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    #image: cloudbaristaorg/cm-butterfly-front:edge
-    image: cloudbaristaorg/cm-butterfly-front:0.2.2
+    image: cloudbaristaorg/cm-butterfly-front:edge    
+    #image: cloudbaristaorg/cm-butterfly-front:0.2.3
     #image: csescsta/cm-butterfly-front:20241112101651-develop
     container_name: cm-butterfly-front
     platform: linux/amd64
@@ -405,7 +405,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-cicada
   cm-cicada:
     image: cloudbaristaorg/cm-cicada:edge
-    #image: cloudbaristaorg/cm-cicada:edge
+    #image: cloudbaristaorg/cm-cicada:0.2.4
     container_name: cm-cicada
     restart: always
     ports:
