@@ -410,6 +410,8 @@ services:
     restart: always
     ports:
       - "8083:8083"
+    depends_on:
+        - airflow-server
     volumes:
       #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
       - ./tool/mayfly:/app/tool/mayfly
@@ -511,6 +513,7 @@ services:
           "
       depends_on:
           - airflow-mysql
+          - airflow-redis
       volumes:
               - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
               - /var/run/docker.sock:/var/run/docker.sock
