@@ -391,6 +391,7 @@ services:
         protocol: tcp
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
+      - ./data/cm-damselfly/db:/app/db/
       #- ./conf/cm-damselfly/conf:/app/conf/
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz" ]
