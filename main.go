@@ -22,6 +22,7 @@ import (
 
 	//_ "github.com/cm-mayfly/cm-mayfly/cmd/k8s"
 	_ "github.com/cm-mayfly/cm-mayfly/cmd/rest"
+	_ "github.com/cm-mayfly/cm-mayfly/cmd/setup"
 )
 
 func main() {

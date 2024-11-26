@@ -1,0 +1,76 @@
+#version: "3.3"
+# docker image : https://hub.docker.com/u/cloudbaristaorg
+services:
+# The priority used by Compose to choose which env var value to use:
+# 1. Compose file
+# 2. Shell environment variables
+# 3. Environment file
+# 4. Dockerfile
+# 5. Variable is not defined
+
+
+
+  # mc-data-manger
+  # [required] /conf/mc-data-manger/data/var/run/data-manager/profile/sample.json -> profile.json copy
+  # https://github.com/cloud-barista/mc-data-manager
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
+  # https://hub.docker.com/r/cloudbaristaorg/mc-data-manager
+  mc-data-manger:
+    container_name: mc-data-manger
+    #image: cloudbaristaorg/mc-data-manager:edge
+    image: cloudbaristaorg/mc-data-manager:0.3.0
+    platform: linux/amd64
+    tty: true
+    ports:
+      - "3300:3300"
+    restart : always
+    volumes:
+      #- ./data/mc-data-manger:/app/data/
+      - ./conf/mc-data-manger/data:/app/data/
+      - ./data/mc-data-manger/log:/app/data/var/log
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - ./conf/mc-data-manger/.env
+    depends_on:
+      - mc-data-manger-init-chown-volumes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://mc-data-manger:3300/readyZ"]
+      # test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
+      interval: 10m
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
+  # mc-data-manger init-chown-volumes
+  # https://github.com/cloud-barista/mc-data-manager
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
+  # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
+  mc-data-manger-init-chown-volumes:
+    image: busybox
+    command: ["sh", "-c", "chown -R ${UID:-0}:${GID:-0} /app/data"]
+    volumes:
+      #- ./data/mc-data-manger:/app/data/
+      - ./conf/mc-data-manger/data:/app/data/
+    user: root
+    env_file:
+      - ./conf/mc-data-manger/.env
+    init: true
+
+
+  # cm-mayfly:
+  # #   image: cloudbaristaorg/cm-mayfly:v0.1.0
+  #   image: dev4unet/cm-mayfly:v0.2.0
+  #   container_name: cm-mayfly
+  #   platform: linux/amd64
+  #   stdin_open: true
+  #   tty: true
+  #   networks:
+  #     - spider_net
+  #     - default
+
+
+# networks:
+#   spider_net: #Network for cb-spider isolation
+#   cm-butterfly-network: #Network for web isolation

@@ -27,6 +27,12 @@ services:
         container_name: airflow-server
         image: cloudbaristaorg/airflow-server:edge
         restart: always
+        environment:
+            AIRFLOW__SMTP__SMTP_HOST: 'smtp.gmail.com'
+            AIRFLOW__SMTP__SMTP_USER: 'ish.mcmp@gmail.com'
+            AIRFLOW__SMTP__SMTP_PASSWORD: 'dyxagugkcbzrsrzb'
+            AIRFLOW__SMTP__SMTP_PORT: 587
+            AIRFLOW__SMTP__SMTP_MAIL_FROM: 'ish.mcmp@gmail.com'
         command: >
             /bin/bash -c "
                 # Wait for MySQL
