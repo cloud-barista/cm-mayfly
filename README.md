@@ -121,11 +121,27 @@ If you do not want to see the output logs and want to run it in the background, 
 $ ./cm-mayfly infra run -d
 ```
 
+
 ## 4. Checking the subsystem running status
 To verify that the Cloud-Migrator system is running correctly, use the `info` command to check the healthy status of each subsystem.
 ```
 $ ./cm-mayfly infra info
 ```
+
+For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. For cm-cicada, please check the logs and restart if any errors occur.
+```
+$ ./cm-mayfly logs -s cm-cicada
+```
+
+Alternatively, you can use the web portal or Open API to check if the list of Task Components contains 10 items.
+curl -s http://localhost:8083/cicada/task_component | jq '. | length'
+
+If you determine that a restart is necessary, stop and then start it as shown below.
+```
+$ ./cm-mayfly infra stop -s cm-cicada
+$ ./cm-mayfly infra run -s cm-cicada
+```
+
 
 ## 5. Some helpful commands
 If a new version of the Docker image is released, you can update the running version of Cloud-Migrator to the latest version using the `update` command.

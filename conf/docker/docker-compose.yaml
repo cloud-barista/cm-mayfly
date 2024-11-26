@@ -226,6 +226,7 @@ services:
       - ./tool/mayfly:/app/tool/mayfly
       #- ./conf/cm-beetle/conf:/app/conf/
       - ./data/cm-beetle/log/:/app/log/
+      - ./data/cm-beetle/db:/app/db/
     environment:
       # - BEETLE_ROOT=/app
       # - BEETLE_CBSTORE_ROOT=/app
@@ -412,6 +413,8 @@ services:
     ports:
       - "8083:8083"
     depends_on:
+        - cm-beetle
+        - cm-grasshopper
         - airflow-server
     volumes:
       #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
