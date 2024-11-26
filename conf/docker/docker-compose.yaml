@@ -427,7 +427,7 @@ services:
 
   # airflow-redis
   # used by cm-cicada
-  # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   airflow-redis:
     container_name: airflow-redis
     image: redis:7.2-alpine
@@ -443,7 +443,7 @@ services:
 
   # airflow-mysql
   # used by cm-cicada
-  # https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   # ./conf/_airflow/create_airflow_db.sql : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/create_airflow_db.sql
   airflow-mysql:
       container_name: airflow-mysql
@@ -464,7 +464,7 @@ services:
 
   # airflow-server
   # used by cm-cicada
-  # See https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   airflow-server:
       # build:
       #     context: ./conf/cm-cicada/_airflow ## build Docker file location
@@ -472,6 +472,12 @@ services:
       image: cloudbaristaorg/airflow-server:0.2.3
       #image: cloudbaristaorg/airflow-server:edge
       restart: always
+      environment:
+          AIRFLOW__SMTP__SMTP_HOST: 'smtp.gmail.com'
+          AIRFLOW__SMTP__SMTP_USER: 'ish.mcmp@gmail.com'
+          AIRFLOW__SMTP__SMTP_PASSWORD: 'dyxagugkcbzrsrzb'
+          AIRFLOW__SMTP__SMTP_PORT: 587
+          AIRFLOW__SMTP__SMTP_MAIL_FROM: 'ish.mcmp@gmail.com'      
       ports:
           - "5555:5555"
           - "8080:8080"
