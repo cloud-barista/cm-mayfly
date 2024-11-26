@@ -6,7 +6,7 @@ package setup
 import (
 	"fmt"
 
-	"github.com/cm-mayfly/cm-mayfly/cmd"
+	//"github.com/cm-mayfly/cm-mayfly/cmd" //임시로 주석처리
 	//"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
@@ -23,5 +23,5 @@ var setupCmd = &cobra.Command{
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(setupCmd)
+	//cmd.RootCmd.AddCommand(setupCmd)
 }

@@ -18,9 +18,11 @@ package setup
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"sort"
@@ -344,6 +346,7 @@ func getCredentialsMeta(csp string) ([]string, error) {
 
 // CSP의 인증 정보를 암호화 처리 함.
 func processCspCredentialEncrypt() {
+	//fmt.Println("Processing CSP Credential Encryption : ", csp)
 	selectedCsp := ""
 
 	// CLI에서 옵션으로 전달 받은 경우
@@ -365,7 +368,7 @@ func processCspCredentialEncrypt() {
 	// 선택된 CSP에 대한 인증 정보를 처리한다는 메시지 출력
 	fmt.Printf("\nProcessing authentication information for selected [%s] CSP\n", selectedCsp)
 
-	// CSP에 맞는 Credential 정보를 가져옴
+	// CSP에 맞는 Credential 메타 정보를 가져옴
 	credentialMeta, err := getCredentialsMeta(selectedCsp)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -417,13 +420,25 @@ func processCspCredentialEncrypt() {
 		"encryptedClientAesKeyByPublicKey": encryptedAesKey,
 		"credentialKeyValueList":           encryptedCredentials,
 	}
-	sendCredentials(payload)
+
+	result, err := sendCredentials(payload)
+	if err != nil {
+		fmt.Println("Error:", err)
+	} else {
+		fmt.Println("Result:", result)
+	}
 }
 
 // 사용자로부터 콘솔에서 CSP의 인증 정보를 입력받아 map 형태로 반환
 func inputCredentialsFromCli(credentialMeta []string) (map[string]string, error) {
 	credentials := make(map[string]string)
 	reader := bufio.NewReader(os.Stdin)
+
+	// 터미널 상태 저장
+	oldState, err := term.GetState(int(syscall.Stdin))
+	if err != nil {
+		return nil, fmt.Errorf("Error getting terminal state: %v", err)
+	}
 
 	for {
 		// ================================
@@ -440,6 +455,11 @@ func inputCredentialsFromCli(credentialMeta []string) (map[string]string, error)
 			value := string(bytePassword)
 			fmt.Println() // 줄바꿈
 			credentials[key] = strings.TrimSpace(value)
+		}
+
+		// 터미널 설정 복원
+		if err := term.Restore(int(syscall.Stdin), oldState); err != nil {
+			return nil, fmt.Errorf("Error restoring terminal state: %v", err)
 		}
 
 		// ================================
@@ -578,69 +598,92 @@ func sendCredentials(payload map[string]interface{}) (map[string]interface{}, er
 	fmt.Println("Sending encrypted credentials to server")
 
 	// POST_CREDENTIAL_URL = "/credential"
+
+	client := &http.Client{}
+	reqBody, _ := json.Marshal(payload)
+	req, err := http.NewRequest("POST", "http://localhost:1323/tumblebug/credential", bytes.NewBuffer(reqBody))
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Basic ZGVmYXVsdDpkZWZhdWx0")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
+
+	return nil, nil
 	/*
-		client := &http.Client{}
-		reqBody, _ := json.Marshal(payload)
-		req, err := http.NewRequest("POST", "http://localhost:1323/tumblebug/credential", bytes.NewBuffer(reqBody))
-		if err != nil {
-			panic(err)
+		if isVerbose {
+			fmt.Println("Request payload")
+			// Print the payload in a pretty-printed JSON format
+			payloadJSON, err := json.MarshalIndent(payload, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Println("Payload:")
+			fmt.Println(string(payloadJSON)) // 출력
 		}
 
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Basic ...")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			panic(err)
+		url := serviceInfo.BaseURL + POST_CREDENTIAL_URL
+		if isVerbose {
+			fmt.Println("Request Url : ", url)
 		}
-		defer resp.Body.Close()
 
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Println(string(body))
+		// payload를 JSON으로 변환
+		reqBody, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("Error marshalling payload: %v", err)
+		}
+
+		// HTTP 요청 생성
+		req.SetHeader("Content-Type", "application/json")
+		resp, err := req.SetBody(reqBody).Post(url)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return nil, fmt.Errorf("Error: %v", err)
+		}
+
+		// 응답 결과 확인
+		body := resp.Body() // []byte 타입
+		if isVerbose {
+			fmt.Println(string(body))
+		}
+
+		if isVerbose {
+			fmt.Println(string(body))
+		}
+
+		// 응답 결과를 처리하여 리턴 타입에 맞게 반환
+		var result map[string]interface{}
+		err = json.Unmarshal(body, &result)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing JSON: %v", err)
+		}
+
+		if isVerbose {
+			fmt.Println("Response:")
+			// Print the response in a pretty-printed JSON format
+			responseJSON, err := json.MarshalIndent(result, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Println(string(responseJSON)) // 출력
+		}
+
+		// CSP Credential 정보 등록 완료 메시지 출력
+		fmt.Println("CSP Credential registration completed successfully")
 	*/
 
-	if isVerbose {
-		fmt.Println("Request payload")
-		// Print the payload in a pretty-printed JSON format
-		payloadJSON, err := json.MarshalIndent(payload, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("Payload:")
-		fmt.Println(string(payloadJSON)) // 출력
-	}
-
-	url := serviceInfo.BaseURL + POST_CREDENTIAL_URL
-	if isVerbose {
-		fmt.Println("Request Url : ", url)
-	}
-
-	resp, err := req.SetBody(payload).Post(url)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, fmt.Errorf("Error: %v", err)
-	}
-
-	defer resp.RawBody().Close()
-
-	body, err := io.ReadAll(resp.RawBody())
-	if err != nil {
-		return nil, fmt.Errorf("Error reading response body: %v", err)
-	}
-
-	if isVerbose {
-		fmt.Println(string(body))
-	}
-
-	// 응답 결과를 처리하여 리턴 타입에 맞게 반환
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing JSON: %v", err)
-	}
-
-	return result, nil
+	//return result, nil
 }
 
 var credentialCmd = &cobra.Command{
@@ -697,7 +740,7 @@ var credentialCmd = &cobra.Command{
 		}
 
 		// CSP의 인증 정보를 암호화 처리
-		//processCspCredentialEncrypt()
+		processCspCredentialEncrypt()
 	},
 }
 
