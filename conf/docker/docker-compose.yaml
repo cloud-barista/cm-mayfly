@@ -451,8 +451,11 @@ services:
       cap_add:
         - SYS_NICE
       restart: always
-      ports:
-        - "3306:3306"
+      # ports:
+      #   - "3306:3306"
+      # 외부 접근 차단 및 컨테이너 내부에서만 접근 가능하도록 설정
+      expose:
+        - "3306"        
       environment:
           - MYSQL_ROOT_PASSWORD=airflow_pass
           - MYSQL_USER=airflow
@@ -472,12 +475,14 @@ services:
       image: cloudbaristaorg/airflow-server:0.2.3
       #image: cloudbaristaorg/airflow-server:edge
       restart: always
-      environment:
-          AIRFLOW__SMTP__SMTP_HOST: 'smtp.gmail.com'
-          AIRFLOW__SMTP__SMTP_USER: 'ish.mcmp@gmail.com'
-          AIRFLOW__SMTP__SMTP_PASSWORD: 'dyxagugkcbzrsrzb'
-          AIRFLOW__SMTP__SMTP_PORT: 587
-          AIRFLOW__SMTP__SMTP_MAIL_FROM: 'ish.mcmp@gmail.com'      
+      env_file:
+        - ./conf/cm-cicada/airflow_smtp.env
+      # environment:
+      #     AIRFLOW__SMTP__SMTP_HOST: 'smtp.gmail.com'
+      #     AIRFLOW__SMTP__SMTP_USER: 'ish.mcmp@gmail.com'
+      #     AIRFLOW__SMTP__SMTP_PASSWORD: 'dyxagugkcbzrsrzb'
+      #     AIRFLOW__SMTP__SMTP_PORT: 587
+      #     AIRFLOW__SMTP__SMTP_MAIL_FROM: 'ish.mcmp@gmail.com'      
       ports:
           - "5555:5555"
           - "8080:8080"
