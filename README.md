@@ -97,23 +97,81 @@ $ cd cm-mayfly
 ```
 
 ## 2. Prerequisites
-Some subsystems require initial setup for configuration.
+Some sub systems may require initial setup, including changing the default password. If changes or settings are needed, modify the information in the `./conf/docker` folder.
 
+For example, to change the SMTP settings for cm-cicada, modify the following file:
+`./conf/docker/conf/cm-cicada/airflow_smtp.env`
+
+[For more details, refer to the cm-cicada SMTP configuration guide.](https://github.com/cloud-barista/cm-cicada?tab=readme-ov-file#smtp)
+
+<!--
 ### mc-datamanager
 The `mc-data-manager` subsystem `requires authentication information to use CSP`. Currently, only the configuration method using the `profile.json file` is supported. Therefore, if you wish to use mc-data-manager, `make sure to register the CSP-specific authentication information` in the `./conf/docker/conf/mc-data-manger/data/var/run/data-manager/profile/profile.json` file before setting up the infrastructure.   
 
 If necessary, you can also modify the contents of the profile.json file after the infrastructure has been set up.
-
+-->
 
 ## 3. Building a Docker-based infrastructure
 ```
 $ ./cm-mayfly infra run
 ```
 
+If you do not want to see the output logs and want to run it in the background, you can use the `-d` option to run it in detach mode.
+```
+$ ./cm-mayfly infra run -d
+```
+
 ## 4. Checking the subsystem running status
+To verify that the Cloud-Migrator system is running correctly, use the `info` command to check the healthy status of each subsystem.
 ```
 $ ./cm-mayfly infra info
 ```
+
+## 5. Some helpful commands
+If a new version of the Docker image is released, you can update the running version of Cloud-Migrator to the latest version using the `update` command.
+```
+$ ./cm-mayfly infra update
+```
+
+You can `update` a specific service using the `-s` flag.
+```
+$ ./cm-mayfly infra update -s cb-spider
+```
+```
+$ ./cm-mayfly infra update -s "cb-spider cb-tumblebug"
+```
+
+You can check the logs of the entire system using the `logs` command.
+```
+$ ./cm-mayfly infra logs -s cb-spider
+```
+
+You can `logs` a specific service using the `-s` flag.
+```
+$ ./cm-mayfly infra logs -s cb-spider
+```
+```
+$ ./cm-mayfly infra logs -s "cb-spider cb-tumblebug"
+```
+
+
+
+You can `stop` a specific service using the `-s` flag.
+```
+$ ./cm-mayfly infra stop -s cb-spider
+```
+```
+$ ./cm-mayfly infra stop -s "cb-spider cb-tumblebug"
+```
+
+You can `run` a specific service using the `-s` flag.
+```
+$ ./cm-mayfly infra run -s cb-spider
+```
+```
+$ ./cm-mayfly infra run -s "cb-spider cb-tumblebug"
+```
+
 
 
 <!-- 
