@@ -70,7 +70,8 @@ var restCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
 		//fmt.Println("============ REST 메인 호출됨!!!!  ")
-		fmt.Println(cmd.Help()) // root.go에서는 도움말만 출력 함.
+		//fmt.Println(cmd.Help())
+		cmd.Help() // root.go에서는 도움말만 출력 함.
 	},
 
 	// PersistentPostRun: func(cmd *cobra.Command, args []string) {
