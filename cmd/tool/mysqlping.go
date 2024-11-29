@@ -80,6 +80,8 @@ Flags:
 
 func dbPing() bool {
 	// DSN 구성
+	log.Printf("Checking MySQL[%s:%s] connection...\n", host, port)
+
 	var dsn string
 	if database == "" {
 		dsn = user + ":" + password + "@tcp(" + host + ":" + port + ")"
@@ -124,12 +126,18 @@ func checkConfig() bool {
 		password = os.Getenv("MYSQL_PASSWORD")
 	}
 
-	if host == "" {
-		host = os.Getenv("MYSQL_HOST")
+	// 기본값 변경
+	if host == "localhost" {
+		if os.Getenv("MYSQL_HOST") != "" && os.Getenv("MYSQL_HOST") != "localhost" {
+			host = os.Getenv("MYSQL_HOST")
+		}
 	}
 
-	if port == "" {
-		port = os.Getenv("MYSQL_PORT")
+	// 기본값 변경
+	if port == "3306" {
+		if os.Getenv("MYSQL_PORT") != "" && os.Getenv("MYSQL_PORT") != "3306" {
+			port = os.Getenv("MYSQL_PORT")
+		}
 	}
 
 	if database == "" {
