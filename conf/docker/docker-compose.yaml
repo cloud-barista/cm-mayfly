@@ -9,21 +9,20 @@ services:
 # 5. Variable is not defined
 
 
-  # etcd
+  # cb-tumblebug-etcd
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
-  etcd:
+  cb-tumblebug-etcd:
     image: gcr.io/etcd-development/etcd:v3.5.14
-    container_name: etcd
+    container_name: cb-tumblebug-etcd
+    restart: unless-stopped
+    # networks:
+    #   - internal_network
     ports:
-      - target: 2379       # Port assinged to etcd in the container
-        published: 2379   # Port to be exposed to the host
-        protocol: tcp     # Protocol of the port     
-      - target: 2380      # Port assinged to etcd in the container
-        published: 2380   # Port to be exposed to the host
-        protocol: tcp     # Protocol of the port
+      - 2379:2379
+      - 2380:2380
     volumes: 
-      - ./data/etcd/data:/etcd-data
+      - ./data/cb-tumblebug/etcd:/etcd-data
     entrypoint: /usr/local/bin/etcd
     command:
       - --name
@@ -54,36 +53,39 @@ services:
       - simple
     healthcheck: # for etcd
       test: [ "CMD", "/usr/local/bin/etcd", "--version"]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
 
-  # etcd-conf
-  # ./conf/etcd folder : https://github.com/cloud-barista/cb-tumblebug/tree/main/scripts/etcd
-  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
-  etcd-conf:
-    image: alpine:latest
-    container_name: etcd-conf
-    depends_on:
-      - etcd
-    volumes:
-      - ./conf/etcd/:/scripts/etcd/
-    environment:
-      - ETCD_VERSION_TAG=v3.5.14
-      - ETCD_ENDPOINTS=http://etcd:2379
-      - ETCD_PATH=/tmp/etcd-download-test
-      - ETCD_AUTH_ENABLED=true
-      - ETCD_ROOT_PASSWORD=default
-      - ETCD_ADMIN_USERNAME=default
-      - ETCD_ADMIN_PASSWORD=default
-    command: sh -c "sh /scripts/etcd/etcd-conf.sh"
-    healthcheck: # for etcd-conf
-      test: ["CMD", "test", "-f", "/tmp/healthcheck"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+
+
+  # # etcd-conf
+  # # ./conf/cb-tumblebug/etcd folder : https://github.com/cloud-barista/cb-tumblebug/tree/main/scripts/etcd
+  # # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
+  # etcd-conf:
+  #   image: alpine:latest
+  #   container_name: etcd-conf
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - etcd
+  #   volumes:
+  #     - ./conf/cb-tumblebug/etcd/:/scripts/etcd/
+  #   environment:
+  #     - ETCD_VERSION_TAG=v3.5.14
+  #     - ETCD_ENDPOINTS=http://etcd:2379
+  #     - ETCD_PATH=/tmp/etcd-download-test
+  #     - ETCD_AUTH_ENABLED=true
+  #     - ETCD_ROOT_PASSWORD=default
+  #     - ETCD_ADMIN_USERNAME=default
+  #     - ETCD_ADMIN_PASSWORD=default
+  #   command: sh -c "sh /scripts/etcd/etcd-conf.sh"
+  #   healthcheck: # for etcd-conf
+  #     test: ["CMD", "test", "-f", "/tmp/healthcheck"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 10s
 
   # CB-Spider
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
@@ -93,9 +95,11 @@ services:
     #image: cloudbaristaorg/cb-spider:edge
     container_name: cb-spider
     platform: linux/amd64
+    restart: unless-stopped
     ports:
-      - "0.0.0.0:1024:1024"
-      - "0.0.0.0:2048:2048"
+      - 1024:1024
+      # - "0.0.0.0:1024:1024"
+      # - "0.0.0.0:2048:2048"
     networks:
       - spider_net
     volumes:
@@ -109,8 +113,8 @@ services:
       - API_USERNAME=
       - API_PASSWORD=
       #- SERVER_ADDRESS=localhost
-      #- SPIDER_LOG_LEVEL=error
-      #- SPIDER_HISCALL_LOG_LEVEL=error
+      - SPIDER_LOG_LEVEL=error
+      - SPIDER_HISCALL_LOG_LEVEL=error
       #- SERVICE_ADDRESS=
       #- ID_TRANSFORM_MODE=ON ##????? @todo : tumblebug에 있는 환경 변수인데 용도 파악 필요
     healthcheck: # for CB-Spider
@@ -131,48 +135,57 @@ services:
     #image: cloudbaristaorg/cb-tumblebug:edge
     container_name: cb-tumblebug
     platform: linux/amd64
+    restart: unless-stopped
     ports:
-      - "0.0.0.0:1323:1323"
+      - 1323:1323
+      # - "0.0.0.0:1323:1323"
       #- "0.0.0.0:50252:50252"
     networks:
       - spider_net
       - default
     depends_on:
       - cb-spider
-      - etcd-conf
+      - cb-tumblebug-etcd
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
-      - ./conf/cb-tumblebug/:/app/conf/
+      # - ./conf/depends_on_order/entrypoint_cb_tumblebug.sh:/tool/entrypoint.sh
+      - ./conf/cb-tumblebug/conf/:/app/conf/
       - ./data/cb-tumblebug/meta_db/:/app/meta_db/
       - ./data/cb-tumblebug/log/:/app/log/
     environment:
       # - TB_ROOT_PATH=/app
+      # # Enable TB_SELF_ENDPOINT to specify an endpoint for CB-TB API (default: localhost:1323)
+      # # Use public IP if you want to access the API Dashboard from outside of localhost
+      # - TB_SELF_ENDPOINT=xxx.xxx.xxx.xxx:1323
       - TB_SPIDER_REST_URL=http://cb-spider:1024/spider
-      #- TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
+      - TB_ETCD_ENDPOINTS=http://cb-tumblebug-etcd:2379
+      - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
+      # - TB_ETCD_AUTH_ENABLED=false
+      # - TB_ETCD_USERNAME=default
+      # - TB_ETCD_PASSWORD=default
       # - TB_SQLITE_URL=localhost:3306 
       # - TB_SQLITE_DATABASE=cb_tumblebug 
       # - TB_SQLITE_USER=cb_tumblebug 
       # - TB_SQLITE_PASSWORD=cb_tumblebug 
-      - TB_ETCD_ENDPOINTS=http://etcd:2379
-      # - TB_ETCD_AUTH_ENABLED=true
-      # - TB_ETCD_USERNAME=default
-      # - TB_ETCD_PASSWORD=default
       # - TB_ALLOW_ORIGINS=*
       # - TB_AUTH_ENABLED=true
       # - TB_API_USERNAME=default
       # - TB_API_PASSWORD=default
       # - TB_AUTOCONTROL_DURATION_MS=10000
-      - TB_SELF_ENDPOINT=localhost:1323
-      # - TB_DEFAULT_NAMESPACE=ns01
+      # - TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
+      # - TB_DEFAULT_NAMESPACE=default
       # - TB_DEFAULT_CREDENTIALHOLDER=admin
       # - TB_LOGFILE_PATH=/app/log/tumblebug.log
-      # - TB_LOGFILE_MAXSIZE=10
+      # - TB_LOGFILE_MAXSIZE=1000
       # - TB_LOGFILE_MAXBACKUPS=3
       # - TB_LOGFILE_MAXAGE=30
       # - TB_LOGFILE_COMPRESS=false
       # - TB_LOGLEVEL=debug
       # - TB_LOGWRITER=both
       # - TB_NODE_ENV=development
+    # To ensure the order of dependencies, we are explicitly using the entrypoint(/tool/entrypoint_xxxxx.sh)
+    # entrypoint: ["/tool/entrypoint.sh"]
+    # command: ["/app/src/cb-tumblebug"]
     healthcheck: # for CB-Tumblebug
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cb-tumblebug:1323/tumblebug/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://cb-tumblebug:1323/tumblebug/readyz" ]
@@ -216,6 +229,7 @@ services:
 
     container_name: cm-beetle
     platform: linux/amd64
+    restart: unless-stopped
     ports:
       - target: 8056
         published: 8056
@@ -274,7 +288,7 @@ services:
     #image: csescsta/cm-butterfly-api:20241112101651-develop
     container_name: cm-butterfly-api
     platform: linux/amd64
-    restart: always
+    restart: unless-stopped
     # networks:
     #   - cm-butterfly-network
     ports:
@@ -315,7 +329,7 @@ services:
     #image: csescsta/cm-butterfly-front:20241112101651-develop
     container_name: cm-butterfly-front
     platform: linux/amd64
-    restart: always
+    restart: unless-stopped
     # networks:
     #   - cm-butterfly-network
     ports:
@@ -334,6 +348,7 @@ services:
   cm-butterfly-db:
     container_name: cm-butterfly-db
     image: postgres:14-alpine
+    restart: unless-stopped
     # networks:
     #   - cm-butterfly-network
     ports:
@@ -345,6 +360,13 @@ services:
     volumes:
       - cm-butterfly-db:/var/lib/postgresql/data
     user: root
+    # healthcheck:
+    #   # test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+    #   test: ["CMD", "sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 10s
     # environment:
     #   POSTGRES_DB: ${POSTGRES_DB}
     #   POSTGRES_USER: ${POSTGRES_USER}
@@ -361,6 +383,7 @@ services:
     #image: cloudbaristaorg/cm-honeybee:edge
     container_name: cm-honeybee
     platform: linux/amd64
+    restart: unless-stopped
     ports:
       # 8081 : Server / 8082 : Agent
       - "8081:8081"
@@ -386,6 +409,7 @@ services:
     image: cloudbaristaorg/cm-damselfly:0.2.1
     container_name: cm-damselfly
     platform: linux/amd64
+    restart: unless-stopped
     ports:
       - target: 8088
         published: 8088
@@ -405,11 +429,12 @@ services:
   # cm-cicada
   # https://github.com/cloud-barista/cm-cicada
   # https://hub.docker.com/r/cloudbaristaorg/cm-cicada
+  # **important** : The cm-beetle, cm-grasshopper, and airflow-server containers must be in a readyz state and running beforehand
   cm-cicada:
     image: cloudbaristaorg/cm-cicada:edge
     #image: cloudbaristaorg/cm-cicada:0.2.4
     container_name: cm-cicada
-    restart: always
+    restart: unless-stopped
     ports:
       - "8083:8083"
     depends_on:
@@ -419,9 +444,12 @@ services:
     volumes:
       #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
       - ./tool/mayfly:/app/tool/mayfly
+      - ./conf/depends_on_order/entrypoint_cm_cicada.sh:/tool/entrypoint.sh
       - ./conf/cm-cicada/conf:/conf:rw
       - ./conf/cm-cicada/_airflow:/_airflow:rw
       - ./data/cm-cicada/CM-CICADA.db:/CM-CICADA.db:rw
+    # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
+    entrypoint: ["/tool/entrypoint.sh"]
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
       interval: 10m
@@ -438,7 +466,7 @@ services:
     container_name: airflow-redis
     image: redis:7.2-alpine
     command: redis-server --requirepass airflow_pass --port 6379
-    restart: always
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -452,75 +480,92 @@ services:
   # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   # ./conf/_airflow/create_airflow_db.sql : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/create_airflow_db.sql
   airflow-mysql:
-      container_name: airflow-mysql
-      image: mysql:8.0-debian
-      cap_add:
-        - SYS_NICE
-      restart: always
-      # ports:
-      #   - "3306:3306"
-      # 외부 접근 차단 및 컨테이너 내부에서만 접근 가능하도록 설정
-      expose:
-        - "3306"        
-      environment:
-          - MYSQL_ROOT_PASSWORD=airflow_pass
-          - MYSQL_USER=airflow
-          - MYSQL_PASSWORD=airflow_pass
-          - MYSQL_DATABASE=airflow
-      volumes:
-          - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
-          - ./data/cm-cicada/db_data:/var/lib/mysql
+    container_name: airflow-mysql
+    image: mysql:8.0-debian
+    cap_add:
+      - SYS_NICE
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    # 외부 접근 차단 및 컨테이너 내부에서만 접근 가능하도록 설정
+    # expose:
+    #   - "3306"        
+    environment:
+        - MYSQL_ROOT_PASSWORD=airflow_pass
+        - MYSQL_USER=airflow
+        - MYSQL_PASSWORD=airflow_pass
+        - MYSQL_DATABASE=airflow
+    volumes:
+        - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
+        - ./data/cm-cicada/db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "airflow", "-pairflow_pass" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
 
   # airflow-server
   # used by cm-cicada
   # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
   airflow-server:
-      # build:
-      #     context: ./conf/cm-cicada/_airflow ## build Docker file location
-      container_name: airflow-server
-      image: cloudbaristaorg/airflow-server:0.2.3
-      #image: cloudbaristaorg/airflow-server:edge
-      restart: always
-      env_file:
-        - ./conf/cm-cicada/airflow_smtp.env
-      # environment:
-      #     AIRFLOW__SMTP__SMTP_HOST: 'smtp.gmail.com'
-      #     AIRFLOW__SMTP__SMTP_USER: 'ish.mcmp@gmail.com'
-      #     AIRFLOW__SMTP__SMTP_PASSWORD: 'dyxagugkcbzrsrzb'
-      #     AIRFLOW__SMTP__SMTP_PORT: 587
-      #     AIRFLOW__SMTP__SMTP_MAIL_FROM: 'ish.mcmp@gmail.com'      
-      ports:
-          - "5555:5555"
-          - "8080:8080"
-      command: >
-          /bin/bash -c "
-              # Wait for MySQL
-              sleep 10
+    # build:
+    #     context: ./conf/cm-cicada/_airflow ## build Docker file location
+    container_name: airflow-server
+    image: cloudbaristaorg/airflow-server:0.2.3
+    #image: cloudbaristaorg/airflow-server:edge
+    restart: unless-stopped
+    env_file:
+      - ./conf/cm-cicada/airflow_smtp.env
+    environment:
+        - MYSQL_USER=airflow
+        - MYSQL_PASSWORD=airflow_pass
+        - MYSQL_HOST=airflow-mysql
+        - MYSQL_DATABASE=airflow
+    ports:
+        - "5555:5555"
+        - "8080:8080"
+    command: >
+        /bin/bash -c "
+            # Wait for MySQL(airflow-mysql) to be ready
+            # sleep 10
+            # move to check logic : entrypoint_airflow_depends_on.sh
 
-              # Clean up pid
-              rm -f airflow-webserver.pid
+            # Clean up pid
+            rm -f airflow-webserver.pid
 
-              # Set up metadata database
-              airflow db upgrade
+            # Set up metadata database
+            airflow db upgrade
 
-              # Create default user
-              airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin
+            # Create default user
+            airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin
 
-              # Start airflow
-              airflow scheduler &
-              airflow celery worker &
-              airflow celery flower &
-              airflow webserver
+            # Start airflow
+            airflow scheduler &
+            airflow celery worker &
+            airflow celery flower &
+            airflow webserver
 
-              # Keep the server on no matter what
-              sleep infinity
-          "
-      depends_on:
-          - airflow-mysql
-          - airflow-redis
-      volumes:
-              - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
-              - /var/run/docker.sock:/var/run/docker.sock
+            # Keep the server on no matter what
+            sleep infinity
+        "
+    depends_on:
+        - airflow-mysql
+        - airflow-redis
+    volumes:
+        - ./tool/mayfly:/app/tool/mayfly
+        - ./conf/depends_on_order/entrypoint_cm_cicada_airflow.sh:/tool/entrypoint.sh
+        - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
+        - /var/run/docker.sock:/var/run/docker.sock
+    # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
+    entrypoint: ["/tool/entrypoint.sh"]
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/health" ]
+      interval: 10m
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # cm-grasshopper
   # https://github.com/cloud-barista/cm-grasshopper
@@ -530,7 +575,7 @@ services:
     #image: cloudbaristaorg/cm-grasshopper:0.2.1
     image: cloudbaristaorg/cm-grasshopper:0.2.3
     container_name: cm-grasshopper
-    restart: always
+    restart: unless-stopped
     ports:
       - "8084:8084"
     depends_on:
@@ -620,59 +665,6 @@ services:
     restart: unless-stopped
 
 
-
-  # # Move to docker-compose-sub.yaml
-  # # mc-data-manger
-  # # [required] /conf/mc-data-manger/data/var/run/data-manager/profile/sample.json -> profile.json copy
-  # # https://github.com/cloud-barista/mc-data-manager
-  # # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
-  # # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
-  # # https://hub.docker.com/r/cloudbaristaorg/mc-data-manager
-  # mc-data-manger:
-  #   container_name: mc-data-manger
-  #   image: cloudbaristaorg/mc-data-manager:0.2.11
-  #   #image: cloudbaristaorg/mc-data-manager:edge
-  #   platform: linux/amd64
-  #   tty: true
-  #   ports:
-  #     - "3300:3300"
-  #   restart : always
-  #   volumes:
-  #     #- ./data/mc-data-manger:/app/data/
-  #     - ./conf/mc-data-manger/data:/app/data/
-  #     - ./data/mc-data-manger/log:/app/data/var/log
-  #     - /etc/localtime:/etc/localtime:ro
-  #   env_file:
-  #     - ./conf/mc-data-manger/.env
-  #   depends_on:
-  #     - mc-data-manger-init-chown-volumes
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://mc-data-manger:3300/readyZ"]
-  #     # test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://mc-data-manger:3300/data-manger/readyz" ]
-  #     interval: 10m
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 10s
-
-
-  # # Move to docker-compose-sub.yaml
-  # # mc-data-manger init-chown-volumes
-  # # https://github.com/cloud-barista/mc-data-manager
-  # # https://github.com/cloud-barista/mc-data-manager/blob/main/docker-compose.yaml
-  # # https://github.com/cloud-barista/mc-data-manager/blob/main/.env
-  # mc-data-manger-init-chown-volumes:
-  #   image: busybox
-  #   command: ["sh", "-c", "chown -R ${UID:-0}:${GID:-0} /app/data"]
-  #   volumes:
-  #     #- ./data/mc-data-manger:/app/data/
-  #     - ./conf/mc-data-manger/data:/app/data/
-  #   user: root
-  #   env_file:
-  #     - ./conf/mc-data-manger/.env
-  #   init: true
-
-
-  # # Move to docker-compose-sub.yaml
   # cm-mayfly:
   # #   image: cloudbaristaorg/cm-mayfly:v0.1.0
   #   image: dev4unet/cm-mayfly:v0.2.0
@@ -684,11 +676,6 @@ services:
   #     - spider_net
   #     - default
 
-
-
-# cm-centipede
-# Does not currently provide a docker image.
-# Probably integrated into cm-grasshopper
 
 networks:
   spider_net: #Network for cb-spider isolation
