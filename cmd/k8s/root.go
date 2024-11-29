@@ -4,7 +4,6 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package k8s
 
 import (
-	"fmt"
 
 	// "github.com/cm-mayfly/cm-mayfly/cmd"
 
@@ -28,7 +27,8 @@ For example, you can setup and run, stop, and ... Cloud-Migrator runtimes.
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
-		fmt.Println(cmd.Help())
+		//fmt.Println(cmd.Help())
+		cmd.Help()
 	},
 }
 

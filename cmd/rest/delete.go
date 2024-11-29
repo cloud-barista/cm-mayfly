@@ -18,7 +18,8 @@ var restDeleteCmd = &cobra.Command{
 	rest delete https://reqres.in/api/users/2`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) < 1 { // 아규먼트가 없으면 도움말 출력
-			fmt.Println(cmd.Help())
+			//fmt.Println(cmd.Help())
+			cmd.Help()
 			return
 		}
 

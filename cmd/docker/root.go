@@ -38,7 +38,8 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
-		fmt.Println(cmd.Help())
+		//fmt.Println(cmd.Help())
+		cmd.Help()
 	},
 }
 

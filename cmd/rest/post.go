@@ -25,7 +25,8 @@ var restPostCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println("rest post called")
 		if len(args) < 1 { // 아규먼트가 없으면 도움말 출력
-			fmt.Println(cmd.Help())
+			//fmt.Println(cmd.Help())
+			cmd.Help()
 			return
 		}
 

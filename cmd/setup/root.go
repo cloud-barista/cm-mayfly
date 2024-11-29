@@ -4,8 +4,6 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package setup
 
 import (
-	"fmt"
-
 	//"github.com/cm-mayfly/cm-mayfly/cmd" //임시로 주석처리
 	//"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
@@ -18,7 +16,8 @@ var setupCmd = &cobra.Command{
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
-		fmt.Println(cmd.Help())
+		//fmt.Println(cmd.Help())
+		cmd.Help()
 	},
 }
 

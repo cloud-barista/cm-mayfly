@@ -697,7 +697,8 @@ var credentialCmd = &cobra.Command{
 
 		// 서브 커맨드가 입력되었을 때에는 도움말을 출력하지 않음.
 		if len(args) == 0 && cmd.Flags().NFlag() == 0 && cmd.HasSubCommands() {
-			fmt.Println(cmd.Help())
+			//fmt.Println(cmd.Help())
+			cmd.Help()
 			return
 		}
 
