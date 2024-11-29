@@ -85,9 +85,13 @@ For more detailed explanations, see the articles below.
 
 
 # How to Build a Cloud-Migrator Infrastructure
-A quick guide on how to easily build a Cloud-Migrator infrastructure.   
+`A quick guide` on how to easily build a Cloud-Migrator infrastructure.   
 If you need a more detailed explanation, check out the article below.   
 - [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
+
+
+## Pre-Install
+- [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 
 
 ## 1. Download cm-mayfly
@@ -112,6 +116,7 @@ If necessary, you can also modify the contents of the profile.json file after th
 -->
 
 ## 3. Building a Docker-based infrastructure
+In most cases, the following single line will complete all the necessary tasks.
 ```
 $ ./cm-mayfly infra run
 ```
@@ -126,20 +131,6 @@ $ ./cm-mayfly infra run -d
 To verify that the Cloud-Migrator system is running correctly, use the `info` command to check the healthy status of each subsystem.
 ```
 $ ./cm-mayfly infra info
-```
-
-For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. For cm-cicada, please check the logs and restart if any errors occur.
-```
-$ ./cm-mayfly logs -s cm-cicada
-```
-
-Alternatively, you can use the web portal or Open API to check if the list of Task Components contains 10 items.
-curl -s http://localhost:8083/cicada/task_component | jq '. | length'
-
-If you determine that a restart is necessary, stop and then start it as shown below.
-```
-$ ./cm-mayfly infra stop -s cm-cicada
-$ ./cm-mayfly infra run -s cm-cicada
 ```
 
 
@@ -188,7 +179,31 @@ $ ./cm-mayfly infra run -s cb-spider
 $ ./cm-mayfly infra run -s "cb-spider cb-tumblebug"
 ```
 
+## 6. Trouble Shooting
+For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. 
+For cm-cicada, please check the logs and restart if any errors occur.
+```
+$ ./cm-mayfly logs -s cm-cicada
+```
+Check if the number of Task Components in the Workflow Management menu on the web portal is 10 items.
+Alternatively, you can easily check using the following curl command.
+```
+curl -s http://localhost:8083/cicada/task_component | jq '. | length'
+```
+If you determine that a restart is necessary, stop and then start it as shown below.
+```
+$ ./cm-mayfly infra stop -s cm-cicada
+$ ./cm-mayfly infra run -s cm-cicada
+```
 
+If you want to cleanup all Docker environments, run the following shell script.
+```
+$ cd conf/docker
+$ ./remove_all.sh
+```
+
+Note that the logs and local DB files created by the subsystems are not deleted.
+If a complete reset is required, run `remove_all.sh` and then delete the `data` folder as instructed.
 
 <!-- 
 ## docker-compose.yaml
