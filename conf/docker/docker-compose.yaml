@@ -450,6 +450,7 @@ services:
       - ./data/cm-cicada/CM-CICADA.db:/CM-CICADA.db:rw
     # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
     entrypoint: ["/tool/entrypoint.sh"]
+    command: ["/cm-cicada"]
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
       interval: 10m
