@@ -60,7 +60,6 @@ Use the -h option at the end of the sub-command requiring assistance, or executi
 
 ```
 $ ./mayfly -h
-
 The mayfly is a tool to operate Cloud-Migrator system.
 
 Usage:
@@ -71,6 +70,7 @@ Available Commands:
   help        Help about any command
   infra       Installing and managing cloud-migrator's infrastructure
   rest        rest api call
+  tool        Provides additional functions for managing Docker Compose or the Cloud-Migrator system.
 
 Flags:
   -h, --help   help for mayfly
@@ -118,72 +118,72 @@ If necessary, you can also modify the contents of the profile.json file after th
 ## 3. Building a Docker-based infrastructure
 In most cases, the following single line will complete all the necessary tasks.
 ```
-$ ./cm-mayfly infra run
+$ ./mayfly infra run
 ```
 
 If you do not want to see the output logs and want to run it in the background, you can use the `-d` option to run it in detach mode.
 ```
-$ ./cm-mayfly infra run -d
+$ ./mayfly infra run -d
 ```
 
 
 ## 4. Checking the subsystem running status
 To verify that the Cloud-Migrator system is running correctly, use the `info` command to check the healthy status of each subsystem.
 ```
-$ ./cm-mayfly infra info
+$ ./mayfly infra info
 ```
 
 
 ## 5. Some helpful commands
 If a new version of the Docker image is released, you can update the running version of Cloud-Migrator to the latest version using the `update` command.
 ```
-$ ./cm-mayfly infra update
+$ ./mayfly infra update
 ```
 
 You can `update` a specific service using the `-s` flag.
 ```
-$ ./cm-mayfly infra update -s cb-spider
+$ ./mayfly infra update -s cb-spider
 ```
 ```
-$ ./cm-mayfly infra update -s "cb-spider cb-tumblebug"
+$ ./mayfly infra update -s "cb-spider cb-tumblebug"
 ```
 
 You can check the logs of the entire system using the `logs` command.
 ```
-$ ./cm-mayfly infra logs
+$ ./mayfly infra logs
 ```
 
 You can `logs` a specific service using the `-s` flag.
 ```
-$ ./cm-mayfly infra logs -s cb-spider
+$ ./mayfly infra logs -s cb-spider
 ```
 ```
-$ ./cm-mayfly infra logs -s "cb-spider cb-tumblebug"
+$ ./mayfly infra logs -s "cb-spider cb-tumblebug"
 ```
 
 
 
 You can `stop` a specific service using the `-s` flag.
 ```
-$ ./cm-mayfly infra stop -s cb-spider
+$ ./mayfly infra stop -s cb-spider
 ```
 ```
-$ ./cm-mayfly infra stop -s "cb-spider cb-tumblebug"
+$ ./mayfly infra stop -s "cb-spider cb-tumblebug"
 ```
 
 You can `run` a specific service using the `-s` flag.
 ```
-$ ./cm-mayfly infra run -s cb-spider
+$ ./mayfly infra run -s cb-spider
 ```
 ```
-$ ./cm-mayfly infra run -s "cb-spider cb-tumblebug"
+$ ./mayfly infra run -s "cb-spider cb-tumblebug"
 ```
 
 ## 6. Trouble Shooting
 For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. 
 For cm-cicada, please check the logs and restart if any errors occur.
 ```
-$ ./cm-mayfly logs -s cm-cicada
+$ ./mayfly logs -s cm-cicada
 ```
 Check if the number of Task Components in the Workflow Management menu on the web portal is 10 items.
 Alternatively, you can easily check using the following curl command.
@@ -192,8 +192,8 @@ curl -s http://localhost:8083/cicada/task_component | jq '. | length'
 ```
 If you determine that a restart is necessary, stop and then start it as shown below.
 ```
-$ ./cm-mayfly infra stop -s cm-cicada
-$ ./cm-mayfly infra run -s cm-cicada
+$ ./mayfly infra stop -s cm-cicada
+$ ./mayfly infra run -s cm-cicada
 ```
 
 If you want to cleanup all Docker environments, run the following shell script.
