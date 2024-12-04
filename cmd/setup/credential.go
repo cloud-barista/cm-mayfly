@@ -406,7 +406,12 @@ func processCspCredentialEncrypt() {
 	}
 
 	// Credential 정보를 PublicKey로 암호화 처리
-	encryptedCredentials, encryptedAesKey := encryptCredentialsWithPublicKey(publicKeyResponse.PublicKey, credentials)
+	encryptedCredentials, encryptedAesKey, err := encryptCredentialsWithPublicKey(publicKeyResponse.PublicKey, credentials)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
 	if isVerbose {
 		fmt.Println("Encrypted Credentials:", encryptedCredentials)
 		fmt.Println("Encrypted AES Key:", encryptedAesKey)
@@ -419,6 +424,19 @@ func processCspCredentialEncrypt() {
 		"publicKeyTokenId":                 publicKeyResponse.PublicKeyTokenId,
 		"encryptedClientAesKeyByPublicKey": encryptedAesKey,
 		"credentialKeyValueList":           encryptedCredentials,
+	}
+
+	// payload를 예쁘게 출력
+	if isVerbose {
+		fmt.Println("=============================================")
+		payloadJSON, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			fmt.Println("Error marshalling payload:", err)
+		} else {
+			fmt.Println("Payload:")
+			fmt.Println(string(payloadJSON))
+		}
+		fmt.Println("=============================================")
 	}
 
 	result, err := sendCredentials(payload)
@@ -544,53 +562,75 @@ func getPublicKey() (*PublicKeyResponse, error) {
 	return &publicKeyResponse, nil
 }
 
-func encryptCredentialsWithPublicKey(publicKeyPem string, credentials map[string]string) (map[string]string, string) {
-	// Parse public key from PEM format
+// PKCS7 패딩 추가 함수
+func pkcs7Pad(data []byte, blockSize int) []byte {
+	padding := blockSize - len(data)%blockSize
+	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(data, padText...)
+}
+
+// PKCS7 패딩 제거 함수
+func pkcs7Unpad(data []byte) ([]byte, error) {
+	length := len(data)
+	if length == 0 {
+		return nil, fmt.Errorf("invalid padding size")
+	}
+	padding := int(data[length-1])
+	if padding > length {
+		return nil, fmt.Errorf("invalid padding size")
+	}
+	return data[:length-padding], nil
+}
+
+func encryptCredentialsWithPublicKey(publicKeyPem string, credentials map[string]string) ([]map[string]string, string, error) {
 	block, _ := pem.Decode([]byte(publicKeyPem))
 	if block == nil {
-		panic("Failed to decode PEM block containing public key")
+		return nil, "", fmt.Errorf("Failed to decode PEM block containing public key")
 	}
 
 	rsaPublicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
 	if err != nil {
-		panic(err)
+		return nil, "", fmt.Errorf("failed to parse public key: %v", err)
 	}
 
 	// Generate AES key
 	aesKey := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, aesKey); err != nil {
-		panic(err)
+		return nil, "", fmt.Errorf("failed to generate AES key: %v", err)
 	}
 
-	// Encrypt credentials using AES
-	encryptedCredentials := make(map[string]string)
+	// Encrypt credentials using AES (CBC mode, PKCS7 padding)
+	// 	encryptedCredentials := []map[string]interface{}{}
+	encryptedCredentials := []map[string]string{}
 	for k, v := range credentials {
 		aesCipher, err := aes.NewCipher(aesKey)
 		if err != nil {
-			panic(err)
+			return nil, "", fmt.Errorf("failed to create AES cipher: %v", err)
 		}
 
-		gcm, err := cipher.NewGCM(aesCipher)
-		if err != nil {
-			panic(err)
+		iv := make([]byte, aesCipher.BlockSize())
+		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+			return nil, "", fmt.Errorf("failed to generate IV: %v", err)
 		}
 
-		nonce := make([]byte, gcm.NonceSize())
-		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-			panic(err)
-		}
+		cbc := cipher.NewCBCEncrypter(aesCipher, iv)
+		paddedValue := pkcs7Pad([]byte(v), aesCipher.BlockSize())
+		ciphertext := make([]byte, len(paddedValue))
+		cbc.CryptBlocks(ciphertext, paddedValue)
 
-		ciphertext := gcm.Seal(nonce, nonce, []byte(v), nil)
-		encryptedCredentials[k] = base64.StdEncoding.EncodeToString(ciphertext)
+		encryptedCredentials = append(encryptedCredentials, map[string]string{
+			"key":   k,
+			"value": base64.StdEncoding.EncodeToString(append(iv, ciphertext...)),
+		})
 	}
 
-	// Encrypt AES key using RSA public key
+	// Encrypt AES key using RSA public key with OAEP padding and SHA-256
 	encryptedAesKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, rsaPublicKey, aesKey, nil)
 	if err != nil {
-		panic(err)
+		return nil, "", fmt.Errorf("failed to encrypt AES key: %v", err)
 	}
 
-	return encryptedCredentials, base64.StdEncoding.EncodeToString(encryptedAesKey)
+	return encryptedCredentials, base64.StdEncoding.EncodeToString(encryptedAesKey), nil
 }
 
 // 서버로 암호화된 Credential 정보를 전송
@@ -728,17 +768,17 @@ var credentialCmd = &cobra.Command{
 			return
 		}
 
-		publicKeyResponse, err := getPublicKey()
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
+		// publicKeyResponse, err := getPublicKey()
+		// if err != nil {
+		// 	fmt.Println("Error:", err)
+		// 	return
+		// }
 
-		if isVerbose {
-			// PublicKey와 PublicKeyTokenId 값을 출력
-			fmt.Println("PublicKeyTokenId:", publicKeyResponse.PublicKeyTokenId)
-			fmt.Println("PublicKey:", publicKeyResponse.PublicKey)
-		}
+		// if isVerbose {
+		// 	// PublicKey와 PublicKeyTokenId 값을 출력
+		// 	fmt.Println("PublicKeyTokenId:", publicKeyResponse.PublicKeyTokenId)
+		// 	fmt.Println("PublicKey:", publicKeyResponse.PublicKey)
+		// }
 
 		// CSP의 인증 정보를 암호화 처리
 		processCspCredentialEncrypt()
