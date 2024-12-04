@@ -133,8 +133,20 @@ To verify that the Cloud-Migrator system is running correctly, use the `info` co
 $ ./mayfly infra info
 ```
 
+## 5. Register CSP credentials
+To implement a function similar to cb-tumblebug's init.sh, register the credentials for each CSP and then call the tumblebug's loadassets REST API.
 
-## 5. Some helpful commands
+Register the credential information for each CSP using public key encryption.
+```
+$ ./mayfly setup credential
+```
+
+Load Common Resources from internal asset files (Spec, Image)
+```
+$ ./mayfly api -s cb-tumblebug -a loadassets
+```
+
+## 6. Some helpful commands
 If a new version of the Docker image is released, you can update the running version of Cloud-Migrator to the latest version using the `update` command.
 ```
 $ ./mayfly infra update
@@ -179,7 +191,7 @@ $ ./mayfly infra run -s cb-spider
 $ ./mayfly infra run -s "cb-spider cb-tumblebug"
 ```
 
-## 6. Trouble Shooting
+## 7. Trouble Shooting
 For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. 
 For cm-cicada, please check the logs and restart if any errors occur.
 ```
