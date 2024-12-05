@@ -225,8 +225,7 @@ services:
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
     #image: cloudbaristaorg/cm-beetle:0.2.0
-    image: cloudbaristaorg/cm-beetle:0.2.5
-
+    image: cloudbaristaorg/cm-beetle:0.3.0
     container_name: cm-beetle
     platform: linux/amd64
     restart: unless-stopped
@@ -284,7 +283,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
     #image: cloudbaristaorg/cm-butterfly-api:edge
-    image: cloudbaristaorg/cm-butterfly-api:0.2.4
+    image: cloudbaristaorg/cm-butterfly-api:0.3.0
     #image: csescsta/cm-butterfly-api:20241112101651-develop
     container_name: cm-butterfly-api
     platform: linux/amd64
@@ -325,7 +324,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
     #image: cloudbaristaorg/cm-butterfly-front:edge
-    image: cloudbaristaorg/cm-butterfly-front:0.2.4
+    image: cloudbaristaorg/cm-butterfly-front:0.3.0
     #image: csescsta/cm-butterfly-front:20241112101651-develop
     container_name: cm-butterfly-front
     platform: linux/amd64
@@ -379,7 +378,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
   # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
-    image: cloudbaristaorg/cm-honeybee:0.2.11
+    image: cloudbaristaorg/cm-honeybee:0.3.0
     #image: cloudbaristaorg/cm-honeybee:edge
     container_name: cm-honeybee
     platform: linux/amd64
@@ -406,7 +405,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-damselfly
   cm-damselfly:
     # image: cloudbaristaorg/cm-damselfly:edge
-    image: cloudbaristaorg/cm-damselfly:0.2.2
+    image: cloudbaristaorg/cm-damselfly:0.3.0
     container_name: cm-damselfly
     platform: linux/amd64
     restart: unless-stopped
@@ -432,7 +431,7 @@ services:
   # **important** : The cm-beetle, cm-grasshopper, and airflow-server containers must be in a readyz state and running beforehand
   cm-cicada:
     #image: cloudbaristaorg/cm-cicada:edge
-    image: cloudbaristaorg/cm-cicada:0.2.4
+    image: cloudbaristaorg/cm-cicada:0.3.0
     container_name: cm-cicada
     restart: unless-stopped
     ports:
@@ -574,7 +573,7 @@ services:
   # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
   cm-grasshopper:
     #image: cloudbaristaorg/cm-grasshopper:0.2.1
-    image: cloudbaristaorg/cm-grasshopper:0.2.3
+    image: cloudbaristaorg/cm-grasshopper:0.3.0
     container_name: cm-grasshopper
     restart: unless-stopped
     ports:
@@ -616,7 +615,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-ant
   cm-ant:
     container_name: cm-ant
-    image: cloudbaristaorg/cm-ant:0.2.8
+    image: cloudbaristaorg/cm-ant:0.3.0
     #image: cloudbaristaorg/cm-ant:edge
     platform: linux/amd64
     ports:
