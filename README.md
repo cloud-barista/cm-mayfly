@@ -28,7 +28,8 @@ This management tool provides and is expected to provide the following features:
 
 
 ## Pre-Install
-- [Install Go](https://golang.org/doc/install)
+- [Install Go](https://golang.org/doc/install) 
+  - Optional and only necessary if you want to run or build the source code.
 - [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 
 
@@ -54,7 +55,7 @@ cm-mayfly$ make clean
 
 
 # How to use CM-Mayfly
-For now, it supports docker / rest / api sub-commands.   
+For now, it supports infra / rest / api / setup / tool sub-commands.   
 
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
@@ -70,6 +71,7 @@ Available Commands:
   help        Help about any command
   infra       Installing and managing cloud-migrator's infrastructure
   rest        rest api call
+  setup       Support for Additional Tasks After Container Setup
   tool        Provides additional functions for managing Docker Compose or the Cloud-Migrator system.
 
 Flags:
@@ -79,15 +81,16 @@ Use "mayfly [command] --help" for more information about a command.
 ```
 
 For more detailed explanations, see the articles below.   
-- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
-- [rest sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-rest.md)
-- [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-api.md)
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-docker-compose-mode.md)
+- [setup sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-setup.md)
+- [rest sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-rest.md)
+- [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-api.md)
 
 
 # How to Build a Cloud-Migrator Infrastructure
 `A quick guide` on how to easily build a Cloud-Migrator infrastructure.   
 If you need a more detailed explanation, check out the article below.   
-- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-docker-compose-mode.md)
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-docker-compose-mode.md)
 
 
 ## Pre-Install
@@ -344,7 +347,7 @@ Flags:
 Use "mayfly api [command] --help" for more information about a command.
 ```
 
-For more information, see the [API Sub Command Guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cb-mayfly-api.md).
+For more information, see the [API Sub Command Guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-api.md).
 
 
 
