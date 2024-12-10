@@ -1,21 +1,25 @@
 
 ## `cm-mayfly`의 `Docker Compose`를 이용한 Cloud-Migrator 설치 및 실행 가이드
 
-이 가이드에서는 `cm-mayfly`의 `docker` 서브 커맨드를 이용하여 `Docker Compose` 기반으로 Cloud-Migrator 시스템을 구축 및 실행하는 방법에 대해 소개합니다. 
+이 가이드에서는 `cm-mayfly`의 `infra` 서브 커맨드를 이용하여 `Docker Compose` 기반으로 Cloud-Migrator 시스템을 구축 및 실행하는 방법에 대해 소개합니다. 
 
 
 ## 순서
-1. [사전 준비 사항](#사전-준비-사항)
-   1. [Docker 설치](#docker-설치)
-   1. [Docker Compose 설치](#docker-compose-설치)
-1. [소스코드 다운로드](#소스코드-다운로드)
-1. [소스코드 빌드](#소스코드-빌드)
-1. [환경설정 확인 및 변경](#환경설정-확인-및-변경)
-1. [Cloud-Migrator 인프라 구축](#cloud-migrator-인프라-구축)
-1. [Cloud-Migrator 실행상태 확인](#cloud-migrator-실행상태-확인)
-1. [Cloud-Migrator 업데이트](#cloud-migrator-업데이트)
-1. [Cloud-Migrator 삭제(인프라 구축 환경 정리)](#cloud-migrator-삭제인프라-구축-환경-정리)
-1. [Docker 전체 환경 정리](#docker-전체-환경-정리)
+- [`cm-mayfly`의 `Docker Compose`를 이용한 Cloud-Migrator 설치 및 실행 가이드](#cm-mayfly의-docker-compose를-이용한-cloud-migrator-설치-및-실행-가이드)
+- [순서](#순서)
+- [사전 준비 사항](#사전-준비-사항)
+  - [Docker 설치](#docker-설치)
+  - [Docker Compose 설치](#docker-compose-설치)
+- [소스코드 다운로드](#소스코드-다운로드)
+- [소스코드 빌드](#소스코드-빌드)
+- [환경설정 확인 및 변경](#환경설정-확인-및-변경)
+  - [mc-datamanager 인증 정보 설정](#mc-datamanager-인증-정보-설정)
+- [Cloud-Migrator 인프라 구축](#cloud-migrator-인프라-구축)
+- [Cloud-Migrator 실행상태 확인](#cloud-migrator-실행상태-확인)
+- [Cloud-Migrator 업데이트](#cloud-migrator-업데이트)
+- [Cloud-Migrator 중지](#cloud-migrator-중지)
+- [Cloud-Migrator 삭제(인프라 구축 환경 정리)](#cloud-migrator-삭제인프라-구축-환경-정리)
+- [Docker 전체 환경 정리](#docker-전체-환경-정리)
 
 
 ## 사전 준비 사항
