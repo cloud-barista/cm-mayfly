@@ -306,6 +306,7 @@ services:
       #- ./conf/cm-butterfly/api/conf:/conf/
       - ./conf/cm-butterfly/api/conf/authsetting.yaml:/conf/authsetting.yaml
       #- ./conf/cm-butterfly/api/conf/api.yaml:/conf/api.yaml
+      #- ./data/cm-butterfly/log/api.log:/app/api.log
     # environment:
     #   USER_AUTH_DATA_PATH: /conf/user.dat 
     #   USER_AUTH_CONF_PATH: /conf/authsetting.yaml
