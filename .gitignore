@@ -29,3 +29,6 @@ conf/docker/data/*
 
 # IDE's
 *.idea
+
+# container-volume
+container-volume/
