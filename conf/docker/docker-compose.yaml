@@ -74,27 +74,33 @@ services:
       - ./container-volume/cb-tumblebug/log/:/app/log/
     environment:
       # - TB_ROOT_PATH=/app
+      # # Enable TB_SELF_ENDPOINT to specify an endpoint for CB-TB API (default: localhost:1323)
+      # # Use public IP if you want to access the API Dashboard from outside of localhost
+      # - TB_SELF_ENDPOINT=xxx.xxx.xxx.xxx:1323
       - TB_SPIDER_REST_URL=http://cb-spider:1024/spider
       - TB_ETCD_ENDPOINTS=http://cb-tumblebug-etcd:2379
-      
-      # - TB_ETCD_AUTH_ENABLED=true
+      # - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
+      # - TB_IAM_MANAGER_REST_URL=http://mc-iam-manager:5000
+      # - TB_ETCD_AUTH_ENABLED=false
       # - TB_ETCD_USERNAME=default
       # - TB_ETCD_PASSWORD=default
       - TB_POSTGRES_ENDPOINT=cb-tumblebug-postgres:5432
       - TB_POSTGRES_DATABASE=cb_tumblebug
       - TB_POSTGRES_USER=cb_tumblebug
       - TB_POSTGRES_PASSWORD=cb_tumblebug
+      # - TB_TERRARIUM_API_USERNAME=default
+      # - TB_TERRARIUM_API_PASSWORD=default
       # - TB_ALLOW_ORIGINS=*
       # - TB_AUTH_ENABLED=true
+      # - TB_AUTH_MODE=jwt
       # - TB_API_USERNAME=default
-      # - TB_API_PASSWORD=default
+      # - TB_API_PASSWORD=$$2a$$10$$4PKzCuJ6fPYsbCF.HR//ieLjaCzBAdwORchx62F2JRXQsuR3d9T0q
       # - TB_AUTOCONTROL_DURATION_MS=10000
-      # - TB_SELF_ENDPOINT=localhost:1323
       # - TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
-      # - TB_DEFAULT_NAMESPACE=ns01
+      # - TB_DEFAULT_NAMESPACE=default
       # - TB_DEFAULT_CREDENTIALHOLDER=admin
       # - TB_LOGFILE_PATH=/app/log/tumblebug.log
-      # - TB_LOGFILE_MAXSIZE=10
+      # - TB_LOGFILE_MAXSIZE=1000
       # - TB_LOGFILE_MAXBACKUPS=3
       # - TB_LOGFILE_MAXAGE=30
       # - TB_LOGFILE_COMPRESS=false
@@ -188,7 +194,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.10.0
+    image: cloudbaristaorg/cb-mapui:0.11.4
     container_name: cb-mapui
     ports:
       - target: 1324
@@ -206,15 +212,14 @@ services:
 
 
   # cm-beetle
-  # https://github.com/cloud-barista/cm-beetle/discussions/73
+  # https://github.com/cloud-barista/cm-beetle/discussions/105
   # https://hub.docker.com/r/cloudbaristaorg/cm-beetle
-  # See https://github.com/cloud-barista/cm-beetle/blob/main/deployments/docker-compose/docker-compose.yaml#L156
+  # See https://github.com/cloud-barista/cm-beetle/blob/main/deployments/docker-compose/docker-compose.yaml
   # If you need to modify the config.yaml file, including modifying tumblebug's credentials, you'll need to copy the latest file and modify it before using it.
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    #image: cloudbaristaorg/cm-beetle:0.2.0
-    image: cloudbaristaorg/cm-beetle:0.3.0
+    image: cloudbaristaorg/cm-beetle:0.3.5
     container_name: cm-beetle
     platform: linux/amd64
     restart: unless-stopped
@@ -231,9 +236,12 @@ services:
       - ./data/cm-beetle/db:/app/db/
     environment:
       # - BEETLE_ROOT=/app
-      # - BEETLE_CBSTORE_ROOT=/app
-      # - BEETLE_CBLOG_ROOT=/app
-      - BEETLE_TUMBLEBUG_ENDPOINT=http://cb-tumblebug:1323
+      - BEETLE_SELF_ENDPOINT=localhost:8056
+      # - BEETLE_API_ALLOW_ORIGINS=*
+      # - BEETLE_API_AUTH_ENABLED=true
+      - BEETLE_API_USERNAME=default
+      - BEETLE_API_PASSWORD=default
+      # - BEETLE_LKVSTORE_PATH=/app/db/beetle.db
       # - BEETLE_LOGFILE_PATH=/app/log/beetle.log
       # - BEETLE_LOGFILE_MAXSIZE=1000
       # - BEETLE_LOGFILE_MAXBACKUPS=3
@@ -242,16 +250,11 @@ services:
       - BEETLE_LOGLEVEL=debug
       # - BEETLE_LOGWRITER=both
       - BEETLE_NODE_ENV=development
-      # - BEETLE_SQLITE_URL=localhost:3306
-      # - BEETLE_SQLITE_DATABASE=cm_beetle
-      # - BEETLE_SQLITE_USER=cm_beetle
-      # - BEETLE_SQLITE_PASSWORD=cm_beetle
-      # - BEETLE_API_ALLOW_ORIGINS=*
-      # - BEETLE_API_AUTH_ENABLED=true
-      - BEETLE_API_USERNAME=default
-      - BEETLE_API_PASSWORD=default
       # - BEETLE_AUTOCONTROL_DURATION_MS=10000
-      - BEETLE_SELF_ENDPOINT=localhost:8056
+      - BEETLE_TUMBLEBUG_ENDPOINT=http://cb-tumblebug:1323
+      # - BEETLE_TUMBLEBUG_API_USERNAME=default
+      # - BEETLE_TUMBLEBUG_API_PASSWORD=default
+
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
