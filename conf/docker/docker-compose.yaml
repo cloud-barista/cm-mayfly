@@ -412,6 +412,7 @@ services:
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./data/cm-damselfly/db:/app/db/
+      - /etc/ssl/certs:/etc/ssl/certs:ro
       #- ./conf/cm-damselfly/conf:/app/conf/
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz" ]
