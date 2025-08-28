@@ -1936,3 +1936,24 @@ serviceActions:
       method: get
       resourcePath: /model/version
       description: "Get the versions of all models(schemata of on-premise/cloud migration models)"
+    GetSourceSoftwareModels:
+      method: get
+      resourcePath: /softwaremodel/source
+      description: "Get a list of software user models."
+    CreateSourceSoftwareModel:
+      method: post
+      resourcePath: /softwaremodel/source
+      description: "Create a new software user model with the given information."
+    GetSourceSoftwareModel:
+      method: get
+      resourcePath: /softwaremodel/source/{id}
+      description: "Get a specific software user model."
+    UpdateSourceSoftwareModel
+      method: put
+      resourcePath: /softwaremodel/source/{id}
+      description: "Update a software user model with the given information."
+    DeleteSourceSoftwareModel:
+      method: delete
+      resourcePath: /softwaremodel/source/{id}
+      description: "Delete a software user model with the given information."
+
