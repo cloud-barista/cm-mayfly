@@ -13,7 +13,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.11.4
+    image: cloudbaristaorg/cb-spider:0.11.1
     pull_policy: missing
     container_name: cb-spider
     platform: linux/amd64
@@ -49,7 +49,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.11.8
+    image: cloudbaristaorg/cb-tumblebug:0.11.3
     container_name: cb-tumblebug
     pull_policy: missing
     platform: linux/amd64
