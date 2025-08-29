@@ -374,8 +374,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
   # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
-    image: cloudbaristaorg/cm-honeybee:0.3.3
     #image: cloudbaristaorg/cm-honeybee:edge
+    image: cloudbaristaorg/cm-honeybee:0.3.4
     container_name: cm-honeybee
     platform: linux/amd64
     restart: unless-stopped
@@ -394,7 +394,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    #network_mode: "host"
 
   # cm-damselfly
   # https://github.com/cloud-barista/cm-damselfly
@@ -427,8 +426,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-cicada
   # **important** : The cm-beetle, cm-grasshopper, and airflow-server containers must be in a readyz state and running beforehand
   cm-cicada:
-    image: cloudbaristaorg/cm-cicada:edge
-    #image: cloudbaristaorg/cm-cicada:0.3.0
+    image: cloudbaristaorg/cm-cicada:0.3.2
+    #image: cloudbaristaorg/cm-cicada:edge
     container_name: cm-cicada
     restart: unless-stopped
     ports:
@@ -442,8 +441,11 @@ services:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/depends_on_order/entrypoint_cm_cicada.sh:/tool/entrypoint.sh
       - ./conf/cm-cicada/conf:/conf:rw
+      - ./conf/cm-cicada/example:/lib/airflow/example:ro
       - ./conf/cm-cicada/_airflow:/_airflow:rw
-      - ./data/cm-cicada/CM-CICADA.db:/CM-CICADA.db:rw
+      - ./data/cm-cicada/cicada_root:/cicada_root:rw
+    environment:
+      - CMCICADA_ROOT=/cicada_root
     # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
     entrypoint: ["/tool/entrypoint.sh"]
     command: ["/cm-cicada"]
@@ -453,7 +455,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    #network_mode: "host"
 
 
   # airflow-redis
@@ -569,9 +570,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-grasshopper
   # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
   cm-grasshopper:
-    #image: cloudbaristaorg/cm-grasshopper:0.2.1
-    # image: cloudbaristaorg/cm-grasshopper:0.3.2
-    image: cloudbaristaorg/cm-grasshopper:edge
+    #image: cloudbaristaorg/cm-grasshopper:edge
+    image: cloudbaristaorg/cm-grasshopper:0.3.3
     container_name: cm-grasshopper
     restart: unless-stopped
     ports:
@@ -581,32 +581,17 @@ services:
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-grasshopper/conf:/root/.cm-grasshopper/conf
-      # #- ./data/cm-honeybee/:/root/.cm-grasshopper/:ro
-      # - ./data/cm-honeybee/:/root/.cm-grasshopper/honeybee:ro
       - ./data/cm-grasshopper/log:/root/.cm-grasshopper/log:rw
       #- ./conf/cm-grasshopper/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       #- ./data/cm-honeybee/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       - ./data/cm-grasshopper/software_temp:/software_temp:rw
       - ./data/cm-grasshopper/software_log:/software_log:rw
-      - ./data/cm-grasshopper/playbook:/playbook/:rw
-    # command: >
-    #   /bin/sh -c "
-    #     if [ ! -f /root/.cm-grasshopper/honeybee/honeybee.key ]; then
-    #       echo 'honeybee.key not found, exiting...';
-    #       exit 1;
-    #     else
-    #       cp /root/.cm-grasshopper/honeybee/honeybee.key /root/.cm-grasshopper/ && echo 'Finished copying the honeybee.key file.';
-    #       /cm-grasshopper;
-    #     fi
-    #   "
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
       interval: 10m
       timeout: 5s
       retries: 3
       start_period: 10s
-    #network_mode: "host"
-
 
   # cm-ant
   # https://github.com/cloud-barista/cm-ant
