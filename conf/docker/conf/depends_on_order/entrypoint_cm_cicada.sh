@@ -24,5 +24,7 @@ until /app/tool/mayfly rest get http://airflow-server:8080/health; do
 done
 echo "airflow-server is health..."
 
+cp -RpPf /conf $CMCICADA_ROOT/
+
 # Execute the original CMD or any passed arguments
 exec "$@"
