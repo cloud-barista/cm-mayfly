@@ -1,9 +1,9 @@
 cm-cicada:
     task_component:
         load_examples: true
-        examples_directory: "./lib/airflow/example/task_component/"
+        examples_directory: "/lib/airflow/example/task_component/"
     workflow_template:
-        templates_directory: "./lib/airflow/example/workflow_template/"
+        templates_directory: "/lib/airflow/example/workflow_template/"
     airflow-server:
         address: airflow-server:8080
         use_tls: false
@@ -41,7 +41,7 @@ cm-cicada:
             schema: http
             login: default
             password: default
-    dag_directory_host: "./_airflow/airflow-home/dags"
+    dag_directory_host: "/_airflow/airflow-home/dags"
     dag_directory_container: "/usr/local/airflow/dags" # Use dag_directory_host for dag_directory_container, if this value is empty
     listen:
         port: 8083
