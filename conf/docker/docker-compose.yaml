@@ -580,10 +580,7 @@ services:
       - cm-honeybee
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
-      - ./conf/cm-grasshopper/conf:/root/.cm-grasshopper/conf
-      - ./data/cm-grasshopper/log:/root/.cm-grasshopper/log:rw
-      #- ./conf/cm-grasshopper/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
-      #- ./data/cm-honeybee/honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
+      - ./conf/cm-grasshopper/conf:/conf
       - ./data/cm-grasshopper/software_temp:/software_temp:rw
       - ./data/cm-grasshopper/software_log:/software_log:rw
     healthcheck:
