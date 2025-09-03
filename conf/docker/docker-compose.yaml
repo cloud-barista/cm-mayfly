@@ -13,7 +13,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.11.1
+    image: cloudbaristaorg/cb-spider:0.11.4
     pull_policy: missing
     container_name: cb-spider
     platform: linux/amd64
@@ -39,7 +39,7 @@ services:
       - ID_TRANSFORM_MODE=OFF
     healthcheck: # for CB-Spider
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1024/spider/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -49,7 +49,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.11.3
+    image: cloudbaristaorg/cb-tumblebug:0.11.9
     container_name: cb-tumblebug
     pull_policy: missing
     platform: linux/amd64
@@ -109,7 +109,7 @@ services:
       # - TB_NODE_ENV=development
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1323/tumblebug/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -205,7 +205,7 @@ services:
     healthcheck: # for cb-mapui
       #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
       test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -219,7 +219,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.3.7
+    image: cloudbaristaorg/cm-beetle:0.3.8
     container_name: cm-beetle
     platform: linux/amd64
     restart: unless-stopped
@@ -258,7 +258,7 @@ services:
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -275,7 +275,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
     #image: cloudbaristaorg/cm-butterfly-api:edge
-    image: cloudbaristaorg/cm-butterfly-api:0.3.1
+    image: cloudbaristaorg/cm-butterfly-api:0.3.2
     #image: csescsta/cm-butterfly-api:20241112101651-develop
     container_name: cm-butterfly-api
     platform: linux/amd64
@@ -306,7 +306,7 @@ services:
     healthcheck: # for butterfly-api
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -320,7 +320,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
     #image: cloudbaristaorg/cm-butterfly-front:edge
-    image: cloudbaristaorg/cm-butterfly-front:0.3.1
+    image: cloudbaristaorg/cm-butterfly-front:0.3.2
     #image: csescsta/cm-butterfly-front:20241112101651-develop
     container_name: cm-butterfly-front
     platform: linux/amd64
@@ -390,7 +390,7 @@ services:
       - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -415,7 +415,7 @@ services:
       #- ./conf/cm-damselfly/conf:/app/conf/
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -451,7 +451,7 @@ services:
     command: ["/cm-cicada"]
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -560,7 +560,7 @@ services:
     entrypoint: ["/tool/entrypoint.sh"]
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/health" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -585,7 +585,7 @@ services:
       - ./data/cm-grasshopper/software_log:/software_log:rw
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -616,7 +616,7 @@ services:
       - ANT_DATABASE_HOST=ant-postgres
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/readyz" ]
-      interval: 10m
+      interval: 1m
       timeout: 5s
       retries: 5
       start_period: 10s
