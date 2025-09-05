@@ -13,7 +13,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.11.4
+    image: cloudbaristaorg/cb-spider:0.11.5
     pull_policy: missing
     container_name: cb-spider
     platform: linux/amd64
@@ -115,7 +115,7 @@ services:
       start_period: 10s
 
   cb-tumblebug-etcd:
-    image: gcr.io/etcd-development/etcd:v3.5.14
+    image: gcr.io/etcd-development/etcd:v3.5.21
     container_name: cb-tumblebug-etcd
     networks:
       - default
@@ -194,7 +194,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.11.4
+    image: cloudbaristaorg/cb-mapui:0.11.12
     container_name: cb-mapui
     ports:
       - target: 1324
