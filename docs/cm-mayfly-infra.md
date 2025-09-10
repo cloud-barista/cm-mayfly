@@ -211,6 +211,11 @@ $ ./mayfly infra remove -v
 ./mayfly infra remove --all
 ```
 
+**참고**: `./conf/docker/data` 폴더 하위에 각 서브 프레임워크(컨테이너) 이름의 폴더가 생성되며 Data나 Log를 비롯하여 보관이 필요한 경우에 사용됩니다.   
+`--volumes` 옵션은 Docker 볼륨만 삭제하며, 볼륨 마운트에 의해 로컬에 생성된 `./conf/docker/data` 폴더는 삭제되지 않습니다.   
+만약, 컨테이너에 의해 로컬에 저장된 데이터까지 완전히 삭제화하고 싶다면 `./conf/docker/data` 폴더 하위의 모든 폴더들을 수동으로 삭제해야 합니다.
+
+
 ## Docker 전체 환경 정리
 Cloud-Migrator 인프라를 구축하기 전에 사용했던 도커 환경과의 충돌로 인해 모든 환경을 초기화하고 싶은 경우 아래 명령어로 초기화가 가능합니다.
 

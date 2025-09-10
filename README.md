@@ -81,7 +81,7 @@ Use "mayfly [command] --help" for more information about a command.
 ```
 
 For more detailed explanations, see the articles below.   
-- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-docker-compose-mode.md)
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-infra.md)
 - [setup sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-setup.md)
 - [rest sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-rest.md)
 - [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-api.md)
@@ -90,7 +90,7 @@ For more detailed explanations, see the articles below.
 # How to Build a Cloud-Migrator Infrastructure
 `A quick guide` on how to easily build a Cloud-Migrator infrastructure.   
 If you need a more detailed explanation, check out the article below.   
-- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-docker-compose-mode.md)
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-infra.md)
 
 
 ## Pre-Install
@@ -136,18 +136,30 @@ To verify that the Cloud-Migrator system is running correctly, use the `info` co
 $ ./mayfly infra info
 ```
 
-## 5. Register CSP credentials
-To implement a function similar to cb-tumblebug's init.sh, register the credentials for each CSP and then call the tumblebug's loadassets REST API.
+## 5. Initialize CB-Tumblebug to configure Multi-Cloud info
+To safely configure multi-cloud information, it is recommended to use the cb-tumblebug's official initialization guide instead of mayfly commands.
 
-Register the credential information for each CSP using public key encryption.
+**Important**: It is crucial to use the exact version of cb-tumblebug that matches your running container to ensure compatibility and proper initialization.
+
+First, check the version of the running cb-tumblebug container:
 ```
-$ ./mayfly setup credential
+$ ./mayfly infra info -s cb-tumblebug
 ```
 
-Load Common Resources from internal asset files (Spec, Image)
+Example output:
 ```
-$ ./mayfly api -s cb-tumblebug -a loadassets
+[v]Status of Cloud-Migrator runtime images
+CONTAINER           REPOSITORY                     TAG                 IMAGE ID            SIZE
+cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.10.3              d4c2abdc0e21        118MB
 ```
+
+Based on the cb-tumblebug version (e.g., v0.10.3), download the corresponding cb-tumblebug repository:
+```
+$ git clone -b v0.10.3 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.10.3
+```
+
+Then follow the detailed guide at:
+[CB-Tumblebug Multi-Cloud Configuration Guide](https://github.com/cloud-barista/cb-tumblebug?tab=readme-ov-file#3-initialize-cb-tumblebug-to-configure-multi-cloud-info)
 
 ## 6. Some helpful commands
 If a new version of the Docker image is released, you can update the running version of Cloud-Migrator to the latest version using the `update` command.
