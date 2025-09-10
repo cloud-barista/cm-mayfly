@@ -26,8 +26,8 @@ services:
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cb-spider/:/root/go/src/github.com/cloud-barista/cb-spider/conf/:ro
-      - ./container-volume/cb-spider/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
-      - ./container-volume/cb-spider/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
+      - ./data/cb-spider/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
+      - ./data/cb-spider/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
     environment:
       - PLUGIN_SW=OFF
       - SERVER_ADDRESS=0.0.0.0:1024
@@ -70,8 +70,8 @@ services:
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cb-tumblebug/conf:/app/conf/:ro
-      - ./container-volume/cb-tumblebug/meta_db/:/app/meta_db/
-      - ./container-volume/cb-tumblebug/log/:/app/log/
+      - ./data/cb-tumblebug/meta_db/:/app/meta_db/
+      - ./data/cb-tumblebug/log/:/app/log/
     environment:
       # - TB_ROOT_PATH=/app
       # # Enable TB_SELF_ENDPOINT to specify an endpoint for CB-TB API (default: localhost:1323)
@@ -127,7 +127,7 @@ services:
         published: 2380
         protocol: tcp
     volumes:
-      - ./container-volume/cb-tumblebug/etcd/data:/etcd-data
+      - ./data/cb-tumblebug/etcd/data:/etcd-data
     entrypoint: /usr/local/bin/etcd
     command:
       - --name
@@ -177,7 +177,7 @@ services:
     ports:
       - 6432:5432
     volumes:
-      - ./container-volume/cb-tumblebug/meta_db/postgres:/var/lib/postgresql/data
+      - ./data/cb-tumblebug/meta_db/postgres:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=cb_tumblebug
       - POSTGRES_PASSWORD=cb_tumblebug
