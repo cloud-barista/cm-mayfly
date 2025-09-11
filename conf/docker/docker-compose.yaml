@@ -276,7 +276,7 @@ services:
   cm-butterfly-api:
     #image: cloudbaristaorg/cm-butterfly-api:edge
     #image: cloudbaristaorg/cm-butterfly-api:0.3.2
-    image: csescsta/cm-butterfly-api:20250910112453-develop
+    image: csescsta/cm-butterfly-api:20250911105829-develop
     container_name: cm-butterfly-api
     platform: linux/amd64
     restart: unless-stopped
@@ -321,7 +321,7 @@ services:
   cm-butterfly-front:
     #image: cloudbaristaorg/cm-butterfly-front:edge
     #image: cloudbaristaorg/cm-butterfly-front:0.3.2
-    image: csescsta/cm-butterfly-front:20250909145957-develop
+    image: csescsta/cm-butterfly-front:20250911105829-develop
     container_name: cm-butterfly-front
     platform: linux/amd64
     restart: unless-stopped
@@ -595,8 +595,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-ant
   cm-ant:
     container_name: cm-ant
-    image: cloudbaristaorg/cm-ant:0.3.0
-    #image: cloudbaristaorg/cm-ant:edge
+    # image: cloudbaristaorg/cm-ant:0.3.0
+    image: cloudbaristaorg/cm-ant:edge
     platform: linux/amd64
     ports:
         - 8880:8880
