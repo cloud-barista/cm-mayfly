@@ -321,7 +321,7 @@ services:
   cm-butterfly-front:
     #image: cloudbaristaorg/cm-butterfly-front:edge
     #image: cloudbaristaorg/cm-butterfly-front:0.3.2
-    image: csescsta/cm-butterfly-front:20250911105829-develop
+    image: csescsta/cm-butterfly-front:20250912170328-develop
     container_name: cm-butterfly-front
     platform: linux/amd64
     restart: unless-stopped
