@@ -26,7 +26,7 @@ services:
       password: default
 
   cm-ant:
-    version: 0.3.0
+    version: 0.3.4
     baseurl: http://localhost:8880/ant
     auth:  
 
@@ -1472,98 +1472,118 @@ serviceActions:
 
 
   cm-ant:
-    Getloadtestexecutionstate:
-      method: get
-      resourcePath: /api/v1/load/tests/state/{loadTestKey}
-      description: "Retrieve a load test execution state by load test key."
-    Installloadgenerator:
-      method: post
-      resourcePath: /api/v1/load/generators
-      description: "Install a load generator either locally or remotely."
-    Getallloadgeneratorinstallinfo:
-      method: get
-      resourcePath: /api/v1/load/generators
-      description: "Retrieve a list of all installed load generators with pagination support."
-    Getallmonitoringagentinfos:
-      method: get
-      resourcePath: /api/v1/load/monitoring/agent
-      description: "Retrieve monitoring agent information based on specified criteria."
-    Getallloadtestexecutioninfos:
-      method: get
-      resourcePath: /api/v1/load/tests/infos
-      description: "Retrieve a list of all load test execution information with pagination support."
-    Getloadtestmetrics:
-      method: get
-      resourcePath: /api/v1/load/tests/result/metrics
-      description: "Retrieve load test metrics based on provided parameters."
-    Getallloadtestexecutionstate:
-      method: get
-      resourcePath: /api/v1/load/tests/state
-      description: "Retrieve a list of all load test execution states with pagination support."
-    Uninstallmonitoringagent:
+    UninstallMonitoringAgent:
       method: post
       resourcePath: /api/v1/load/monitoring/agent/uninstall
       description: "Uninstall monitoring agents from specified VMs or all VMs in an mci."
-    Getloadtestresult:
+    GetLoadTestMetrics:
       method: get
-      resourcePath: /api/v1/load/tests/result
-      description: "Retrieve load test result based on provided parameters."
-    Getlastloadtestresult:
-      method: get
-      resourcePath: /api/v1/load/tests/result/last
-      description: "Retrieve last load test result based on provided parameters."
-    Getlastloadtestmetrics:
-      method: get
-      resourcePath: /api/v1/load/tests/result/metrics/last
-      description: "Retrieve last load test metrics based on provided parameters."
-    Stoploadtest:
-      method: post
-      resourcePath: /api/v1/load/tests/stop
-      description: "Stop a running load test using the provided load test key."
-    Antserverreadiness:
-      method: get
-      resourcePath: /readyz
-      description: "This endpoint checks if the CB-Ant API server is ready by verifying the status of both the load service and the cost service. If either service is unavailable, it returns a 503 status indicating the server is not ready."
-    Updateestimateforecastcostraw:
-      method: post
-      resourcePath: /api/v1/cost/estimate/forecast/raw
-      description: "Update and retrieve raw forecasted cost estimates for specified cost resources and additional AWS information over the past 14 days."
-    Uninstallloadgenerator:
-      method: delete
-      resourcePath: /api/v1/load/generators/{loadGeneratorInstallInfoId}
-      description: "Uninstall a previously installed load generator."
-    Getloadtestexecutioninfo:
-      method: get
-      resourcePath: /api/v1/load/tests/infos/{loadTestKey}
-      description: "Retrieve the load test execution state information for a specific load test key."
-    Runloadtest:
+      resourcePath: /api/v1/load/tests/result/metrics
+      description: "Retrieve load test metrics based on provided parameters."
+    RunLoadTest:
       method: post
       resourcePath: /api/v1/load/tests/run
       description: "Start a load test using the provided load test configuration."
-    Getlastloadtestexecutionstate:
+    GetAllLoadGeneratorInstallInfo:
       method: get
-      resourcePath: /api/v1/load/tests/state/last
-      description: "Retrieve a last load test execution state by given ids."
-    Getestimatecost:
-      method: get
-      resourcePath: /api/v1/cost/estimate
-      description: "Fetch estimated cost details based on provider, region, instance type, and resource specifications. Pagination support is provided through `Page` and `Size` parameters."
-    Updateandgetestimatecost:
+      resourcePath: /api/v1/load/generators
+      description: "Retrieve a list of all installed load generators with pagination support."
+    InstallLoadGenerator:
       method: post
-      resourcePath: /api/v1/cost/estimate
-      description: "Update the estimate cost based on provided specifications and retrieve the updated cost estimation. Required fields for each specification include `ProviderName`, `RegionName`, and `InstanceType`. Specifications can also be provided in a formatted string using `+` delimiter."
-    Getestimateforecastcost:
-      method: get
-      resourcePath: /api/v1/cost/estimate/forecast
-      description: "Fetch estimated forecast cost data based on specified parameters, including a date range that must be within 6 months. Supports pagination and filtering by namespace IDs, migration configuration IDs, and resource types."
-    Updateestimateforecastcost:
-      method: post
-      resourcePath: /api/v1/cost/estimate/forecast
-      description: "Update and retrieve forecasted cost estimates for a specified namespace and migration configuration ID over the past 14 days."
-    Installmonitoringagent:
+      resourcePath: /api/v1/load/generators
+      description: "Install a load generator either locally or remotely."
+    UninstallLoadGenerator:
+      method: delete
+      resourcePath: /api/v1/load/generators/{loadGeneratorInstallInfoId}
+      description: "Uninstall a previously installed load generator."
+    InstallMonitoringAgent:
       method: post
       resourcePath: /api/v1/load/monitoring/agent/install
       description: "Install a monitoring agent on specific mci."
+    GetAllLoadTestScenarioCatalogs:
+      method: get
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs
+      description: "Retrieve a list of all load test scenario catalogs with pagination support."
+    CreateLoadTestScenarioCatalog:
+      method: post
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs
+      description: "Create a new load test scenario catalog template with the provided configuration."
+    GetLastLoadTestResult:
+      method: get
+      resourcePath: /api/v1/load/tests/result/last
+      description: "Retrieve last load test result based on provided parameters."
+    GetAllLoadTestExecutionState:
+      method: get
+      resourcePath: /api/v1/load/tests/state
+      description: "Retrieve a list of all load test execution states with pagination support."
+    GetLastLoadTestExecutionState:
+      method: get
+      resourcePath: /api/v1/load/tests/state/last
+      description: "Retrieve a last load test execution state by given ids."
+    StopLoadTest:
+      method: post
+      resourcePath: /api/v1/load/tests/stop
+      description: "Stop a running load test using the provided load test key."
+    GetEstimateForecastCost:
+      method: get
+      resourcePath: /api/v1/cost/estimate/forecast
+      description: "Fetch estimated forecast cost data based on specified parameters, including a date range that must be within 6 months. Supports pagination and filtering by namespace IDs, migration configuration IDs, and resource types."
+    UpdateEstimateForecastCost:
+      method: post
+      resourcePath: /api/v1/cost/estimate/forecast
+      description: "Update and retrieve forecasted cost estimates for a specified namespace and migration configuration ID over the past 14 days."
+    AntServerReadiness:
+      method: get
+      resourcePath: /readyz
+      description: "This endpoint checks if the CB-Ant API server is ready by verifying the status of both the load service and the cost service. If either service is unavailable, it returns a 503 status indicating the server is not ready."
+    GetAllLoadTestExecutionInfos:
+      method: get
+      resourcePath: /api/v1/load/tests/infos
+      description: "Retrieve a list of all load test execution information with pagination support."
+    GetLoadTestExecutionInfo:
+      method: get
+      resourcePath: /api/v1/load/tests/infos/{loadTestKey}
+      description: "Retrieve the load test execution state information for a specific load test key."
+    GetLoadTestExecutionState:
+      method: get
+      resourcePath: /api/v1/load/tests/state/{loadTestKey}
+      description: "Retrieve a load test execution state by load test key."
+    GetAllMonitoringAgentInfos:
+      method: get
+      resourcePath: /api/v1/load/monitoring/agent
+      description: "Retrieve monitoring agent information based on specified criteria."
+    UpdateEstimateForecastCostRaw:
+      method: post
+      resourcePath: /api/v1/cost/estimate/forecast/raw
+      description: "Update and retrieve raw forecasted cost estimates for specified cost resources and additional AWS information over the past 14 days."
+    GetLoadTestScenarioCatalog:
+      method: get
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
+      description: "Retrieve a specific load test scenario catalog by ID."
+    UpdateLoadTestScenarioCatalog:
+      method: put
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
+      description: "Update an existing load test scenario catalog with the provided configuration."
+    DeleteLoadTestScenarioCatalog:
+      method: delete
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
+      description: "Delete a load test scenario catalog by ID."
+    GetLoadTestResult:
+      method: get
+      resourcePath: /api/v1/load/tests/result
+      description: "Retrieve load test result based on provided parameters."
+    GetLastLoadTestMetrics:
+      method: get
+      resourcePath: /api/v1/load/tests/result/metrics/last
+      description: "Retrieve last load test metrics based on provided parameters."
+    GetEstimateCost:
+      method: get
+      resourcePath: /api/v1/cost/estimate
+      description: "Fetch estimated cost details based on provider, region, instance type, and resource specifications. Pagination support is provided through `Page` and `Size` parameters."
+    UpdateAndGetEstimateCost:
+      method: post
+      resourcePath: /api/v1/cost/estimate
+      description: "Update the estimate cost based on provided specifications and retrieve the updated cost estimation. Required fields for each specification include `ProviderName`, `RegionName`, and `InstanceType`. Specifications can also be provided in a formatted string using `+` delimiter."
 
   cm-honeybee:
     Import-Helm:
@@ -1948,7 +1968,7 @@ serviceActions:
       method: get
       resourcePath: /softwaremodel/source/{id}
       description: "Get a specific software user model."
-    UpdateSourceSoftwareModel
+    UpdateSourceSoftwareModel:
       method: put
       resourcePath: /softwaremodel/source/{id}
       description: "Update a software user model with the given information."
