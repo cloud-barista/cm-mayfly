@@ -1,6 +1,13 @@
 #version: "3.3"
 # docker image : https://hub.docker.com/u/cloudbaristaorg
 
+# Default health check configuration
+x-default-health-check: &default-health-check
+  interval: 1m
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+
 services:
 # The priority used by Compose to choose which env var value to use:
 # 1. Compose file
@@ -39,10 +46,7 @@ services:
       - ID_TRANSFORM_MODE=OFF
     healthcheck: # for CB-Spider
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1024/spider/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
   # CB-Tumblebug
   # https://github.com/cloud-barista/cb-tumblebug/blob/main/scripts/runTumblebug.sh
@@ -109,10 +113,7 @@ services:
       # - TB_NODE_ENV=development
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1323/tumblebug/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
   cb-tumblebug-etcd:
     image: gcr.io/etcd-development/etcd:v3.5.21
@@ -159,10 +160,7 @@ services:
     healthcheck:
       #test: [ "CMD", "etcdctl", "endpoint", "health", "--endpoints=http://localhost:2379"]
       test: [ "CMD", "/usr/local/bin/etcd", "--version"]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
 
   # mc-infra-manager PostgreSQL
@@ -184,10 +182,7 @@ services:
       - POSTGRES_DB=cb_tumblebug
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cb_tumblebug"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      <<: *default-health-check
 
 
   # cb-mapui
@@ -205,10 +200,7 @@ services:
     healthcheck: # for cb-mapui
       #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
       test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
 
   # cm-beetle
@@ -258,10 +250,7 @@ services:
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
 
   # cm-butterfly (api)
@@ -306,10 +295,7 @@ services:
     healthcheck: # for butterfly-api
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
 
 
@@ -390,10 +376,7 @@ services:
       - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
   # cm-damselfly
   # https://github.com/cloud-barista/cm-damselfly
@@ -413,12 +396,9 @@ services:
       - ./data/cm-damselfly/db:/app/db/
       - /etc/ssl/certs:/etc/ssl/certs:ro
       #- ./conf/cm-damselfly/conf:/app/conf/
-    healthcheck: # for CM-Beetle
+    healthcheck: # for CM-Damselfly
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
 
   # cm-cicada
@@ -451,10 +431,7 @@ services:
     command: ["/cm-cicada"]
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
 
   # airflow-redis
@@ -560,10 +537,7 @@ services:
     entrypoint: ["/tool/entrypoint.sh"]
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/health" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
   # cm-grasshopper
   # https://github.com/cloud-barista/cm-grasshopper
@@ -585,10 +559,7 @@ services:
       - ./data/cm-grasshopper/software_log:/software_log:rw
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      <<: *default-health-check
 
   # cm-ant
   # https://github.com/cloud-barista/cm-ant
@@ -616,10 +587,7 @@ services:
       - ANT_DATABASE_HOST=ant-postgres
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/readyz" ]
-      interval: 1m
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      <<: *default-health-check
     restart: unless-stopped
 
 
@@ -638,10 +606,7 @@ services:
       # - cm-ant-db-network
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "cm-ant-user", "-d", "cm-ant-db" ]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      <<: *default-health-check
     restart: unless-stopped
 
 
