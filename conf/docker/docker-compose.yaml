@@ -566,7 +566,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-ant
   cm-ant:
     container_name: cm-ant
-    image: cloudbaristaorg/cm-ant:0.3.4
+    image: cloudbaristaorg/cm-ant:0.4.0
     # image: cloudbaristaorg/cm-ant:edge
     platform: linux/amd64
     ports:
