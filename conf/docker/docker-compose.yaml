@@ -263,8 +263,8 @@ services:
   # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
-    #image: cloudbaristaorg/cm-butterfly-api:edge
-    image: cloudbaristaorg/cm-butterfly-api:0.3.3
+    image: cloudbaristaorg/cm-butterfly-api:edge
+    # image: cloudbaristaorg/cm-butterfly-api:0.3.3
     # image: csescsta/cm-butterfly-api:20250911105829-develop
     container_name: cm-butterfly-api
     platform: linux/amd64
@@ -305,8 +305,8 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    #image: cloudbaristaorg/cm-butterfly-front:edge
-    image: cloudbaristaorg/cm-butterfly-front:0.3.3
+    image: cloudbaristaorg/cm-butterfly-front:edge
+    # image: cloudbaristaorg/cm-butterfly-front:0.3.3
     # image: csescsta/cm-butterfly-front:20250912170328-develop
     container_name: cm-butterfly-front
     platform: linux/amd64
