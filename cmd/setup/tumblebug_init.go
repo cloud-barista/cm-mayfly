@@ -69,6 +69,18 @@ func runTumblebugInit() {
 	gitTag := "v" + version
 	fmt.Printf("✅ Version confirmed: %s\n", version)
 
+	// Check if CB-Tumblebug is healthy
+	if !isTumblebugHealthy() {
+		fmt.Println("❌ CB-Tumblebug is not healthy yet.")
+		fmt.Println("Please wait for CB-Tumblebug to become healthy and try again:")
+		fmt.Println("   ./mayfly infra info")
+		fmt.Println()
+		fmt.Println("Please try again after CB-Tumblebug becomes healthy.")
+		return
+	}
+
+	fmt.Println("✅ CB-Tumblebug is healthy.")
+
 	// Show warning message about credential files
 	showCredentialWarning(gitTag)
 
@@ -117,6 +129,63 @@ func isTumblebugRunning() bool {
 	}
 
 	return false
+}
+
+// isTumblebugHealthy checks if CB-Tumblebug container is healthy
+func isTumblebugHealthy() bool {
+	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps --format json", common.ComposeProjectName, common.DefaultDockerComposeConfig)
+	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	// Check if cb-tumblebug service is healthy
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "cb-tumblebug") && strings.Contains(line, "healthy") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// getExistingTumblebugVersion gets the version of existing cb-tumblebug directory
+func getExistingTumblebugVersion(cbTumblebugDir string) (string, error) {
+	// Check if it's a git repository
+	gitDir := filepath.Join(cbTumblebugDir, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return "", fmt.Errorf("not a git repository")
+	}
+
+	// Get current HEAD commit hash
+	cmdStr := fmt.Sprintf("cd %s && git rev-parse HEAD", cbTumblebugDir)
+	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	currentCommit := strings.TrimSpace(string(output))
+	if currentCommit == "" {
+		return "", fmt.Errorf("unable to get current commit")
+	}
+
+	// Get the tag that the current HEAD is pointing to (exact match)
+	cmdStr = fmt.Sprintf("cd %s && git describe --exact-match HEAD 2>/dev/null", cbTumblebugDir)
+	cmd = exec.Command("/bin/sh", "-c", cmdStr)
+
+	output, err = cmd.Output()
+	if err != nil {
+		// If no exact tag match, return the commit hash to indicate it's not on a tag
+		return currentCommit, nil
+	}
+
+	tag := strings.TrimSpace(string(output))
+	return tag, nil
 }
 
 // showCredentialWarning displays warning about credential files
@@ -265,52 +334,162 @@ func downloadAndInitTumblebug(version, originalDir string) error {
 
 // handleExistingDirectory handles the case when cb-tumblebug directory already exists
 func handleExistingDirectory(cbTumblebugDir, gitTag, targetDir, originalDir string) error {
-	fmt.Printf("Same version of Tumblebug already exists in %s folder.\n", cbTumblebugDir)
+	// Check the version of existing directory
+	existingVersion, err := getExistingTumblebugVersion(cbTumblebugDir)
+	if err != nil {
+		// If we can't determine the version, treat it as different version
+		fmt.Printf("Existing Tumblebug directory found in %s folder, but unable to determine version.\n", cbTumblebugDir)
+		fmt.Printf("Current running version: %s\n", gitTag)
+		return showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, "unknown", true)
+	}
 
+	// Check if the existing version is exactly the same as the running version
+	if existingVersion == gitTag {
+		// Same version and on the correct tag
+		fmt.Printf("Same version of Tumblebug (%s) already exists and is correctly checked out in %s folder.\n", gitTag, cbTumblebugDir)
+		return showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, existingVersion, false)
+	} else {
+		// Different version or not on the correct tag
+		fmt.Printf("Different version of Tumblebug found in %s folder.\n", cbTumblebugDir)
+		fmt.Printf("Current running version: %s\n", gitTag)
+		fmt.Printf("Existing directory version: %s\n", existingVersion)
+
+		// Check if the tag exists in the repository but is not checked out
+		if isTagExistsInRepo(cbTumblebugDir, gitTag) {
+			fmt.Printf("The running version (%s) exists in the repository but is not currently checked out.\n", gitTag)
+			fmt.Printf("Please use 'cd %s && git checkout %s' to switch to the correct version.\n", cbTumblebugDir, gitTag)
+			fmt.Printf("Alternatively, you can select one of the options below to switch to the current tag version.")
+		}
+
+		return showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, existingVersion, true)
+	}
+}
+
+// isTagExistsInRepo checks if a specific tag exists in the repository
+func isTagExistsInRepo(cbTumblebugDir, gitTag string) bool {
+	cmdStr := fmt.Sprintf("cd %s && git tag -l %s", cbTumblebugDir, gitTag)
+	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	return strings.TrimSpace(string(output)) == gitTag
+}
+
+// showMenuAndHandleChoice shows menu and handles user choice
+func showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, existingVersion string, isDifferentVersion bool) error {
 	reader := bufio.NewReader(os.Stdin)
+
 	for {
-		fmt.Print("Do you want to delete existing files and download fresh, or use existing files without downloading? (d=delete and download, e=use existing): ")
+		if isDifferentVersion {
+			fmt.Println("\nPlease select an option:")
+			fmt.Println("1. Delete and download fresh")
+			fmt.Println("2. Switch to current version and continue initialization")
+			fmt.Println("3. Switch to current version and exit")
+			fmt.Println("0. Exit")
+			fmt.Print("Enter your choice (0-3): ")
+		} else {
+			fmt.Println("\nPlease select an option:")
+			fmt.Println("1. Delete and download fresh")
+			fmt.Println("2. Use existing files")
+			fmt.Println("0. Exit")
+			fmt.Print("Enter your choice (0-2): ")
+		}
+
 		response, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("error reading input: %v", err)
 		}
 
-		response = strings.TrimSpace(strings.ToLower(response))
-		switch response {
-		case "d":
-			// Remove existing directory and download fresh
-			err := os.RemoveAll(cbTumblebugDir)
-			if err != nil {
-				return fmt.Errorf("failed to remove existing directory: %v", err)
+		choice := strings.TrimSpace(response)
+		switch choice {
+		case "1":
+			return removeAndDownloadFresh(cbTumblebugDir, gitTag, targetDir, originalDir)
+		case "2":
+			if isDifferentVersion {
+				// Switch to the correct version and execute
+				err := switchToVersion(cbTumblebugDir, gitTag)
+				if err != nil {
+					fmt.Printf("Error switching to version %s: %v\n", gitTag, err)
+					return err
+				}
+				fmt.Printf("\nExecuting cb-tumblebug in %s folder...\n", cbTumblebugDir)
+				return initializeTumblebug(cbTumblebugDir, originalDir)
+			} else {
+				// Use existing files
+				fmt.Printf("\nExecuting cb-tumblebug in %s folder...\n", cbTumblebugDir)
+				return initializeTumblebug(cbTumblebugDir, originalDir)
 			}
-
-			// Change to target directory
-			err = os.Chdir(targetDir)
-			if err != nil {
-				return fmt.Errorf("failed to change to target directory: %v", err)
+		case "3":
+			if isDifferentVersion {
+				// Switch to the correct version and exit
+				err := switchToVersion(cbTumblebugDir, gitTag)
+				if err != nil {
+					fmt.Printf("Error switching to version %s: %v\n", gitTag, err)
+					return err
+				}
+				fmt.Printf("Successfully switched to version %s. You can now run the initialization manually.\n", gitTag)
+				return nil
+			} else {
+				fmt.Println("Invalid choice. Please enter 0, 1, or 2.")
 			}
-
-			// Clone fresh copy
-			cloneCmd := fmt.Sprintf("git clone -b %s https://github.com/cloud-barista/cb-tumblebug.git", gitTag)
-			fmt.Printf("Executing command: %s\n", cloneCmd)
-
-			err = common.SysCallWithError(cloneCmd)
-			if err != nil {
-				return fmt.Errorf("failed to clone repository: %v", err)
-			}
-
-			fmt.Printf("\nExecuting cb-tumblebug in %s folder...\n", cbTumblebugDir)
-			return initializeTumblebug(cbTumblebugDir, originalDir)
-
-		case "e":
-			// Use existing directory
-			fmt.Printf("\nExecuting cb-tumblebug in %s folder...\n", cbTumblebugDir)
-			return initializeTumblebug(cbTumblebugDir, originalDir)
-
+		case "0":
+			fmt.Println("Operation cancelled.")
+			return fmt.Errorf("operation cancelled by user")
 		default:
-			fmt.Println("Please enter 'd' for delete and download, or 'e' for use existing.")
+			if isDifferentVersion {
+				fmt.Println("Invalid choice. Please enter 0, 1, 2, or 3.")
+			} else {
+				fmt.Println("Invalid choice. Please enter 0, 1, or 2.")
+			}
 		}
 	}
+}
+
+// switchToVersion switches the repository to the specified version
+func switchToVersion(cbTumblebugDir, gitTag string) error {
+	fmt.Printf("Switching to version %s...\n", gitTag)
+
+	cmdStr := fmt.Sprintf("cd %s && git checkout %s", cbTumblebugDir, gitTag)
+	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to checkout version %s: %v", gitTag, err)
+	}
+
+	fmt.Printf("Successfully switched to version %s\n", gitTag)
+	fmt.Printf("Output: %s\n", string(output))
+	return nil
+}
+
+// removeAndDownloadFresh removes existing directory and downloads fresh copy
+func removeAndDownloadFresh(cbTumblebugDir, gitTag, targetDir, originalDir string) error {
+	// Remove existing directory
+	err := os.RemoveAll(cbTumblebugDir)
+	if err != nil {
+		return fmt.Errorf("failed to remove existing directory: %v", err)
+	}
+
+	// Change to target directory
+	err = os.Chdir(targetDir)
+	if err != nil {
+		return fmt.Errorf("failed to change to target directory: %v", err)
+	}
+
+	// Clone fresh copy
+	cloneCmd := fmt.Sprintf("git clone -b %s https://github.com/cloud-barista/cb-tumblebug.git", gitTag)
+	fmt.Printf("Executing command: %s\n", cloneCmd)
+
+	err = common.SysCallWithError(cloneCmd)
+	if err != nil {
+		return fmt.Errorf("failed to clone repository: %v", err)
+	}
+
+	fmt.Printf("\nExecuting cb-tumblebug in %s folder...\n", cbTumblebugDir)
+	return initializeTumblebug(cbTumblebugDir, originalDir)
 }
 
 // initializeTumblebug initializes Tumblebug by running setup.env and init.sh
