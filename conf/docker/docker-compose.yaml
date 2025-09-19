@@ -305,9 +305,9 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    image: cloudbaristaorg/cm-butterfly-front:edge
+    # image: cloudbaristaorg/cm-butterfly-front:edge
     # image: cloudbaristaorg/cm-butterfly-front:0.3.3
-    # image: csescsta/cm-butterfly-front:20250912170328-develop
+    image: csescsta/cm-butterfly-front:edge
     container_name: cm-butterfly-front
     platform: linux/amd64
     restart: unless-stopped
