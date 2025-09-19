@@ -150,12 +150,17 @@ Example output:
 ```
 [v]Status of Cloud-Migrator runtime images
 CONTAINER           REPOSITORY                     TAG                 IMAGE ID            SIZE
-cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.10.3              d4c2abdc0e21        118MB
+cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.11.9              d4c2abdc0e21        118MB
 ```
 
-Based on the cb-tumblebug version (e.g., v0.10.3), download the corresponding cb-tumblebug repository:
+Based on the cb-tumblebug version (e.g., v0.11.9), download the corresponding cb-tumblebug repository:
 ```
-$ git clone -b v0.10.3 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.10.3
+$ git clone -b v0.11.9 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.11.9
+```
+
+Alternatively, you can use the following experimental command to automatically download the source code matching the currently running cb-tumblebug version and execute the init.sh shell script.
+```
+$ ./mayfly setup tumblebug-init
 ```
 
 Then follow the detailed guide at:
