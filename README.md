@@ -158,13 +158,16 @@ Based on the cb-tumblebug version (e.g., v0.11.9), download the corresponding cb
 $ git clone -b v0.11.9 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.11.9
 ```
 
+Then follow the detailed guide at:
+[CB-Tumblebug Multi-Cloud Configuration Guide](https://github.com/cloud-barista/cb-tumblebug?tab=readme-ov-file#3-initialize-cb-tumblebug-to-configure-multi-cloud-info)
+
+
 Alternatively, you can use the following experimental command to automatically download the source code matching the currently running cb-tumblebug version and execute the init.sh shell script.
 ```
 $ ./mayfly setup tumblebug-init
 ```
 
-Then follow the detailed guide at:
-[CB-Tumblebug Multi-Cloud Configuration Guide](https://github.com/cloud-barista/cb-tumblebug?tab=readme-ov-file#3-initialize-cb-tumblebug-to-configure-multi-cloud-info)
+For more detailed information, please refer to the [tumblebug-init Sub Command Guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/tumblebug-init-cmd.md) documentation.
 
 ## 6. Some helpful commands
 If a new version of the Docker image is released, you can update the running version of Cloud-Migrator to the latest version using the `update` command.
