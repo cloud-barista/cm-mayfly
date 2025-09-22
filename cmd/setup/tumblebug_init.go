@@ -506,13 +506,14 @@ cd "%s"
 echo "Current location: $(pwd)"
 
 # Source setup.env if it exists
-if [ -f "conf/setup.env" ]; then
-    echo "Executing setup.env file..."
-    source conf/setup.env
-    echo "setup.env execution completed"
-else
-    echo "Warning: conf/setup.env file not found."
-fi
+# Note: Currently commented out as it causes errors during initialization
+# if [ -f "conf/setup.env" ]; then
+#     echo "Executing setup.env file..."
+#     source conf/setup.env
+#     echo "setup.env execution completed"
+# else
+#     echo "Warning: conf/setup.env file not found."
+# fi
 
 # Run init.sh if it exists
 if [ -f "init/init.sh" ]; then
