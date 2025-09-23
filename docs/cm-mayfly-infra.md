@@ -362,17 +362,48 @@ $ ./mayfly infra remove -v
 **참고**: `./conf/docker/data` 폴더 하위에 각 서브 프레임워크(컨테이너) 이름의 폴더가 생성되며 Data나 Log를 비롯하여 보관이 필요한 경우에 사용됩니다.   
 `--volumes` 옵션은 Docker 볼륨만 삭제하며, 볼륨 마운트에 의해 로컬에 생성된 `./conf/docker/data` 폴더는 삭제되지 않습니다.   
 만약, 컨테이너에 의해 로컬에 저장된 데이터까지 완전히 삭제화하고 싶다면 `./conf/docker/data` 폴더 하위의 모든 폴더들을 수동으로 삭제해야 합니다.
-깨끗한 환경에서 다시 설치하기 위해 시스템에 설치된 모든 도커 환경을 초기화 하고 싶다면 `./conf/docker/remove_all.sh` 파일을 사용하면 모든 환경을 초기화하는 작업을 진행합니다.
+
 
 
 ## Docker 전체 환경 정리
-Cloud-Migrator 인프라를 구축하기 전에 사용했던 도커 환경과의 충돌로 인해 모든 환경을 초기화하고 싶은 경우 아래 명령어로 초기화가 가능합니다.
+Cloud-Migrator 인프라를 구축하기 전에 사용했던 도커 환경과의 충돌로 인해 모든 환경을 초기화하고 싶은 경우 아래 명령어로 초기화가 가능합니다.   
+myfly로 구축한 도커 환경 외에도 `시스템에 존재하는 모든 도커 환경이 삭제`됩니다.
 
-[주의] 아래 명령을 실행하면 docker로 생성된 이미지 / 볼륨 / 네트워크 등의 모든 정보기 삭제됩니다.
+> [!CAUTION]
+> **위험: 시스템의 모든 Docker 리소스가 삭제됩니다!**
+> 
+> 아래 명령어들은 다음을 포함한 **모든 Docker 관련 데이터**를 제거합니다:
+> 
+> - **모든 Docker 컨테이너** (실행 중 및 중지됨)
+> - **모든 Docker 이미지**
+> - **모든 Docker 볼륨**
+> - **모든 커스텀 Docker 네트워크**
+> - **모든 Docker 시스템 데이터**
+> 
+> ⚠️ **이 작업은 되돌릴 수 없으며 다른 Docker 애플리케이션에 영향을 줍니다!**
+> 
+> Docker 환경을 완전히 초기화하고 싶을 때만 사용하세요.
+
+### 방법 1: 개별 명령어 실행
 ```bash
 $ docker rmi $(docker images -q) -f
 $ docker system prune -a
 $ docker volume prune
 $ docker network prune
 $ sudo rm -rf ./conf/docker/data
+```
+
+### 방법 2: 자동화 스크립트 사용
+더 안전하고 체계적인 정리를 위해 제공되는 스크립트를 사용하세요:
+
+> [!CAUTION]
+> **위험: 이 스크립트는 시스템의 모든 Docker 리소스를 삭제합니다!**
+> 
+> `remove_all.sh` 스크립트는 Cloud-Migrator (cm-mayfly)의 안정적인 동작을 위해 깨끗한 환경을 구축하도록 설계되었습니다. cm-mayfly를 통해 설치되지 않은 **모든 Docker 관련 데이터**를 제거합니다.
+> 
+> ⚠️ **이 작업은 되돌릴 수 없으며 다른 Docker 애플리케이션에 영향을 줍니다!**
+
+```bash
+$ cd conf/docker
+$ ./remove_all.sh
 ```

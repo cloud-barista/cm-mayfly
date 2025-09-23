@@ -232,13 +232,27 @@ $ ./mayfly infra run -s cm-cicada
 ```
 
 If you want to cleanup all Docker environments, run the following shell script.
+
+> [!CAUTION]
+> **DANGER: This script will DELETE ALL Docker resources on your system!**
+> 
+> The `remove_all.sh` script is designed to create a clean environment for stable operation of Cloud-Migrator (cm-mayfly). It will remove **ALL Docker-related data** that was NOT installed through cm-mayfly, including:
+> 
+> - **ALL Docker containers** (running and stopped)
+> - **ALL Docker images**
+> - **ALL Docker volumes**
+> - **ALL custom Docker networks**
+> - **ALL Docker system data**
+> 
+> ⚠️ **This action is IRREVERSIBLE and will affect other Docker applications!**
+> 
+> Only use this script if you want to completely reset your Docker environment.
+
 ```
 $ cd conf/docker
 $ ./remove_all.sh
 ```
 
-Note that the logs and local DB files created by the subsystems are not deleted.
-If a complete reset is required, run `remove_all.sh` and then delete the `data` folder as instructed.
 
 <!-- 
 ## docker-compose.yaml
