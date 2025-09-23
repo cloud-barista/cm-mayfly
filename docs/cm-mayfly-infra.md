@@ -178,6 +178,154 @@ $ ./mayfly infra stop cb-tumbleug
 ```
 
 
+## Cloud-Migrator 로그 조회
+
+Cloud-Migrator 시스템의 로그를 조회할 수 있습니다. 다양한 옵션을 통해 효율적으로 로그를 확인할 수 있습니다.
+
+### 기본 사용법
+```bash
+# 마지막 10줄 로그를 출력하고 실시간으로 따라가기 (기본값)
+$ ./mayfly infra logs
+
+# 마지막 10줄 로그만 출력하고 종료
+$ ./mayfly infra logs --no-follow
+```
+기본적으로는 마지막 10줄 로그를 출력하고 실시간으로 모니터링합니다. 로그를 확인하고 바로 종료하려면 `--no-follow` 옵션을 사용하세요.
+
+### 옵션 설명
+
+| 옵션 | 설명 | 예시 |
+|------|------|------|
+| `-s, --service` | 특정 서비스만 대상으로 지정 | `-s cb-tumblebug` |
+| `-t, --tail` | 마지막 N줄부터 출력 (0은 처음부터 모든 로그) | `--tail 50` |
+| `--since` | 특정 시간 이후의 로그만 출력 | `--since 1h` |
+| `--follow` | 실시간으로 로그를 따라가기 (기본값: true) | `--follow` |
+| `--no-follow` | follow 모드 비활성화 (로그 확인 후 종료) | `--no-follow` |
+
+
+### 주요 서비스 이름
+- `cb-tumblebug`: CB-Tumblebug 서비스
+- `cm-ant`: CM-Ant 서비스  
+- `cm-butterfly`: CM-Butterfly 서비스
+- `cm-cicada`: CM-Cicada 서비스
+- `cm-grasshopper`: CM-Grasshopper 서비스
+- `cm-honeybee`: CM-Honeybee 서비스
+- `cm-beetle`: CM-Beetle 서비스
+- `cb-spider`: CB-Spider 서비스
+
+
+### 사용 예시
+
+#### 1. 모든 서비스 로그 조회
+```bash
+# 마지막 10줄부터 실시간 follow (기본값)
+$ ./mayfly infra logs
+
+# 마지막 10줄만 출력하고 종료
+$ ./mayfly infra logs --no-follow
+
+# 마지막 50줄부터 실시간 follow
+$ ./mayfly infra logs --tail 50
+
+# 마지막 50줄만 출력하고 종료
+$ ./mayfly infra logs --tail 50 --no-follow
+
+# 처음부터 모든 로그 출력하고 실시간 follow
+$ ./mayfly infra logs --tail 0
+
+# 1시간 전부터의 로그를 실시간 follow
+$ ./mayfly infra logs --since 1h
+```
+
+#### 2. 특정 서비스 로그 조회
+```bash
+# cb-tumblebug 서비스의 로그만 조회
+$ ./mayfly infra logs -s cb-tumblebug
+
+# cm-ant 서비스의 마지막 20줄 로그
+$ ./mayfly infra logs -s cm-ant --tail 20
+
+# cb-tumblebug 서비스의 마지막 50줄 로그
+$ ./mayfly infra logs -s cb-tumblebug --tail 50
+
+# cm-ant 서비스의 1시간 전부터 마지막 20줄 로그
+$ ./mayfly infra logs -s cm-ant --tail 20 --since 1h
+```
+
+#### 3. 시간 기반 로그 조회
+```bash
+# 30분 전부터의 로그
+$ ./mayfly infra logs --since 30m
+
+# 2시간 전부터의 로그
+$ ./mayfly infra logs --since 2h
+
+# 특정 시간 이후의 로그 (ISO 8601 형식)
+$ ./mayfly infra logs --since 2024-01-15T10:30:00
+```
+
+#### 4. 조합 사용 예시
+```bash
+# cb-tumblebug 서비스의 마지막 30줄 + 30분 전부터
+$ ./mayfly infra logs -s cb-tumblebug --tail 30 --since 30m
+
+# cm-butterfly 서비스의 마지막 100줄 + 2시간 전부터
+$ ./mayfly infra logs -s cm-butterfly --tail 100 --since 2h
+```
+
+### 로그 필터링 (grep 활용)
+
+특정 키워드가 포함된 로그만 필터링하여 조회할 수 있습니다.
+
+#### 기본 필터링
+```bash
+# ERROR가 포함된 로그만 출력
+./mayfly infra logs | grep ERROR
+
+# WARN이 포함된 로그만 출력
+./mayfly infra logs | grep WARN
+
+# 특정 서비스의 ERROR 로그만 출력
+./mayfly infra logs -s cb-tumblebug | grep ERROR
+```
+
+#### 고급 필터링 옵션
+```bash
+# 대소문자 구분 없이 error 검색
+./mayfly infra logs | grep -i error
+
+# ERROR 또는 WARN이 포함된 로그 출력
+./mayfly infra logs | grep -E "ERROR|WARN"
+
+# ERROR가 포함된 로그와 그 앞뒤 2줄도 함께 출력
+./mayfly infra logs | grep -A 2 -B 2 ERROR
+
+# 마지막 50줄에서 ERROR만 검색
+./mayfly infra logs --tail 50 | grep ERROR
+```
+
+#### 실용적인 조합 예시
+```bash
+# cb-tumblebug 서비스의 마지막 100줄에서 ERROR만 검색
+./mayfly infra logs -s cb-tumblebug --tail 100 | grep ERROR
+
+# 1시간 전부터 ERROR나 WARN이 포함된 로그만 출력
+./mayfly infra logs --since 1h | grep -E "ERROR|WARN"
+
+# cm-ant 서비스의 ERROR 로그와 컨텍스트 함께 출력
+./mayfly infra logs -s cm-ant | grep -A 3 -B 3 ERROR
+```
+
+**주의사항**: `grep`을 사용하면 `--follow` 옵션의 실시간 로그 스트리밍이 중단될 수 있습니다. 실시간으로 특정 키워드의 로그만 보고 싶다면 별도의 터미널에서 실행하거나, 로그 파일을 직접 모니터링하는 방법을 고려해보세요.
+
+### 팁
+- **성능 최적화**: 오래된 로그로 인한 지연을 방지하려면 `--tail` 옵션을 사용하세요
+- **디버깅**: 특정 서비스의 문제를 해결할 때는 `-s` 옵션으로 해당 서비스만 조회하세요
+- **시간 기반 분석**: 특정 시간대의 문제를 분석할 때는 `--since` 옵션을 활용하세요
+- **로그 필터링**: `grep` 명령어를 활용하여 원하는 키워드가 포함된 로그만 효율적으로 조회하세요
+
+
+
 ## Cloud-Migrator 삭제(인프라 구축 환경 정리)
 더 이상 Cloud-Migrator 인프라가 필요 없거나 새로 구축하고 싶을 경우에는 아래와 같은 방법으로 정리가 가능합니다.
 
@@ -214,6 +362,7 @@ $ ./mayfly infra remove -v
 **참고**: `./conf/docker/data` 폴더 하위에 각 서브 프레임워크(컨테이너) 이름의 폴더가 생성되며 Data나 Log를 비롯하여 보관이 필요한 경우에 사용됩니다.   
 `--volumes` 옵션은 Docker 볼륨만 삭제하며, 볼륨 마운트에 의해 로컬에 생성된 `./conf/docker/data` 폴더는 삭제되지 않습니다.   
 만약, 컨테이너에 의해 로컬에 저장된 데이터까지 완전히 삭제화하고 싶다면 `./conf/docker/data` 폴더 하위의 모든 폴더들을 수동으로 삭제해야 합니다.
+깨끗한 환경에서 다시 설치하기 위해 시스템에 설치된 모든 도커 환경을 초기화 하고 싶다면 `./conf/docker/remove_all.sh` 파일을 사용하면 모든 환경을 초기화하는 작업을 진행합니다.
 
 
 ## Docker 전체 환경 정리

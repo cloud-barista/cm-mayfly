@@ -3,10 +3,10 @@
 
 # Default health check configuration
 x-default-health-check: &default-health-check
-  interval: 1m
-  timeout: 5s
-  retries: 3
-  start_period: 10s
+  interval: 30s      # 30초마다 헬스체크 실행
+  timeout: 5s        # 각 헬스체크 명령의 타임아웃 (5초)
+  retries: 3         # 연속으로 3번 실패하면 unhealthy로 판단
+  start_period: 10s  # 컨테이너 시작 후 10초 동안은 실패를 무시  
 
 services:
 # The priority used by Compose to choose which env var value to use:
@@ -220,7 +220,8 @@ services:
         published: 8056
         protocol: tcp
     depends_on:
-      - cb-tumblebug
+      cb-tumblebug:
+        condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       #- ./conf/cm-beetle/conf:/app/conf/
@@ -246,7 +247,6 @@ services:
       - BEETLE_TUMBLEBUG_ENDPOINT=http://cb-tumblebug:1323
       # - BEETLE_TUMBLEBUG_API_USERNAME=default
       # - BEETLE_TUMBLEBUG_API_PASSWORD=default
-
     healthcheck: # for CM-Beetle
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
@@ -263,8 +263,8 @@ services:
   # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
-    #image: cloudbaristaorg/cm-butterfly-api:edge
-    image: cloudbaristaorg/cm-butterfly-api:0.3.3
+    # image: cloudbaristaorg/cm-butterfly-api:edge
+    image: cloudbaristaorg/cm-butterfly-api:0.3.4
     # image: csescsta/cm-butterfly-api:20250911105829-develop
     container_name: cm-butterfly-api
     platform: linux/amd64
@@ -279,7 +279,8 @@ services:
       - spider_net
       - default
     depends_on:
-      - cm-butterfly-db
+      cm-butterfly-db:
+        condition: service_healthy
     env_file:
       - ./conf/cm-butterfly/api/.env
     volumes:
@@ -305,9 +306,9 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    #image: cloudbaristaorg/cm-butterfly-front:edge
-    image: cloudbaristaorg/cm-butterfly-front:0.3.3
-    # image: csescsta/cm-butterfly-front:20250912170328-develop
+    # image: cloudbaristaorg/cm-butterfly-front:edge
+    image: cloudbaristaorg/cm-butterfly-front:0.3.4
+    # image: csescsta/cm-butterfly-front:edge
     container_name: cm-butterfly-front
     platform: linux/amd64
     restart: unless-stopped
@@ -318,9 +319,15 @@ services:
         published: 80
         protocol: tcp
     depends_on:
-      - cm-butterfly-api
+      cm-butterfly-api:
+        condition: service_healthy
     volumes:
+      - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+    healthcheck: # for butterfly-api
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front:80/" ]
+      #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
+      <<: *default-health-check
 
 
   # cm-butterfly (db)
@@ -341,17 +348,9 @@ services:
     volumes:
       - cm-butterfly-db:/var/lib/postgresql/data
     user: root
-    # healthcheck:
-    #   # test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
-    #   test: ["CMD", "sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 5
-    #   start_period: 10s
-    # environment:
-    #   POSTGRES_DB: ${POSTGRES_DB}
-    #   POSTGRES_USER: ${POSTGRES_USER}
-    #   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "butterflyadmin", "-d", "butterfly-db" ]
+      <<: *default-health-check
 
 
   # @TODO - **Airflow 등 연계 시스템 필요함**
@@ -413,10 +412,14 @@ services:
     ports:
       - "8083:8083"
     depends_on:
-        - cm-damselfly
-        - cm-beetle
-        - cm-grasshopper
-        - airflow-server
+      cm-damselfly:
+        condition: service_healthy
+      cm-beetle:
+        condition: service_healthy
+      cm-grasshopper:
+        condition: service_healthy
+      airflow-server:
+        condition: service_healthy
     volumes:
       #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
       - ./tool/mayfly:/app/tool/mayfly
@@ -527,8 +530,10 @@ services:
             sleep infinity
         "
     depends_on:
-        - airflow-mysql
-        - airflow-redis
+      airflow-mysql:
+        condition: service_healthy
+      airflow-redis:
+        condition: service_healthy
     volumes:
         - ./tool/mayfly:/app/tool/mayfly
         - ./conf/depends_on_order/entrypoint_cm_cicada_airflow.sh:/tool/entrypoint.sh
@@ -552,7 +557,8 @@ services:
     ports:
       - "8084:8084"
     depends_on:
-      - cm-honeybee
+      cm-honeybee:
+        condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-grasshopper/conf:/conf
