@@ -412,6 +412,8 @@ services:
     ports:
       - "8083:8083"
     depends_on:
+      cm-damselfly:
+        condition: service_healthy
       cm-beetle:
         condition: service_healthy
       cm-grasshopper:
