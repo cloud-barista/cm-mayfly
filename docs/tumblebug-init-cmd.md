@@ -9,9 +9,6 @@ This feature is an experimental add-on designed to make the `Initialize CB-Tumbl
 
 The essential file required to properly execute the `tumblebug-init` command is an encrypted credential file, which is created through the following CB-Tumblebug process:
 ```
-👉 Set environment variables:
-   source ./conf/source.env
-
 👉 Create your cloud credentials:
    ./init/genCredential.sh
    → Then edit ~/.cloud-barista/credentials.yaml with your CSP info.
@@ -132,27 +129,18 @@ Please select an option:
 ```
 
 ## Troubleshooting
-Errors may occur due to `TB_API_PASSWORD` mismatch in CB-Tumblebug.
+If CB-Tumblebug's API Password(`TB_API_PASSWORD`) is not set, the string value `"default"` is used as the password, so no error occurs. However, if CB-Tumblebug is running with a custom API Password, the API Password between the downloaded version and the running version may not match, which can cause errors.
 
-Looking at the current CB-Tumblebug's `./conf/source.env` file, `TB_API_PASSWORD` is defined as follows:
-```
-# Set API access config
-export TB_API_USERNAME=default
-export TB_API_PASSWORD='$2a$10$4PKzCuJ6fPYsbCF.HR//ieLjaCzBAdwORchx62F2JRXQsuR3d9T0q'
-```
+Therefore, when executing the `./mayfly setup tumblebug-init` command, if an `Unauthorized` error occurs as shown below, please check the `TB_API_PASSWORD` configuration value:
 
-In cm-mayfly's `./cm-mayfly/conf/docker/docker-compose.yaml` file, the `cb-tumblebug` service is defined, and the `TB_API_PASSWORD` environment variable can be set in the `environment` section.
-For the current CB-Tumblebug, if the `TB_API_PASSWORD` environment variable is not set, the string `default` is used as the `TB_API_PASSWORD` value.
-
-Therefore, when executing the `./mayfly setup tumblebug-init` command, if an `Unauthorized error` occurs as shown below, please check the `TB_API_PASSWORD` value:
 ```
  "Error during resource loading: 401 Client Error: Unauthorized for url: http://localhost:1323/tumblebug/loadAssets"
 ```
 
-The quickest solution is to modify the `TB_API_PASSWORD` value in the downloaded CB-Tumblebug (`~/go/src/github.com/cloud-barista/cb-tumblebug` folder) `./conf/source.env` file to `default` as shown below and then execute:
-```
-# Set API access config
-export TB_API_PASSWORD=default
-```
+CB-Tumblebug API Password uses Hash verification method. For detailed information, please refer to the [TB API Password Configuration Guide](https://github.com/cloud-barista/cb-tumblebug/tree/main/cmd/bcrypt) documentation.
 
-This feature significantly improves the user experience by automating and securing the CB-Tumblebug initialization process.
+
+In cm-mayfly's `./cm-mayfly/conf/docker/docker-compose.yaml` file, the `cb-tumblebug` service is defined, and the `TB_API_PASSWORD` environment variable can be set in the `environment` section.
+For the current CB-Tumblebug, if the `TB_API_PASSWORD` environment variable is not set, the string `default` is used as the `TB_API_PASSWORD` value.
+
+Therefore, the quickest solution is to comment out the `TB_API_PASSWORD` environment variable in the `cb-tumblebug` service defined in the `./cm-mayfly/conf/docker/docker-compose.yaml` file if it is set, and then restart the service.
