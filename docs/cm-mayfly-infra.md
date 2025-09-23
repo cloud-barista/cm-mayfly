@@ -184,9 +184,13 @@ Cloud-Migrator 시스템의 로그를 조회할 수 있습니다. 다양한 옵�
 
 ### 기본 사용법
 ```bash
+# 마지막 10줄 로그를 출력하고 실시간으로 따라가기 (기본값)
 $ ./mayfly infra logs
+
+# 마지막 10줄 로그만 출력하고 종료
+$ ./mayfly infra logs --no-follow
 ```
-기본적으로 모든 서비스의 마지막 10줄 로그를 출력하고 실시간으로 새로운 로그를 따라갑니다.
+기본적으로는 마지막 10줄 로그를 출력하고 실시간으로 모니터링합니다. 로그를 확인하고 바로 종료하려면 `--no-follow` 옵션을 사용하세요.
 
 ### 옵션 설명
 
@@ -194,7 +198,9 @@ $ ./mayfly infra logs
 |------|------|------|
 | `-s, --service` | 특정 서비스만 대상으로 지정 | `-s cb-tumblebug` |
 | `-t, --tail` | 마지막 N줄부터 출력 (0은 처음부터 모든 로그) | `--tail 50` |
-| `-s, --since` | 특정 시간 이후의 로그만 출력 | `--since 1h` |
+| `--since` | 특정 시간 이후의 로그만 출력 | `--since 1h` |
+| `--follow` | 실시간으로 로그를 따라가기 (기본값: true) | `--follow` |
+| `--no-follow` | follow 모드 비활성화 (로그 확인 후 종료) | `--no-follow` |
 
 
 ### 주요 서비스 이름
@@ -215,13 +221,19 @@ $ ./mayfly infra logs
 # 마지막 10줄부터 실시간 follow (기본값)
 $ ./mayfly infra logs
 
+# 마지막 10줄만 출력하고 종료
+$ ./mayfly infra logs --no-follow
+
 # 마지막 50줄부터 실시간 follow
 $ ./mayfly infra logs --tail 50
 
-# 처음부터 모든 로그 출력
+# 마지막 50줄만 출력하고 종료
+$ ./mayfly infra logs --tail 50 --no-follow
+
+# 처음부터 모든 로그 출력하고 실시간 follow
 $ ./mayfly infra logs --tail 0
 
-# 1시간 전부터의 로그만 출력
+# 1시간 전부터의 로그를 실시간 follow
 $ ./mayfly infra logs --since 1h
 ```
 
