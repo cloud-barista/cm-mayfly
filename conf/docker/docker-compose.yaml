@@ -413,6 +413,7 @@ services:
     ports:
       - "8083:8083"
     depends_on:
+        - cm-damselfly
         - cm-beetle
         - cm-grasshopper
         - airflow-server
