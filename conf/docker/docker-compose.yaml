@@ -601,6 +601,9 @@ services:
         condition: service_healthy
       ant-postgres:
         condition: service_healthy
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./data/cm-ant:/app/result
     environment:
       - ANT_SPIDER_HOST=http://cb-spider
       - ANT_SPIDER_PORT=1024
