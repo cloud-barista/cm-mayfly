@@ -1,7 +1,10 @@
 package docker
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
@@ -27,6 +30,53 @@ var removeCmd = &cobra.Command{
 			removeOptions = "--rmi all"
 		} else {
 			removeOptions = ""
+		}
+
+		// 삭제 대상 정보 표시
+		fmt.Println("Removal Target:")
+
+		// 서비스 대상 표시
+		if ServiceName == "" {
+			fmt.Println("  Services: All services")
+		} else {
+			fmt.Printf("  Services: %s\n", ServiceName)
+		}
+
+		// 삭제 범위 표시
+		if allFlag {
+			fmt.Println("  Scope: Containers + Images + Volumes (all)")
+		} else if volFlag && imgFlag {
+			fmt.Println("  Scope: Containers + Images + Volumes")
+		} else if volFlag {
+			fmt.Println("  Scope: Containers + Volumes")
+		} else if imgFlag {
+			fmt.Println("  Scope: Containers + Images")
+		} else {
+			fmt.Println("  Scope: Containers only (images preserved)")
+		}
+		fmt.Println()
+
+		// 추가 옵션 안내
+		if !imgFlag && !volFlag && !allFlag {
+			fmt.Println("Additional Options:")
+			fmt.Println("  -i, --images    : Also remove images")
+			fmt.Println("  -v, --volumes   : Also remove named volumes (local mounts preserved)")
+			fmt.Println("  --all           : Remove everything (images + volumes)")
+			fmt.Println()
+		} else if volFlag && !allFlag {
+			fmt.Println("Note: Named volumes will be removed, but local mount volumes are preserved.")
+			fmt.Println()
+		}
+
+		// 사용자 확인 요청
+		fmt.Print("Do you want to proceed with the removal? (y/N): ")
+		reader := bufio.NewReader(os.Stdin)
+		response, _ := reader.ReadString('\n')
+		response = strings.TrimSpace(strings.ToLower(response))
+
+		if response != "y" && response != "yes" {
+			fmt.Println("Removal cancelled.")
+			return
 		}
 
 		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s %s", ProjectName, DockerFilePath, removeOptions, ServiceName)
