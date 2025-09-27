@@ -63,3 +63,15 @@ func SysCallWithError(cmdStr string) error {
 	err = cmd.Wait()
 	return err
 }
+
+// SysCallWithOutput executes user-passed command via system call and returns output.
+func SysCallWithOutput(cmdStr string) string {
+	cmd := exec.Command("/bin/sh", "-c", cmdStr)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	return string(output)
+}
