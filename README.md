@@ -31,6 +31,11 @@ This management tool provides and is expected to provide the following features:
 - [Install Go](https://golang.org/doc/install) 
   - Optional and only necessary if you want to run or build the source code.
 - [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+  - Make sure to add the ubuntu account to the Docker group.   
+    ```
+    $ sudo usermod -aG docker $USER
+    $ newgrp docker
+    ```
 
 
 ## How to build mayfly binary file from souce code

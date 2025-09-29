@@ -19,6 +19,21 @@ The essential file required to properly execute the `tumblebug-init` command is 
 
 If the above method does not create the file properly or if you need detailed information about the CB-Tumblebug initialization process, please refer to the [CB-Tumblebug Multi-Cloud Configuration Guide](https://github.com/cloud-barista/cb-tumblebug?tab=readme-ov-file#3-initialize-cb-tumblebug-to-configure-multi-cloud-info) documentation.
 
+
+Additionally, since CB-Tumblebug uses uv internally, it is recommended to install uv in advance.
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+```
+For more detailed information, please refer to the CB-Tumblebug documentation.
+
+The `tumblebug-init` command must be executed with the `ubuntu` account added to the Docker group to run mayfly without sudo.
+```
+$ sudo usermod -aG docker $USER
+$ newgrp docker
+```
+
+
 ## Key Features
 
 1. **Execution Status Check**: Verify if CB-Tumblebug is running
