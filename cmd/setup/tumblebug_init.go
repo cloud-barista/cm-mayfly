@@ -25,7 +25,7 @@ This command will:
 4. Execute the initialization script
 
 Before running this command, you need to create encrypted credential files.
-Please refer to: https://github.com/cloud-barista/cb-tumblebug?tab=readme-ov-file#installation--setup-`,
+Please refer to: https://github.com/cloud-barista/cb-tumblebug?tab=readme-ov-file#3-initialize-cb-tumblebug-to-configure-multi-cloud-info`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runTumblebugInit()
 	},
@@ -188,16 +188,23 @@ func getExistingTumblebugVersion(cbTumblebugDir string) (string, error) {
 	return tag, nil
 }
 
-// showCredentialWarning displays warning about credential files
+// showCredentialWarning displays warning about credential files and prerequisites
 func showCredentialWarning(gitTag string) {
 	cloneCmd := fmt.Sprintf("git clone -b %s https://github.com/cloud-barista/cb-tumblebug.git", gitTag)
 	fmt.Printf("\n[ Important Notice ]\n")
 	fmt.Printf("Tumblebug %s version is running.\n", gitTag)
 	fmt.Println("Encrypted credential files must be prepared before running Tumblebug initialization.")
 	fmt.Println("If encrypted credential files are not available, please create them first by referring to the guide below.")
-	fmt.Printf("   Guide: https://github.com/cloud-barista/cb-tumblebug/tree/%s?tab=readme-ov-file#installation--setup-\n", gitTag)
+	fmt.Printf("   Guide: https://github.com/cloud-barista/cb-tumblebug/tree/%s?tab=readme-ov-file#3-initialize-cb-tumblebug-to-configure-multi-cloud-info\n", gitTag)
 	fmt.Printf("   Download: %s\n", cloneCmd)
 
+	fmt.Println()
+	fmt.Println("Additionally, CB-Tumblebug initialization requires the following prerequisites:")
+	fmt.Println("  • uv package manager (for Python dependency management)")
+	fmt.Println("  • Other system dependencies as needed by the specific version")
+	fmt.Println()
+	fmt.Println("If any prerequisites are missing, you will receive appropriate error messages")
+	fmt.Println("with installation guidance during the initialization process.")
 	fmt.Println()
 }
 
