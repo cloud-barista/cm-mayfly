@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"regexp"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
@@ -76,53 +74,17 @@ func getCurrentLocalVersion(imageName, tag string) (string, error) {
 	return strings.TrimSpace(output), nil
 }
 
-// parseDockerComposeImages parses docker-compose.yaml to extract image information
-func parseDockerComposeImages() (map[string]string, error) {
-	services := make(map[string]string)
-
-	// Read docker-compose.yaml file
-	content, err := os.ReadFile(DockerFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read docker-compose.yaml: %v", err)
-	}
-
-	// Regex to match service names and image definitions
-	serviceRegex := regexp.MustCompile(`^\s*([a-zA-Z0-9_-]+):\s*$`)
-	imageRegex := regexp.MustCompile(`^\s*image:\s*(cloudbaristaorg/[^:\s]+):([^\s]+)\s*$`)
-
-	lines := strings.Split(string(content), "\n")
-	var currentService string
-
-	for _, line := range lines {
-		// Check for service name (e.g., "  cm-ant:")
-		if matches := serviceRegex.FindStringSubmatch(line); matches != nil {
-			currentService = matches[1]
-			continue
-		}
-
-		// Check for image definition (e.g., "    image: cloudbaristaorg/cm-ant:0.4.0")
-		if matches := imageRegex.FindStringSubmatch(line); matches != nil && currentService != "" {
-			imageName := matches[1]
-			tag := matches[2]
-			services[currentService] = fmt.Sprintf("%s:%s", imageName, tag)
-			currentService = ""
-		}
-	}
-
-	return services, nil
-}
-
 // checkVersionUpdates checks for version updates and displays comparison
-func checkVersionUpdates(services map[string]string) (bool, error) {
+func checkVersionUpdates(services map[string]ServiceInfo) (bool, error) {
 	fmt.Println("🔍 Checking version updates...")
 	fmt.Println()
 
 	hasUpdates := false
 	updateInfo := make(map[string]map[string]string)
 
-	for serviceName, imageWithTag := range services {
+	for serviceName, serviceInfo := range services {
 		// Extract image name and tag
-		parts := strings.Split(imageWithTag, ":")
+		parts := strings.Split(serviceInfo.Image, ":")
 		if len(parts) != 2 {
 			continue
 		}
@@ -247,8 +209,8 @@ var updateCmd = &cobra.Command{
 		} else {
 			// If specific service is requested, only check that service
 			if ServiceName != "" {
-				if imageName, exists := services[ServiceName]; exists {
-					services = map[string]string{ServiceName: imageName}
+				if serviceInfo, exists := services[ServiceName]; exists {
+					services = map[string]ServiceInfo{ServiceName: serviceInfo}
 				} else {
 					fmt.Printf("⚠️ Service %s not found in docker-compose.yaml\n", ServiceName)
 					return
