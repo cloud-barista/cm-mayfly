@@ -20,7 +20,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.11.5
+    image: cloudbaristaorg/cb-spider:0.11.13
     pull_policy: always
     container_name: cb-spider
     platform: linux/amd64
@@ -53,7 +53,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.11.9
+    image: cloudbaristaorg/cb-tumblebug:0.11.13
     container_name: cb-tumblebug
     pull_policy: always
     platform: linux/amd64
@@ -89,9 +89,9 @@ services:
       # - TB_ETCD_USERNAME=default
       # - TB_ETCD_PASSWORD=default
       - TB_POSTGRES_ENDPOINT=cb-tumblebug-postgres:5432
-      - TB_POSTGRES_DATABASE=cb_tumblebug
-      - TB_POSTGRES_USER=cb_tumblebug
-      - TB_POSTGRES_PASSWORD=cb_tumblebug
+      - TB_POSTGRES_DATABASE=tumblebug
+      - TB_POSTGRES_USER=tumblebug
+      - TB_POSTGRES_PASSWORD=tumblebug
       # - TB_TERRARIUM_API_USERNAME=default
       # - TB_TERRARIUM_API_PASSWORD=default
       # - TB_ALLOW_ORIGINS=*
@@ -177,11 +177,11 @@ services:
     volumes:
       - ./data/cb-tumblebug/meta_db/postgres:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=cb_tumblebug
-      - POSTGRES_PASSWORD=cb_tumblebug
-      - POSTGRES_DB=cb_tumblebug
+      - POSTGRES_USER=tumblebug
+      - POSTGRES_PASSWORD=tumblebug
+      - POSTGRES_DB=tumblebug
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cb_tumblebug"]
+      test: ["CMD-SHELL", "pg_isready -U tumblebug"]
       <<: *default-health-check
 
 
@@ -189,7 +189,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.11.12
+    image: cloudbaristaorg/cb-mapui:0.11.16
     container_name: cb-mapui
     pull_policy: always
     ports:
@@ -212,7 +212,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.3.8
+    image: cloudbaristaorg/cm-beetle:0.3.9
     container_name: cm-beetle
     pull_policy: always
     platform: linux/amd64
