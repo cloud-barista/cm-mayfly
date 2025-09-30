@@ -387,7 +387,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-damselfly
   cm-damselfly:
     # image: cloudbaristaorg/cm-damselfly:edge
-    image: cloudbaristaorg/cm-damselfly:0.3.5
+    image: cloudbaristaorg/cm-damselfly:0.3.6
     container_name: cm-damselfly
     pull_policy: always
     platform: linux/amd64
@@ -499,7 +499,7 @@ services:
     # build:
     #     context: ./conf/cm-cicada/_airflow ## build Docker file location
     container_name: airflow-server
-    image: cloudbaristaorg/airflow-server:0.2.4
+    image: cloudbaristaorg/airflow-server:0.3.4
     #image: cloudbaristaorg/airflow-server:edge
     restart: unless-stopped
     env_file:
