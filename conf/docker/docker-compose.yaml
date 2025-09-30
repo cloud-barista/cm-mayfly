@@ -364,7 +364,7 @@ services:
   # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
     #image: cloudbaristaorg/cm-honeybee:edge
-    image: cloudbaristaorg/cm-honeybee:0.3.5
+    image: cloudbaristaorg/cm-honeybee:0.3.6
     container_name: cm-honeybee
     pull_policy: always
     platform: linux/amd64
@@ -411,7 +411,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-cicada
   # **important** : The cm-beetle, cm-grasshopper, and airflow-server containers must be in a readyz state and running beforehand
   cm-cicada:
-    image: cloudbaristaorg/cm-cicada:0.3.3
+    image: cloudbaristaorg/cm-cicada:0.3.4
     #image: cloudbaristaorg/cm-cicada:edge
     container_name: cm-cicada
     pull_policy: always
@@ -558,7 +558,7 @@ services:
   # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
   cm-grasshopper:
     #image: cloudbaristaorg/cm-grasshopper:edge
-    image: cloudbaristaorg/cm-grasshopper:0.3.4
+    image: cloudbaristaorg/cm-grasshopper:0.3.5
     container_name: cm-grasshopper
     pull_policy: always
     restart: unless-stopped
