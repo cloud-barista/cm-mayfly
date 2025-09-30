@@ -123,7 +123,7 @@ var runCmd = &cobra.Command{
 		if !DetachMode {
 			fmt.Println("\n[Showing container logs - Press Ctrl+C to stop viewing logs]")
 			fmt.Println()
-			logCmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s logs -f", ProjectName, DockerFilePath)
+			logCmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s logs -f %s", ProjectName, DockerFilePath, ServiceName)
 			common.SysCall(logCmdStr)
 		} else {
 			// Show log command guidance for detached mode
