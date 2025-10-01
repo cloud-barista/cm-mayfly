@@ -111,8 +111,24 @@ $ ./mayfly infra run cb-tumblebug
 
 ## Cloud-Migrator 실행상태 확인
 설치된 인프라 및 서브 프레임워크들의 상태를 확인할 수 있습니다.
+
+### 기본 사용법
 ```bash
 $ ./mayfly infra info
+```
+
+### 옵션 설명
+- `-a, --all`: 모든 컨테이너 상태 표시 (실행 중인 컨테이너뿐만 아니라 중지된 컨테이너도 포함)
+  - **주의**: 완전히 삭제된 컨테이너는 표시되지 않습니다
+
+### 사용 예시
+```bash
+# 실행 중인 컨테이너만 표시 (기본값)
+$ ./mayfly infra info
+
+# 모든 컨테이너 상태 표시 (중지된 컨테이너 포함)
+$ ./mayfly infra info -a
+$ ./mayfly infra info --all
 ```
 
 실행 결과 예시

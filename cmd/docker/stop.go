@@ -7,6 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// stopAllFlag represents the --all flag for showing all containers including stopped ones
+var stopAllFlag bool
+
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
@@ -29,10 +32,13 @@ var stopCmd = &cobra.Command{
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)
 
-		SysCallDockerComposePs()
+		SysCallDockerComposePsWithAll(stopAllFlag)
 	},
 }
 
 func init() {
 	dockerCmd.AddCommand(stopCmd)
+
+	// Add --all flag to stop command
+	stopCmd.Flags().BoolVarP(&stopAllFlag, "all", "a", false, "Show all containers including stopped ones")
 }

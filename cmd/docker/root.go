@@ -43,10 +43,15 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 	},
 }
 
-// SysCallDockerComposePs executes `docker-compose ps` command via system call.
-func SysCallDockerComposePs() {
+// SysCallDockerComposePsWithAll executes `docker-compose ps` command with optional --all flag
+func SysCallDockerComposePsWithAll(showAll bool) {
 	fmt.Println("\n[v]Status of Cloud-Migrator runtimes")
-	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps", ProjectName, DockerFilePath)
+	var cmdStr string
+	if showAll {
+		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps -a", ProjectName, DockerFilePath)
+	} else {
+		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps", ProjectName, DockerFilePath)
+	}
 	common.SysCall(cmdStr)
 }
 

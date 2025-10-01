@@ -7,6 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// infoAllFlag represents the --all flag for showing all containers including stopped ones
+var infoAllFlag bool
+
 // infoCmd represents the info command.
 var infoCmd = &cobra.Command{
 	Use:   "info",
@@ -15,7 +18,7 @@ var infoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("\n[Get info for Cloud-Migrator runtimes]")
 		fmt.Println()
-		SysCallDockerComposePs()
+		SysCallDockerComposePsWithAll(infoAllFlag)
 		fmt.Println("")
 
 		fmt.Println("[v]Status of Cloud-Migrator runtime images")
@@ -27,4 +30,7 @@ var infoCmd = &cobra.Command{
 
 func init() {
 	dockerCmd.AddCommand(infoCmd)
+
+	// Add --all flag to info command
+	infoCmd.Flags().BoolVarP(&infoAllFlag, "all", "a", false, "Show all containers including stopped ones")
 }

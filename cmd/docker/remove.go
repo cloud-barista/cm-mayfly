@@ -84,7 +84,7 @@ var removeCmd = &cobra.Command{
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)
 
-		SysCallDockerComposePs()
+		SysCallDockerComposePsWithAll(false)
 	},
 }
 
@@ -96,7 +96,7 @@ func init() {
 	dockerCmd.AddCommand(removeCmd)
 
 	pf := removeCmd.PersistentFlags()
-	pf.BoolVarP(&allFlag, "all", "", false, "Remove all images and volumes and networks")
+	pf.BoolVarP(&allFlag, "all", "a", false, "Remove all images and volumes and networks")
 	pf.BoolVarP(&volFlag, "volumes", "v", false, "Remove named volumes declared in the volumes section of the Compose file")
 	pf.BoolVarP(&imgFlag, "images", "i", false, "Remove all images")
 }
