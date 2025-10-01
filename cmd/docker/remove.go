@@ -13,8 +13,17 @@ import (
 // removeCmd represents the remove command
 var removeCmd = &cobra.Command{
 	Use:   "remove",
-	Short: "Stop and Remove Cloud-Migrator System",
-	Long:  `Stop and Remove Cloud-Migrator System. Stop and Remove Cloud-Migrator runtimes and related container images and meta-DB if necessary`,
+	Short: "Stop and Remove Cloud-Migrator System or specific services",
+	Long: `Stop and Remove Cloud-Migrator System or specific services.
+
+For entire system removal:
+  - Removes all containers, networks, and optionally images/volumes
+  - Use --all flag to remove everything including orphaned containers
+
+For specific service removal:
+  - Removes only the specified service container
+  - Preserves Docker networks to prevent connectivity issues
+  - Use -s flag to specify target service(s)`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		fmt.Println("\n[Remove Cloud-Migrator]")
@@ -44,7 +53,7 @@ var removeCmd = &cobra.Command{
 
 		// Display removal scope
 		if allFlag {
-			fmt.Println("  Scope: Containers + Images + Volumes (all)")
+			fmt.Println("  Scope: Containers + Images + Volumes + Orphaned Containers (all)")
 		} else if volFlag && imgFlag {
 			fmt.Println("  Scope: Containers + Images + Volumes")
 		} else if volFlag {
@@ -61,7 +70,7 @@ var removeCmd = &cobra.Command{
 			fmt.Println("Additional Options:")
 			fmt.Println("  -i, --images    : Also remove images")
 			fmt.Println("  -v, --volumes   : Also remove named volumes (local mounts preserved)")
-			fmt.Println("  --all           : Remove everything (images + volumes)")
+			fmt.Println("  --all           : Remove everything (images + volumes + orphaned containers)")
 			fmt.Println()
 		} else if volFlag && !allFlag {
 			fmt.Println("Note: Named volumes will be removed, but local mount volumes are preserved.")
@@ -83,7 +92,12 @@ var removeCmd = &cobra.Command{
 
 		if ServiceName == "" {
 			// Remove entire system
-			cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s", ProjectName, DockerFilePath, removeOptions)
+			// Add --remove-orphans to clean up orphaned containers and networks
+			if removeOptions != "" {
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s --remove-orphans", ProjectName, DockerFilePath, removeOptions)
+			} else {
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --remove-orphans", ProjectName, DockerFilePath)
+			}
 		} else {
 			// Remove specific service only
 			// 1. First stop the service
@@ -131,7 +145,7 @@ func init() {
 	dockerCmd.AddCommand(removeCmd)
 
 	pf := removeCmd.PersistentFlags()
-	pf.BoolVarP(&allFlag, "all", "a", false, "Remove all images and volumes and networks")
+	pf.BoolVarP(&allFlag, "all", "a", false, "Remove all images, volumes, networks, and orphaned containers")
 	pf.BoolVarP(&volFlag, "volumes", "v", false, "Remove named volumes declared in the volumes section of the Compose file")
 	pf.BoolVarP(&imgFlag, "images", "i", false, "Remove all images")
 }
