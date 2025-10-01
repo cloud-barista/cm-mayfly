@@ -16,7 +16,8 @@ var pullCmd = &cobra.Command{
 		fmt.Println("\n[Install the Docker images of the subsystems that make up the Cloud-Migrator system.]")
 		fmt.Println()
 
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull %s", ProjectName, DockerFilePath, ServiceName)
+		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull %s", ProjectName, DockerFilePath, convertedServiceName)
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)
 	},

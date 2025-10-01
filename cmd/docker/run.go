@@ -105,7 +105,8 @@ var runCmd = &cobra.Command{
 
 		// Always use detached mode to avoid dependency issues
 		// If user wants to see logs, we'll show them after containers are started
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up -d %s", ProjectName, DockerFilePath, ServiceName)
+		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up -d %s", ProjectName, DockerFilePath, convertedServiceName)
 
 		// // If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
 		// if len(args) > 0 {
@@ -123,7 +124,7 @@ var runCmd = &cobra.Command{
 		if !DetachMode {
 			fmt.Println("\n[Showing container logs - Press Ctrl+C to stop viewing logs]")
 			fmt.Println()
-			logCmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s logs -f %s", ProjectName, DockerFilePath, ServiceName)
+			logCmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s logs -f %s", ProjectName, DockerFilePath, convertedServiceName)
 			common.SysCall(logCmdStr)
 		} else {
 			// Show log command guidance for detached mode

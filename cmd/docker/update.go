@@ -204,7 +204,8 @@ var updateCmd = &cobra.Command{
 			fmt.Printf("🔄 Falling back to regular pull...\n")
 
 			// Fallback to regular pull without version check
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull --ignore-pull-failures %s", ProjectName, DockerFilePath, ServiceName)
+			convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull --ignore-pull-failures %s", ProjectName, DockerFilePath, convertedServiceName)
 			common.SysCall(cmdStr)
 		} else {
 			// If specific service is requested, only check that service
@@ -243,7 +244,8 @@ var updateCmd = &cobra.Command{
 			fmt.Println("\n[Install the latest Docker images of the Cloud-Migrator subsystems.]")
 			fmt.Println()
 
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull --ignore-pull-failures %s", ProjectName, DockerFilePath, ServiceName)
+			convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull --ignore-pull-failures %s", ProjectName, DockerFilePath, convertedServiceName)
 			common.SysCall(cmdStr)
 		}
 
@@ -257,7 +259,8 @@ var updateCmd = &cobra.Command{
 		if DetachMode {
 			detachModeOption = "-d"
 		}
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s %s", ProjectName, DockerFilePath, detachModeOption, ServiceName)
+		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s %s", ProjectName, DockerFilePath, detachModeOption, convertedServiceName)
 
 		common.SysCall(cmdStr)
 

@@ -5,6 +5,7 @@ package docker
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/cmd"
 	"github.com/cm-mayfly/cm-mayfly/common"
@@ -43,14 +44,39 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 	},
 }
 
+// convertServiceNameForDockerCompose converts comma-separated service names to space-separated
+// for Docker Compose command compatibility
+func convertServiceNameForDockerCompose(serviceName string) string {
+	if serviceName == "" {
+		return ""
+	}
+
+	// If contains comma, convert to space-separated
+	if strings.Contains(serviceName, ",") {
+		services := strings.Split(serviceName, ",")
+		var result []string
+		for _, service := range services {
+			trimmed := strings.TrimSpace(service)
+			if trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		return strings.Join(result, " ")
+	}
+
+	// If space-separated or single service, return as is
+	return serviceName
+}
+
 // SysCallDockerComposePsWithAll executes `docker-compose ps` command with optional --all flag
 func SysCallDockerComposePsWithAll(showAll bool) {
 	fmt.Println("\n[v]Status of Cloud-Migrator runtimes")
 	var cmdStr string
+	convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
 	if showAll {
-		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps -a", ProjectName, DockerFilePath)
+		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps -a %s", ProjectName, DockerFilePath, convertedServiceName)
 	} else {
-		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps", ProjectName, DockerFilePath)
+		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps %s", ProjectName, DockerFilePath, convertedServiceName)
 	}
 	common.SysCall(cmdStr)
 }
