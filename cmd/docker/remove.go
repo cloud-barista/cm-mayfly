@@ -32,17 +32,17 @@ var removeCmd = &cobra.Command{
 			removeOptions = ""
 		}
 
-		// 삭제 대상 정보 표시
+		// Display removal target information
 		fmt.Println("Removal Target:")
 
-		// 서비스 대상 표시
+		// Display service target
 		if ServiceName == "" {
 			fmt.Println("  Services: All services")
 		} else {
 			fmt.Printf("  Services: %s\n", ServiceName)
 		}
 
-		// 삭제 범위 표시
+		// Display removal scope
 		if allFlag {
 			fmt.Println("  Scope: Containers + Images + Volumes (all)")
 		} else if volFlag && imgFlag {
@@ -56,7 +56,7 @@ var removeCmd = &cobra.Command{
 		}
 		fmt.Println()
 
-		// 추가 옵션 안내
+		// Display additional options information
 		if !imgFlag && !volFlag && !allFlag {
 			fmt.Println("Additional Options:")
 			fmt.Println("  -i, --images    : Also remove images")
@@ -68,7 +68,7 @@ var removeCmd = &cobra.Command{
 			fmt.Println()
 		}
 
-		// 사용자 확인 요청
+		// Request user confirmation
 		fmt.Print("Do you want to proceed with the removal? (y/N): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
@@ -80,7 +80,41 @@ var removeCmd = &cobra.Command{
 		}
 
 		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
-		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s %s", ProjectName, DockerFilePath, removeOptions, convertedServiceName)
+
+		if ServiceName == "" {
+			// Remove entire system
+			cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s", ProjectName, DockerFilePath, removeOptions)
+		} else {
+			// Remove specific service only
+			// 1. First stop the service
+			stopCmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", ProjectName, DockerFilePath, convertedServiceName)
+			common.SysCall(stopCmdStr)
+
+			// 2. Remove service (apply image/volume options)
+			if volFlag && imgFlag || allFlag {
+				// Remove volumes and images together
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f -v %s", ProjectName, DockerFilePath, convertedServiceName)
+				common.SysCall(cmdStr)
+				// Image removal (direct removal using docker images command)
+				// Note: Removing images for specific services is complex,
+				// so it's safer to guide users to manual removal
+				fmt.Printf("⚠️  Note: Image removal for specific services is complex.\n")
+				fmt.Printf("   To remove images manually, use: docker images | grep %s\n", convertedServiceName)
+			} else if volFlag {
+				// Remove volumes only
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f -v %s", ProjectName, DockerFilePath, convertedServiceName)
+			} else if imgFlag {
+				// Remove images only
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f %s", ProjectName, DockerFilePath, convertedServiceName)
+				common.SysCall(cmdStr)
+				// Image removal guidance
+				fmt.Printf("⚠️  Note: Image removal for specific services is complex.\n")
+				fmt.Printf("   To remove images manually, use: docker images | grep %s\n", convertedServiceName)
+			} else {
+				// Remove containers only
+				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f %s", ProjectName, DockerFilePath, convertedServiceName)
+			}
+		}
 
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)
