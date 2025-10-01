@@ -79,7 +79,8 @@ var removeCmd = &cobra.Command{
 			return
 		}
 
-		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s %s", ProjectName, DockerFilePath, removeOptions, ServiceName)
+		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s %s", ProjectName, DockerFilePath, removeOptions, convertedServiceName)
 
 		//fmt.Println(cmdStr)
 		common.SysCall(cmdStr)

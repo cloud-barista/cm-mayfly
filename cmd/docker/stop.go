@@ -19,7 +19,8 @@ var stopCmd = &cobra.Command{
 		fmt.Println("\n[Stop Cloud-Migrator]")
 		fmt.Println()
 
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", ProjectName, DockerFilePath, ServiceName)
+		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", ProjectName, DockerFilePath, convertedServiceName)
 		// // If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
 		// if len(args) > 0 {
 		// 	cmdStr += args[0]

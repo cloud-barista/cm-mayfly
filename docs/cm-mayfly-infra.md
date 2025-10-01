@@ -104,9 +104,18 @@ $ ./mayfly infra run -d
 
 
 특정 프레임워크만 실행하고 싶으면 아래처럼 실행합니다.   
-예를 들어, cb-tumbleug을 실행하고 싶은 경우..
+예를 들어, cb-tumblebug을 실행하고 싶은 경우..
 ```bash
-$ ./mayfly infra run cb-tumblebug
+$ ./mayfly infra run -s cb-tumblebug
+```
+
+여러 프레임워크를 동시에 실행하고 싶은 경우:
+```bash
+# 공백으로 구분
+$ ./mayfly infra run -s "cb-tumblebug cb-spider"
+
+# 콤마로 구분 (자동으로 공백으로 변환됨)
+$ ./mayfly infra run -s "cb-tumblebug,cb-spider"
 ```
 
 ## Cloud-Migrator 실행상태 확인
@@ -120,6 +129,14 @@ $ ./mayfly infra info
 ### 옵션 설명
 - `-a, --all`: 모든 컨테이너 상태 표시 (실행 중인 컨테이너뿐만 아니라 중지된 컨테이너도 포함)
   - **주의**: 완전히 삭제된 컨테이너는 표시되지 않습니다
+- `-s, --service`: 특정 서비스만 대상으로 지정 (여러 서비스 지정 가능)
+  - **지원 형식**: 공백 또는 콤마로 구분
+  - **예시**: `-s "cb-tumblebug cb-spider"` 또는 `-s "cb-tumblebug,cb-spider"`
+  - **의존성 자동 포함**: 지정된 서비스의 의존성 서비스들도 함께 표시  
+- `-u, --human`: 인간이 이해하기 쉬운 서비스 상태 테이블 표시
+  - **특징**: docker-compose.yaml에 정의된 모든 서비스의 상태를 표 형태로 표시
+  - **표시 항목**: 서비스명, 버전, 상태, 헬스 상태, 내부 포트, 외부 포트, 이미지 크기
+  - **서비스 분류**: 요청된 서비스와 의존성 서비스를 구분하여 표시
 
 ### 사용 예시
 ```bash
@@ -129,49 +146,117 @@ $ ./mayfly infra info
 # 모든 컨테이너 상태 표시 (중지된 컨테이너 포함)
 $ ./mayfly infra info -a
 $ ./mayfly infra info --all
+
+# 특정 서비스만 표시
+$ ./mayfly infra info -s cb-tumblebug
+
+# 여러 서비스 표시 (공백으로 구분)
+$ ./mayfly infra info -s "cb-tumblebug cb-spider"
+
+# 여러 서비스 표시 (콤마로 구분)
+$ ./mayfly infra info -s "cb-tumblebug,cb-spider"
+
+# 인간이 이해하기 쉬운 서비스 상태 테이블 표시
+$ ./mayfly infra info -u
+$ ./mayfly infra info --human
+
+# 특정 서비스와 의존성을 테이블 형태로 표시
+$ ./mayfly infra info -s cb-tumblebug -u
+
+# 여러 서비스와 의존성을 테이블 형태로 표시
+$ ./mayfly infra info -s "cb-tumblebug cm-ant" -u
 ```
 
-실행 결과 예시
+### 실행 결과 예시
+
+#### 기본 info 명령
+```bash
+$ ./mayfly infra info
+```
 ```
 [Get info for Cloud-Migrator runtimes]
-
 
 [v]Status of Cloud-Migrator runtimes
 NAME             IMAGE                                  COMMAND                   SERVICE          CREATED      STATUS                PORTS
 airflow-mysql    mysql:8.0-debian                       "docker-entrypoint.s…"    airflow-mysql    4 days ago   Up 4 days             0.0.0.0:3306->3306/tcp, :::3306->3306/tcp, 33060/tcp
 airflow-redis    redis:7.2-alpine                       "docker-entrypoint.s…"    airflow-redis    8 days ago   Up 4 days (healthy)   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp
-airflow-server   cloudbaristaorg/airflow-server:edge    "/bin/bash -c '\n    …"   airflow-server   4 days ago   Up 4 days             0.0.0.0:5555->5555/tcp, :::5555->5555/tcp, 0.0.0.0:8080->8080/tcp, :::8080->8080/tcp
-ant-postgres     timescale/timescaledb:latest-pg16      "docker-entrypoint.s…"    ant-postgres     8 days ago   Up 4 days (healthy)   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp
-cb-mapui         cloudbaristaorg/cb-mapui:0.9.3         "npm start"               cb-mapui         8 days ago   Up 4 days (healthy)   0.0.0.0:1324->1324/tcp, :::1324->1324/tcp
 cb-spider        cloudbaristaorg/cb-spider:edge         "/root/go/src/github…"    cb-spider        8 days ago   Up 4 days (healthy)   0.0.0.0:1024->1024/tcp, 0.0.0.0:2048->2048/tcp
 cb-tumblebug     cloudbaristaorg/cb-tumblebug:edge      "/app/src/cb-tumbleb…"    cb-tumblebug     8 days ago   Up 4 days (healthy)   0.0.0.0:1323->1323/tcp
 cm-ant           cloudbaristaorg/cm-ant:edge            "./ant"                   cm-ant           8 days ago   Up 4 days (healthy)   0.0.0.0:8880->8880/tcp, :::8880->8880/tcp
-cm-beetle        cloudbaristaorg/cm-beetle:edge         "/app/cm-beetle"          cm-beetle        5 days ago   Up 4 days (healthy)   0.0.0.0:8056->8056/tcp, :::8056->8056/tcp
-cm-butterfly     cloudbaristaorg/cm-butterfly:edge      "./docker_entrypoint…"    cm-butterfly     5 days ago   Up 4 days             0.0.0.0:1234->1234/tcp, :::1234->1234/tcp
-cm-cicada        cloudbaristaorg/cm-cicada:edge         "/cm-cicada"              cm-cicada        4 days ago   Up 4 days (healthy)   0.0.0.0:8083->8083/tcp, :::8083->8083/tcp
-cm-grasshopper   cloudbaristaorg/cm-grasshopper:edge    "/cm-grasshopper"         cm-grasshopper   8 days ago   Up 4 days (healthy)   0.0.0.0:8084->8084/tcp, :::8084->8084/tcp
-cm-honeybee      cloudbaristaorg/cm-honeybee:edge       "/cm-honeybee"            cm-honeybee      8 days ago   Up 4 days (healthy)   0.0.0.0:8081->8081/tcp, :::8081->8081/tcp
-cm-mayfly        dev4unet/cm-mayfly:v0.2.0              "bash"                    cm-mayfly        8 days ago   Up 4 days
-etcd             gcr.io/etcd-development/etcd:v3.5.14   "/usr/local/bin/etcd…"    etcd             8 days ago   Up 4 days (healthy)   0.0.0.0:2379-2380->2379-2380/tcp, :::2379-2380->2379-2380/tcp
 
 [v]Status of Cloud-Migrator runtime images
 CONTAINER           REPOSITORY                       TAG                 IMAGE ID            SIZE
 airflow-mysql       mysql                            8.0-debian          ccb4819cef05        611MB
 airflow-redis       redis                            7.2-alpine          97ed3031282d        40.7MB
-airflow-server      cloudbaristaorg/airflow-server   edge                e80252a32ec3        1.46GB
-ant-postgres        timescale/timescaledb            latest-pg16         2bbb52e38008        699MB
-cb-mapui            cloudbaristaorg/cb-mapui         0.9.3               308de57eadc9        513MB
 cb-spider           cloudbaristaorg/cb-spider        edge                b241e15bba26        386MB
 cb-tumblebug        cloudbaristaorg/cb-tumblebug     edge                101876d9e57f        117MB
 cm-ant              cloudbaristaorg/cm-ant           edge                9691839034bf        178MB
-cm-beetle           cloudbaristaorg/cm-beetle        edge                6601bd684734        114MB
-cm-butterfly        cloudbaristaorg/cm-butterfly     edge                22ddc7154d44        41.9MB
-cm-cicada           cloudbaristaorg/cm-cicada        edge                afe8229dab34        44.8MB
-cm-grasshopper      cloudbaristaorg/cm-grasshopper   edge                965cac894be3        450MB
-cm-honeybee         cloudbaristaorg/cm-honeybee      edge                8986d1772357        54.9MB
-cm-mayfly           dev4unet/cm-mayfly               v0.2.0              7b3e509bf7d6        146MB
-etcd                gcr.io/etcd-development/etcd     v3.5.14             13b135926ee2        57.9MB
 ```
+
+#### --human 옵션 사용 (전체 서비스)
+```bash
+$ ./mayfly infra info --human
+```
+```
+[Cloud-Migrator Service Status]
+
+┌───────────────────────┬──────────────┬──────────────┬──────────┬──────────────┬──────────────┬─────────────────┐
+│SERVICE                │VERSION       │STATUS        │HEALTHY   │INTERNAL      │EXTERNAL      │IMAGE SIZE       │
+├───────────────────────┼──────────────┼──────────────┼──────────┼──────────────┼──────────────┼─────────────────┤
+│cb-spider              │0.11.13       │running       │✓         │1024          │1024          │436MB            │
+│cb-tumblebug           │0.11.13       │running       │✓         │1323          │1323          │146MB            │
+│cb-tumblebug-etcd      │v3.5.21       │running       │✓         │2379-2380     │2379-2380     │60.4MB           │
+│cb-tumblebug-postgres  │16-alpine     │running       │✓         │5432          │6432          │281MB            │
+│cb-mapui               │0.11.16       │running       │✓         │1324          │1324          │422MB            │
+│cm-beetle              │0.3.9         │running       │✓         │8056          │8056          │138MB            │
+│cm-butterfly-api       │0.3.4         │running       │✓         │4000          │4000          │94.4MB           │
+│cm-butterfly-front     │0.3.4         │running       │✓         │80            │80            │54.6MB           │
+│cm-butterfly-db        │14-alpine     │running       │✓         │5432          │543           │278MB            │
+│cm-honeybee            │0.3.6         │running       │✓         │8081          │8081          │56.2MB           │
+│cm-damselfly           │0.3.6         │running       │✓         │8088          │8088          │100MB            │
+│cm-cicada              │0.3.5         │running       │✓         │8083          │8083          │890MB            │
+│airflow-redis          │7.2-alpine    │running       │✓         │6379          │6379          │40.9MB           │
+│airflow-mysql          │8.0-debian    │running       │✓         │3306          │3306          │610MB            │
+│airflow-server         │0.3.5         │running       │✓         │5555          │5555          │1.57GB           │
+│cm-grasshopper         │0.3.5         │running       │✓         │8084          │8084          │448MB            │
+│cm-ant                 │-             │Not Found     │-         │-             │-             │192MB            │
+│ant-postgres           │latest-pg16   │running       │✓         │5432          │5432          │1.04GB           │
+└───────────────────────┴──────────────┴──────────────┴──────────┴──────────────┴──────────────┴─────────────────┘
+```
+
+#### --human 옵션 사용 (특정 서비스 + 의존성)
+```bash
+$ ./mayfly infra info -s cb-tumblebug --human
+```
+```
+[Cloud-Migrator Service Status]
+
+🎯 Requested Services:
+┌──────────────────────┬──────────────┬──────────────┬──────────┬──────────────┬──────────────┬─────────────────┐
+│SERVICE               │VERSION       │STATUS        │HEALTHY   │INTERNAL      │EXTERNAL      │IMAGE SIZE       │
+├──────────────────────┼──────────────┼──────────────┼──────────┼──────────────┼──────────────┼─────────────────┤
+│cb-tumblebug          │0.11.13       │running       │✓         │1323          │1323          │146MB            │
+└──────────────────────┴──────────────┴──────────────┴──────────┴──────────────┴──────────────┴─────────────────┘
+
+📦 Dependency Services:
+┌───────────────────────┬──────────────┬──────────────┬──────────┬──────────────┬──────────────┬─────────────────┐
+│SERVICE                │VERSION       │STATUS        │HEALTHY   │INTERNAL      │EXTERNAL      │IMAGE SIZE       │
+├───────────────────────┼──────────────┼──────────────┼──────────┼──────────────┼──────────────┼─────────────────┤
+│cb-tumblebug-etcd      │v3.5.21       │running       │✓         │2379-2380     │2379-2380     │60.4MB           │
+│cb-spider              │0.11.13       │running       │✓         │1024          │1024          │436MB            │
+│cb-tumblebug-postgres  │16-alpine     │running       │✓         │5432          │6432          │281MB            │
+└───────────────────────┴──────────────┴──────────────┴──────────┴──────────────┴──────────────┴─────────────────┘
+```
+
+**--human 옵션의 장점:**
+- **직관적**: docker-compose.yaml에 정의된 모든 서비스가 한눈에 보임
+- **구조화**: 표 형태로 정보가 정리되어 읽기 쉬움
+- **상태 파악**: 각 서비스의 실행 상태와 헬스 상태를 명확히 확인 가능
+- **포트 정보**: 내부/외부 포트가 분리되어 표시됨
+- **버전 정보**: 각 서비스의 버전을 한눈에 확인 가능
+- **의존성 파악**: `-s` 옵션과 함께 사용 시 서비스 간 의존성 관계를 명확히 표시
+- **서비스 분류**: 요청된 서비스와 의존성 서비스를 구분하여 표시
+- **유연한 서비스 지정**: 공백 또는 콤마로 여러 서비스를 동시에 지정 가능
 
 
 ## Cloud-Migrator 업데이트
@@ -221,6 +306,10 @@ $ ./mayfly infra update
 # 특정 서비스만 업데이트 (버전 체크 포함)
 $ ./mayfly infra update -s cm-ant
 $ ./mayfly infra update -s cb-tumblebug
+
+# 여러 서비스를 동시에 업데이트
+$ ./mayfly infra update -s "cb-tumblebug cb-spider"
+$ ./mayfly infra update -s "cm-ant,cm-cicada"
 ```
 
 #### 특징
@@ -240,9 +329,18 @@ $ ./mayfly infra stop
 
 
 특정 프레임워크만 중지하고 싶으면 아래처럼 실행합니다.   
-예를 들어, cb-tumbleug을 중지하고 싶은 경우..
+예를 들어, cb-tumblebug을 중지하고 싶은 경우..
 ```bash
-$ ./mayfly infra stop cb-tumbleug
+$ ./mayfly infra stop -s cb-tumblebug
+```
+
+여러 프레임워크를 동시에 중지하고 싶은 경우:
+```bash
+# 공백으로 구분
+$ ./mayfly infra stop -s "cb-tumblebug cb-spider"
+
+# 콤마로 구분 (자동으로 공백으로 변환됨)
+$ ./mayfly infra stop -s "cb-tumblebug,cb-spider"
 ```
 
 
