@@ -3,8 +3,12 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+
+	"regexp"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
@@ -143,7 +147,8 @@ func showHumanReadableInfo() {
 			info.Healthy = "-"
 			info.InternalPort = "-"
 			info.ExternalPort = "-"
-			info.Version = "-"
+			// For non-running services, get version from docker-compose.yaml
+			info.Version = getVersionFromComposeFile(service)
 		}
 
 		// Get image size - prioritize running container's image
@@ -177,6 +182,7 @@ type ContainerInfo struct {
 	InternalPort string
 	ExternalPort string
 	Version      string
+	Image        string
 }
 
 // ImageInfo represents image information
@@ -242,6 +248,7 @@ func getContainerInfo(showAll bool) map[string]ContainerInfo {
 			Status  string `json:"Status"`
 			Health  string `json:"Health"`
 			Ports   string `json:"Ports"`
+			Image   string `json:"Image"`
 		}
 
 		if err := json.Unmarshal([]byte(line), &container); err != nil {
@@ -271,8 +278,11 @@ func getContainerInfo(showAll bool) map[string]ContainerInfo {
 			}
 		}
 
-		// Extract version from image name if possible
-		version := getVersionFromService(container.Service)
+		// Extract version from image tag if available, otherwise use fallback
+		version := extractVersionFromImage(container.Image)
+		if version == "" {
+			version = getVersionFromService(container.Service)
+		}
 
 		// Normalize status display
 		status := container.State
@@ -286,10 +296,26 @@ func getContainerInfo(showAll bool) map[string]ContainerInfo {
 			InternalPort: internalPort,
 			ExternalPort: externalPort,
 			Version:      version,
+			Image:        container.Image,
 		}
 	}
 
 	return containers
+}
+
+// extractVersionFromImage extracts version/tag from image name
+func extractVersionFromImage(imageName string) string {
+	if imageName == "" {
+		return ""
+	}
+
+	// Split by colon to get tag part
+	parts := strings.Split(imageName, ":")
+	if len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+
+	return ""
 }
 
 // getImageInfo gets image information using docker images
@@ -382,6 +408,114 @@ func getServiceImageMapping() map[string]string {
 	}
 }
 
+// getVersionFromComposeFile reads docker-compose.yaml and returns version for non-running services
+func getVersionFromComposeFile(serviceName string) string {
+	// Read docker-compose.yaml file
+	composeFile := fmt.Sprintf("%s/docker-compose.yaml", filepath.Dir(DockerFilePath))
+	content, err := os.ReadFile(composeFile)
+	if err != nil {
+		return "-"
+	}
+
+	// Use regex to find the service and its image
+	// Pattern: serviceName: at the beginning of a line (with minimal indentation)
+	servicePattern := fmt.Sprintf(`^\s*%s:\s*$`, serviceName)
+	imagePattern := `^\s*image:\s*(.+)$`
+
+	serviceRegex, err := regexp.Compile(servicePattern)
+	if err != nil {
+		return "-"
+	}
+
+	imageRegex, err := regexp.Compile(imagePattern)
+	if err != nil {
+		return "-"
+	}
+
+	lines := strings.Split(string(content), "\n")
+	inService := false
+	indentLevel := 0
+
+	for i, line := range lines {
+		// Check if we're entering the service section
+		if serviceRegex.MatchString(line) {
+			// Check if this is a top-level service (not inside depends_on or other sections)
+			// by checking if the line starts with minimal indentation and is not inside depends_on
+			trimmedLine := strings.TrimLeft(line, " \t")
+			if strings.HasPrefix(trimmedLine, serviceName+":") {
+				// Check if we're not inside depends_on section by looking at previous lines
+				isInDependsOn := false
+				for j := i - 1; j >= 0 && j >= i-10; j-- {
+					prevLine := strings.TrimSpace(lines[j])
+					if prevLine == "depends_on:" {
+						isInDependsOn = true
+						break
+					}
+					if prevLine != "" && !strings.HasPrefix(lines[j], " ") && !strings.HasPrefix(lines[j], "\t") {
+						break
+					}
+				}
+
+				if !isInDependsOn {
+					inService = true
+					// Calculate the indentation level of the service
+					indentLevel = len(line) - len(strings.TrimLeft(line, " \t"))
+					continue
+				}
+			}
+		}
+
+		// If we're in the service section, look for image field
+		if inService {
+			currentIndent := len(line) - len(strings.TrimLeft(line, " \t"))
+
+			// Check if we've moved to another service or section (same or less indentation)
+			if strings.TrimSpace(line) != "" && currentIndent <= indentLevel && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+				// We've moved to another service or section
+				break
+			}
+
+			// Look for image field
+			if matches := imageRegex.FindStringSubmatch(line); matches != nil {
+				image := strings.TrimSpace(matches[1])
+
+				// Extract version from image
+				version := extractVersionFromImage(image)
+				if version == "" {
+					return "-"
+				}
+
+				// Check if image exists locally
+				if !checkImageExists(image) {
+					return version + " (Not Downloaded)"
+				}
+
+				return version
+			}
+		}
+	}
+
+	return "-"
+}
+
+// checkImageExists checks if the specified image exists locally
+func checkImageExists(imageName string) bool {
+	cmd := exec.Command("docker", "images", "--format", "{{.Repository}}:{{.Tag}}", imageName)
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	// Check if the image exists in the output
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		if strings.TrimSpace(line) == imageName {
+			return true
+		}
+	}
+	return false
+}
+
 // getVersionFromService gets version information from docker-compose.yaml for a specific service
 func getVersionFromService(serviceName string) string {
 	// Service to version mapping based on docker-compose.yaml
@@ -397,10 +531,10 @@ func getVersionFromService(serviceName string) string {
 		"cm-butterfly-db":       "14-alpine",
 		"cm-honeybee":           "0.3.6",
 		"cm-damselfly":          "0.3.6",
-		"cm-cicada":             "0.3.5",
+		"cm-cicada":             "0.3.6", // Updated to match actual running version
 		"airflow-redis":         "7.2-alpine",
 		"airflow-mysql":         "8.0-debian",
-		"airflow-server":        "0.3.5",
+		"airflow-server":        "0.3.6", // Updated to match actual running version
 		"cm-grasshopper":        "0.3.5",
 		"cm-ant":                "0.4.0",
 		"ant-postgres":          "latest-pg16",
