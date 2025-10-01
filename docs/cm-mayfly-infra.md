@@ -495,6 +495,8 @@ $ ./mayfly infra logs -s cm-butterfly --tail 100 --since 2h
 ## Cloud-Migrator 삭제(인프라 구축 환경 정리)
 더 이상 Cloud-Migrator 인프라가 필요 없거나 새로 구축하고 싶을 경우에는 아래와 같은 방법으로 정리가 가능합니다.
 
+### 전체 시스템 제거
+
 아래 명령으로 실행된 모든 컨테이너가 종료 및 삭제되며 생성된 네트워크도 삭제됩니다.
 ```bash
 $ ./mayfly infra remove
@@ -507,7 +509,7 @@ $ ./mayfly infra remove --images
 $ ./mayfly infra remove -i
 ```
 
-생성된 볼륨된 함께 삭제합니다.   
+생성된 볼륨도 함께 삭제합니다.   
 (주의) 볼륨이 삭제되면 저장된 데이터도 모두 삭제됩니다.
 ```bash
 $ ./mayfly infra remove --volumes
@@ -518,12 +520,42 @@ $ ./mayfly infra remove -v
 컨테이너를 비롯하여 네트워크 및 이미지와 볼륨 등 모든 자원을 삭제합니다.   
 완전히 최초 상태로 재구축하고 싶거나 더 이상 필요 없을 때 사용하세요.
 ```bash
-./mayfly infra remove --images --volumes
+$ ./mayfly infra remove --images --volumes
 또는 
-./mayfly infra remove -i -v
+$ ./mayfly infra remove -i -v
 또는
-./mayfly infra remove --all
+$ ./mayfly infra remove --all
 ```
+
+### 특정 서비스 제거
+
+특정 서비스만 제거하고 싶은 경우 `-s` 옵션을 사용합니다. 이 방식은 Docker 네트워크를 보존하여 다른 서비스들의 연결성을 유지합니다.
+
+```bash
+# 특정 서비스 제거 (네트워크 보존)
+$ ./mayfly infra remove -s cb-tumblebug
+
+# 여러 서비스 제거 (공백으로 구분)
+$ ./mayfly infra remove -s "cb-tumblebug cb-spider"
+
+# 여러 서비스 제거 (콤마로 구분)
+$ ./mayfly infra remove -s "cb-tumblebug,cb-spider"
+```
+
+특정 서비스 제거 시 추가 옵션:
+```bash
+# 특정 서비스 + 볼륨 제거
+$ ./mayfly infra remove -s cb-tumblebug --volumes
+
+# 특정 서비스 + 이미지 제거 (수동 안내)
+$ ./mayfly infra remove -s cb-tumblebug --images
+```
+
+> [!NOTE]
+> **네트워크 이슈 해결**: 
+> - 특정 서비스 제거 시 네트워크가 보존되어 다른 서비스에 영향을 주지 않습니다
+> - 네트워크 관련 오류가 발생하는 경우 `--all` 옵션으로 전체 시스템을 정리하세요
+> - `mayfly infra remove --all` 명령은 고아 컨테이너와 네트워크까지 완전히 정리합니다
 
 **참고**: `./conf/docker/data` 폴더 하위에 각 서브 프레임워크(컨테이너) 이름의 폴더가 생성되며 Data나 Log를 비롯하여 보관이 필요한 경우에 사용됩니다.   
 `--volumes` 옵션은 Docker 볼륨만 삭제하며, 볼륨 마운트에 의해 로컬에 생성된 `./conf/docker/data` 폴더는 삭제되지 않습니다.   
