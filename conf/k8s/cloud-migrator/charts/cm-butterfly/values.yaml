@@ -1,0 +1,96 @@
+replicaCount: 1
+
+image:
+  repository: cloudbaristaorg/cm-butterfly
+  pullPolicy: Always
+  tag: "edge"
+
+nameOverride: cm-butterfly
+fullnameOverride: cm-butterfly
+
+service:
+  type: NodePort
+  port: 1234
+  targetPort: 1234
+  nodePort: 31234
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+
+livenessProbe:
+  tcpSocket:
+    port: 1234
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+readinessProbe:
+  tcpSocket:
+    port: 1234
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 3
+
+volumes: []
+volumeMounts: []
+persistence:
+  db:
+    enabled: false
+    storageClass: "manual"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    hostPath: /tmp/cloud-migrator/cm-butterfly
+
+env:
+  - name: SPIDER_URL
+    value: http://cb-spider:1024/spider
+  - name: TUMBLE_URL
+    value: http://cb-tumblebug:1323/tumblebug
+  - name: BEETLE_URL
+    value: http://cm-beetle:8056/beetle
+  - name: CICADA_URL
+    value: http://cm-cicada:8083/cicada
+  - name: HONEYBEE_URL
+    value: http://cm-honeybee:8081/honeybee
+  - name: GRASSHOPPER_URL
+    value: http://cm-grasshopper:8084/grasshopper
+  - name: ANT_URL
+    value: http://cm-ant:8880/ant
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+########################################
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+ingress:
+  enabled: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 75
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

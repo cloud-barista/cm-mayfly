@@ -1,0 +1,13 @@
+apiVersion: v2
+name: cm-cicada
+description: A Helm chart for cm-cicada
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+dependencies:
+  - name: airflow-mysql
+    version: 0.1.0
+  - name: airflow-redis
+    version: 0.1.0
+  - name: airflow-server
+    version: 0.1.0

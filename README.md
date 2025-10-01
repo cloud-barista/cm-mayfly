@@ -11,69 +11,73 @@ If you have any difficulties in using CM-Mayfly, please let us know.
 ```
 
 ## CM-Mayfly Overview
-- This is a operate tool that supports installing, running, shutting down, providing status information, and open api service call the Cloud-Migrator system.
-- As a proof-of-concept phase, only the `Docker Compose V2` mode method is currently available first.
-- Support for k8s and the ability to make REST calls and Rest-based service calls will be developed in small increments.
+This management tool provides and is expected to provide the following features:
+- Builds and controls the infrastructure of the Cloud-Migrator system.
+- Monitors the execution status of the sub-framework.
+- Provides the ability to call REST APIs offered by the sub-framework.
+- Kubernetes (k8s) will be supported in the future.
 
 
 ## CM-Mayfly Execution and Development Environment
 - `Ubuntu 20.04` or later
   - Tested by Ubuntu 20.04
-- `Golang 1.19` or later
-  - Tested by go version go1.19.2 linux/amd64
+- `Golang 1.23` or later
+  - Tested by go version go version go1.23.1 linux/amd64
 - `Docker Compose v2.21` or later
   - Tested by Docker version 24.0.7, build afdd53b and Docker Compose version v2.21.0
 
 
 ## Pre-Install
-- [Install Go](https://golang.org/doc/install)
+- [Install Go](https://golang.org/doc/install) 
+  - Optional and only necessary if you want to run or build the source code.
 - [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+  - Make sure to add the ubuntu account to the Docker group.   
+    ```
+    $ sudo usermod -aG docker $USER
+    $ newgrp docker
+    ```
 
 
 ## How to build mayfly binary file from souce code
+Build a binary for mayfly using Makerfile
 ```Shell
 $ git clone https://github.com/cloud-barista/cm-mayfly.git
+$ cd cm-mayfly
 
-$ cd cm-mayfly/src
+Choose one of the commands below for the target OS you want to build for.
+$ cm-mayfly$ make
+$ cm-mayfly$ make win
+$ cm-mayfly$ make mac
+$ cm-mayfly$ make linux-arm
+$ cm-mayfly$ make win86
+$ cm-mayfly$ make mac-arm
+```
 
-(Setup dependencies)
-cm-mayfly/src$ go get -u
-
-(Build a binary for mayfly)
-cm-mayfly/src$ go build -o mayfly
-
-(Build a binary for mayfly using Makerfile)
-cm-mayfly/src$ make
-cm-mayfly/src$ make win
-cm-mayfly/src$ make mac
-cm-mayfly/src$ make linux-arm
-cm-mayfly/src$ make win86
-cm-mayfly/src$ make mac-arm
-
-(Delete all a binary for mayfly using Makerfile)
-cm-mayfly/src$ make clean
+## How to delete mayfly all binary files
+```Shell
+cm-mayfly$ make clean
 ```
 
 
 # How to use CM-Mayfly
-For now, it supports docker / rest sub-commands.   
+For now, it supports infra / rest / api / setup / tool sub-commands.   
 
 Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
 
 ```
-cm-mayfly/bin$ ./mayfly -h
-
+$ ./mayfly -h
 The mayfly is a tool to operate Cloud-Migrator system.
 
 Usage:
   mayfly [command]
 
 Available Commands:
-  api         Open API calls to the Cloud-Migrator system
-  docker      A tool to operate Cloud-Migrator system
+  api         Call the Cloud-Migrator system's Open APIs as services and actions
   help        Help about any command
-  k8s         A tool to operate Cloud-Migrator system
+  infra       Installing and managing cloud-migrator's infrastructure
   rest        rest api call
+  setup       Support for Additional Tasks After Container Setup
+  tool        Provides additional functions for managing Docker Compose or the Cloud-Migrator system.
 
 Flags:
   -h, --help   help for mayfly
@@ -81,138 +85,175 @@ Flags:
 Use "mayfly [command] --help" for more information about a command.
 ```
 
-## docker-compose.yaml
-The necessary service information for the Cloud-Migrator System configuration is defined in the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file.(By default, it is set to build the desired configuration and data volume in the `docker-compose-mode-files` folder.)   
+For more detailed explanations, see the articles below.   
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-infra.md)
+- [setup sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-setup.md)
+- [rest sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-rest.md)
+- [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-api.md)
 
-If you want to change the information for each container you want to deploy, modify the `cm-mayfly/docker-compose-mode-files/docker-compose.yaml` file or use the -f option.   
+
+# How to Build a Cloud-Migrator Infrastructure
+`A quick guide` on how to easily build a Cloud-Migrator infrastructure.   
+If you need a more detailed explanation, check out the article below.   
+- [infra sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-infra.md)
 
 
+## Pre-Install
+- [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 
-# docker subcommand
-For now, it supports docker's run/stop/info/pull/remove commands.
 
-Use the -h option at the end of the sub-command requiring assistance, or executing 'mayfly' without any options will display the help manual.   
-
+## 1. Download cm-mayfly
 ```
-Usage:
-  mayfly docker [flags]
-  mayfly docker [command]
-
-Available Commands:
-  info        Get information of Cloud-Migrator System
-  pull        Pull images of Cloud-Migrator System containers
-  remove      Stop and Remove Cloud-Migrator System
-  run         Setup and Run Cloud-Migrator System
-  stop        Stop Cloud-Migrator System
-
-Flags:
-  -h, --help   help for docker
-
-Use "mayfly docker [command] --help" for more information about a command.
-```
-   
-## docker subcommand examples
-Simple usage examples for docker subcommand
-```
- ./mayfly docker pull [-f ../docker-compose-mode-files/docker-compose.yaml]   
- ./mayfly docker run [-f ../docker-compose-mode-files/docker-compose.yaml]   
- ./mayfly docker info   
- ./mayfly docker stop [-f ../docker-compose-mode-files/docker-compose.yaml]   
- ./mayfly docker remove [-f ../docker-compose-mode-files/docker-compose.yaml] -v -i   
+$ git clone https://github.com/cloud-barista/cm-mayfly.git
+$ cd cm-mayfly
 ```
 
+## 2. Prerequisites
+Some sub systems may require initial setup, including changing the default password. If changes or settings are needed, modify the information in the `./conf/docker` folder.
 
-# k8s subcommand
-K8S is not currently supported and will be supported in the near future.   
+For example, to change the SMTP settings for cm-cicada, modify the following file:
+`./conf/docker/conf/cm-cicada/airflow_smtp.env`
 
+[For more details, refer to the cm-cicada SMTP configuration guide.](https://github.com/cloud-barista/cm-cicada?tab=readme-ov-file#smtp)
 
+<!--
+### mc-datamanager
+The `mc-data-manager` subsystem `requires authentication information to use CSP`. Currently, only the configuration method using the `profile.json file` is supported. Therefore, if you wish to use mc-data-manager, `make sure to register the CSP-specific authentication information` in the `./conf/docker/conf/mc-data-manger/data/var/run/data-manager/profile/profile.json` file before setting up the infrastructure.   
 
-# rest subcommand
-The rest subcommands are developed around the basic features of REST to make it easy to use the open APIs of Cloud-Migrator-related frameworks from the CLI.
-For now, it supports get/post/delete/put/patch commands.
+If necessary, you can also modify the contents of the profile.json file after the infrastructure has been set up.
+-->
 
+## 3. Building a Docker-based infrastructure
+In most cases, the following single line will complete all the necessary tasks.
 ```
-rest api call
-
-Usage:
-  mayfly rest [flags]
-  mayfly rest [command]
-
-Available Commands:
-  delete      REST API calls with DELETE methods
-  get         REST API calls with GET methods
-  patch       REST API calls with PATCH methods
-  post        REST API calls with POST methods
-  put         REST API calls with PUT methods
-
-Flags:
-      --authScheme string   sets the auth scheme type in the HTTP request.(Exam. OAuth)(The default auth scheme is Bearer)
-      --authToken string    sets the auth token of the 'Authorization' header for all HTTP requests.(The default auth scheme is 'Bearer')
-  -d, --data string         Data to send to the server
-  -f, --file string         Data to send to the server from file
-  -I, --head                Show response headers only
-  -H, --header strings      Pass custom header(s) to server
-  -h, --help                help for rest
-  -p, --password string     Password for basic authentication
-  -u, --user string         Username for basic authentication
-  -v, --verbose             Show more detail information
-
-Use "mayfly rest [command] --help" for more information about a command.
+$ ./mayfly infra run
 ```
 
-## rest subcommand examples
-Simple usage examples for rest subcommand
+If you do not want to see the output logs and want to run it in the background, you can use the `-d` option to run it in detach mode.
 ```
-./mayfly rest get -u default -p default http://localhost:1323/tumblebug/health
-./mayfly rest post https://reqres.in/api/users -d '{
-                "name": "morpheus",
-                "job": "leader"
-        }'
+$ ./mayfly infra run -d
 ```
 
 
-# api subcommand
-The api subcommands are developed to make it easy to use the open APIs of Cloud-Migrator-related frameworks from the CLI.
-
+## 4. Checking the subsystem running status
+To verify that the Cloud-Migrator system is running correctly, use the `info` command to check the healthy status of each subsystem.
 ```
-Call the action of the service defined in api.yaml. For example:
-./mayfly api --help
-./mayfly api --list
-./mayfly api --service spider --list
-./mayfly api --service spider --action ListCloudOS
-./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
-./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
-
-Usage:
-  mayfly api [flags]
-  mayfly api [command]
-
-Available Commands:
-  tool        Swagger JSON parsing tool to assist in writing api.yaml files
-
-Flags:
-  -a, --action string        Action to perform
-  -c, --config string        config file (default is ../conf/api.yaml)
-  -d, --data string          Data to send to the server
-  -f, --file string          Data to send to the server from file(not yet support)
-  -h, --help                 help for api
-  -l, --list                 Show Service or Action list
-  -m, --method string        HTTP Method
-  -p, --pathParam string     Variable path info set "key1:value1 key2:value2" for URIs
-  -q, --queryString string   Use if you have a query string to add to URIs
-  -s, --service string       Service to perform
-  -v, --verbose              Show more detail information
-
-Use "mayfly api [command] --help" for more information about a command.
+$ ./mayfly infra info
 ```
 
-## api subcommand examples
-Simple usage examples for api subcommand
+## 5. Initialize CB-Tumblebug to configure Multi-Cloud info
+To safely configure multi-cloud information, it is recommended to use the cb-tumblebug's official initialization guide instead of mayfly commands.
+
+**Important**: It is crucial to use the exact version of cb-tumblebug that matches your running container to ensure compatibility and proper initialization.
+
+First, check the version of the running cb-tumblebug container:
 ```
-./mayfly api --help
-./mayfly api --list
-./mayfly api --service spider --list
-./mayfly api --service spider --action ListCloudOS
-./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
-./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
+$ ./mayfly infra info -s cb-tumblebug
+```
+
+Example output:
+```
+[v]Status of Cloud-Migrator runtime images
+CONTAINER           REPOSITORY                     TAG                 IMAGE ID            SIZE
+cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.11.9              d4c2abdc0e21        118MB
+```
+
+Based on the cb-tumblebug version (e.g., v0.11.9), download the corresponding cb-tumblebug repository:
+```
+$ git clone -b v0.11.9 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.11.9
+```
+
+Then follow the detailed guide at:
+[CB-Tumblebug Multi-Cloud Configuration Guide](https://github.com/cloud-barista/cb-tumblebug?tab=readme-ov-file#3-initialize-cb-tumblebug-to-configure-multi-cloud-info)
+
+
+Alternatively, you can use the following experimental command to automatically download the source code matching the currently running cb-tumblebug version and execute the init.sh shell script.
+```
+$ ./mayfly setup tumblebug-init
+```
+
+For more detailed information, please refer to the [tumblebug-init Sub Command Guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/tumblebug-init-cmd.md) documentation.
+
+## 6. Some helpful commands
+If a new version of the Docker image is released, you can update the running version of Cloud-Migrator to the latest version using the `update` command.
+```
+$ ./mayfly infra update
+```
+
+You can `update` a specific service using the `-s` flag.
+```
+$ ./mayfly infra update -s cb-spider
+```
+```
+$ ./mayfly infra update -s "cb-spider cb-tumblebug"
+```
+
+You can check the logs of the entire system using the `logs` command.
+```
+$ ./mayfly infra logs
+```
+
+You can `logs` a specific service using the `-s` flag.
+```
+$ ./mayfly infra logs -s cb-spider
+```
+```
+$ ./mayfly infra logs -s "cb-spider cb-tumblebug"
+```
+
+
+
+You can `stop` a specific service using the `-s` flag.
+```
+$ ./mayfly infra stop -s cb-spider
+```
+```
+$ ./mayfly infra stop -s "cb-spider cb-tumblebug"
+```
+
+You can `run` a specific service using the `-s` flag.
+```
+$ ./mayfly infra run -s cb-spider
+```
+```
+$ ./mayfly infra run -s "cb-spider cb-tumblebug"
+```
+
+## 7. Trouble Shooting
+For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. 
+For cm-cicada, please check the logs and restart if any errors occur.
+```
+$ ./mayfly logs -s cm-cicada
+```
+Check if the number of Task Components in the Workflow Management menu on the web portal is 10 items.
+Alternatively, you can easily check using the following curl command.
+```
+curl -s http://localhost:8083/cicada/task_component | jq '. | length'
+```
+If you determine that a restart is necessary, stop and then start it as shown below.
+```
+$ ./mayfly infra stop -s cm-cicada
+$ ./mayfly infra run -s cm-cicada
+```
+
+If you want to cleanup all Docker environments, run the following shell script.
+
+> [!CAUTION]
+> **DANGER: This script will DELETE ALL Docker resources on your system!**
+> 
+> The `remove_all.sh` script is designed to create a clean environment for stable operation of Cloud-Migrator (cm-mayfly). It will remove **ALL Docker-related data** that was NOT installed through cm-mayfly, including:
+> 
+> - **ALL Docker containers** (running and stopped)
+> - **ALL Docker images**
+> - **ALL Docker volumes**
+> - **ALL custom Docker networks**
+> - **ALL Docker system data**
+> 
+> ⚠️ **This action is IRREVERSIBLE and will affect other Docker applications!**
+> 
+> Only use this script if you want to completely reset your Docker environment.
+
+```
+$ cd conf/docker
+$ ./remove_all.sh
 ```

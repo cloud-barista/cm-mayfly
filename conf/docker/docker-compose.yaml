@@ -1,0 +1,665 @@
+#version: "3.3"
+# docker image : https://hub.docker.com/u/cloudbaristaorg
+
+# Default health check configuration
+x-default-health-check: &default-health-check
+  interval: 30s      # 30초마다 헬스체크 실행
+  timeout: 5s        # 각 헬스체크 명령의 타임아웃 (5초)
+  retries: 3         # 연속으로 3번 실패하면 unhealthy로 판단
+  start_period: 10s  # 컨테이너 시작 후 10초 동안은 실패를 무시  
+
+services:
+# The priority used by Compose to choose which env var value to use:
+# 1. Compose file
+# 2. Shell environment variables
+# 3. Environment file
+# 4. Dockerfile
+# 5. Variable is not defined
+
+  # CB-Spider
+  # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
+  # https://hub.docker.com/r/cloudbaristaorg/cb-spider
+  cb-spider:
+    image: cloudbaristaorg/cb-spider:0.11.13
+    pull_policy: always
+    container_name: cb-spider
+    platform: linux/amd64
+    networks:
+      - spider_net
+    ports:
+      - target: 1024
+        published: 1024
+        protocol: tcp
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./conf/cb-spider/:/root/go/src/github.com/cloud-barista/cb-spider/conf/:ro
+      - ./data/cb-spider/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
+      - ./data/cb-spider/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
+    environment:
+      - PLUGIN_SW=OFF
+      - SERVER_ADDRESS=0.0.0.0:1024
+      # if you leave these values empty, REST Auth will be disabled.
+      # - API_USERNAME=
+      # - API_PASSWORD=
+      - SPIDER_LOG_LEVEL=error
+      - SPIDER_HISCALL_LOG_LEVEL=error
+      - ID_TRANSFORM_MODE=OFF
+    healthcheck: # for CB-Spider
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1024/spider/readyz" ]
+      <<: *default-health-check
+
+  # CB-Tumblebug
+  # https://github.com/cloud-barista/cb-tumblebug/blob/main/scripts/runTumblebug.sh
+  # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
+  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
+  cb-tumblebug:
+    image: cloudbaristaorg/cb-tumblebug:0.11.13
+    container_name: cb-tumblebug
+    pull_policy: always
+    platform: linux/amd64
+    networks:
+      - spider_net
+      - default
+    ports:
+      - target: 1323
+        published: 1323
+        protocol: tcp
+    depends_on:
+      cb-tumblebug-etcd:
+        condition: service_started
+      cb-spider:
+        condition: service_started
+      cb-tumblebug-postgres:
+        condition: service_healthy      
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./conf/cb-tumblebug/conf:/app/conf/:ro
+      - ./data/cb-tumblebug/meta_db/:/app/meta_db/
+      - ./data/cb-tumblebug/log/:/app/log/
+    environment:
+      # - TB_ROOT_PATH=/app
+      # # Enable TB_SELF_ENDPOINT to specify an endpoint for CB-TB API (default: localhost:1323)
+      # # Use public IP if you want to access the API Dashboard from outside of localhost
+      # - TB_SELF_ENDPOINT=xxx.xxx.xxx.xxx:1323
+      - TB_SPIDER_REST_URL=http://cb-spider:1024/spider
+      - TB_ETCD_ENDPOINTS=http://cb-tumblebug-etcd:2379
+      # - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
+      # - TB_IAM_MANAGER_REST_URL=http://mc-iam-manager:5000
+      # - TB_ETCD_AUTH_ENABLED=false
+      # - TB_ETCD_USERNAME=default
+      # - TB_ETCD_PASSWORD=default
+      - TB_POSTGRES_ENDPOINT=cb-tumblebug-postgres:5432
+      - TB_POSTGRES_DATABASE=tumblebug
+      - TB_POSTGRES_USER=tumblebug
+      - TB_POSTGRES_PASSWORD=tumblebug
+      # - TB_TERRARIUM_API_USERNAME=default
+      # - TB_TERRARIUM_API_PASSWORD=default
+      # - TB_ALLOW_ORIGINS=*
+      # - TB_AUTH_ENABLED=true
+      # - TB_AUTH_MODE=jwt
+      # - TB_API_USERNAME=default
+      # - TB_API_PASSWORD=$$2a$$10$$4PKzCuJ6fPYsbCF.HR//ieLjaCzBAdwORchx62F2JRXQsuR3d9T0q
+      # - TB_AUTOCONTROL_DURATION_MS=10000
+      # - TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
+      # - TB_DEFAULT_NAMESPACE=default
+      # - TB_DEFAULT_CREDENTIALHOLDER=admin
+      # - TB_LOGFILE_PATH=/app/log/tumblebug.log
+      # - TB_LOGFILE_MAXSIZE=1000
+      # - TB_LOGFILE_MAXBACKUPS=3
+      # - TB_LOGFILE_MAXAGE=30
+      # - TB_LOGFILE_COMPRESS=false
+      # - TB_LOGLEVEL=debug
+      # - TB_LOGWRITER=both
+      # - TB_NODE_ENV=development
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1323/tumblebug/readyz" ]
+      <<: *default-health-check
+
+  cb-tumblebug-etcd:
+    image: gcr.io/etcd-development/etcd:v3.5.21
+    container_name: cb-tumblebug-etcd
+    networks:
+      - default
+    ports:
+      - target: 2379
+        published: 2379
+        protocol: tcp
+      - target: 2380
+        published: 2380
+        protocol: tcp
+    volumes:
+      - ./data/cb-tumblebug/etcd/data:/etcd-data
+    entrypoint: /usr/local/bin/etcd
+    command:
+      - --name
+      - s1
+      - --data-dir
+      - /etcd-data
+      - --listen-client-urls
+      - http://0.0.0.0:2379
+      - --advertise-client-urls
+      - http://0.0.0.0:2379
+      - --listen-peer-urls
+      - http://0.0.0.0:2380
+      - --initial-advertise-peer-urls
+      - http://0.0.0.0:2380
+      - --initial-cluster
+      - s1=http://0.0.0.0:2380
+      - --initial-cluster-token
+      - tkn
+      - --initial-cluster-state
+      - new
+      - --log-level
+      - info
+      - --logger
+      - zap
+      - --log-outputs
+      - stderr
+      - --auth-token
+      - simple
+    healthcheck:
+      #test: [ "CMD", "etcdctl", "endpoint", "health", "--endpoints=http://localhost:2379"]
+      test: [ "CMD", "/usr/local/bin/etcd", "--version"]
+      <<: *default-health-check
+
+
+  # mc-infra-manager PostgreSQL
+  # This is used for storing CB-Tumblebug Spec and Image.
+  cb-tumblebug-postgres:
+    image: postgres:16-alpine
+    container_name: cb-tumblebug-postgres
+    restart: always
+    networks:
+      - spider_net
+      - default
+    ports:
+      - 6432:5432
+    volumes:
+      - ./data/cb-tumblebug/meta_db/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=tumblebug
+      - POSTGRES_PASSWORD=tumblebug
+      - POSTGRES_DB=tumblebug
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tumblebug"]
+      <<: *default-health-check
+
+
+  # cb-mapui
+  # used by cb-tumblebug
+  # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
+  cb-mapui:
+    image: cloudbaristaorg/cb-mapui:0.11.16
+    container_name: cb-mapui
+    pull_policy: always
+    ports:
+      - target: 1324
+        published: 1324
+        protocol: tcp
+    # depends_on:
+    #   - cb-tumblebug
+    healthcheck: # for cb-mapui
+      #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
+      test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
+      <<: *default-health-check
+
+
+  # cm-beetle
+  # https://github.com/cloud-barista/cm-beetle/discussions/105
+  # https://hub.docker.com/r/cloudbaristaorg/cm-beetle
+  # See https://github.com/cloud-barista/cm-beetle/blob/main/deployments/docker-compose/docker-compose.yaml
+  # If you need to modify the config.yaml file, including modifying tumblebug's credentials, you'll need to copy the latest file and modify it before using it.
+  # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
+  # And remove the conf-related comments in the volumes settings below.
+  cm-beetle:
+    image: cloudbaristaorg/cm-beetle:0.3.9
+    container_name: cm-beetle
+    pull_policy: always
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - target: 8056
+        published: 8056
+        protocol: tcp
+    depends_on:
+      cb-tumblebug:
+        condition: service_healthy
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      #- ./conf/cm-beetle/conf:/app/conf/
+      - ./data/cm-beetle/log/:/app/log/
+      - ./data/cm-beetle/db:/app/db/
+    environment:
+      # - BEETLE_ROOT=/app
+      - BEETLE_SELF_ENDPOINT=localhost:8056
+      # - BEETLE_API_ALLOW_ORIGINS=*
+      # - BEETLE_API_AUTH_ENABLED=true
+      - BEETLE_API_USERNAME=default
+      - BEETLE_API_PASSWORD=default
+      # - BEETLE_LKVSTORE_PATH=/app/db/beetle.db
+      # - BEETLE_LOGFILE_PATH=/app/log/beetle.log
+      # - BEETLE_LOGFILE_MAXSIZE=1000
+      # - BEETLE_LOGFILE_MAXBACKUPS=3
+      # - BEETLE_LOGFILE_MAXAGE=30
+      # - BEETLE_LOGFILE_COMPRESS=false
+      - BEETLE_LOGLEVEL=debug
+      # - BEETLE_LOGWRITER=both
+      - BEETLE_NODE_ENV=development
+      # - BEETLE_AUTOCONTROL_DURATION_MS=10000
+      - BEETLE_TUMBLEBUG_ENDPOINT=http://cb-tumblebug:1323
+      # - BEETLE_TUMBLEBUG_API_USERNAME=default
+      # - BEETLE_TUMBLEBUG_API_PASSWORD=default
+    healthcheck: # for CM-Beetle
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
+      #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
+      <<: *default-health-check
+
+
+  # cm-butterfly (api)
+  # If the configuration file location is different, uncomment the lines in the environment section as needed.
+  # https://github.com/cloud-barista/cm-butterfly
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/scripts/docker-compose.yaml
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/api/.env.sample to .env <-- share to cm-butterfly-db
+  # https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf
+  # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/api.yaml.sample to api.yaml
+  # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
+  # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
+  cm-butterfly-api:
+    # image: cloudbaristaorg/cm-butterfly-api:edge
+    image: cloudbaristaorg/cm-butterfly-api:0.3.4
+    # image: csescsta/cm-butterfly-api:20250911105829-develop
+    container_name: cm-butterfly-api
+    pull_policy: always
+    platform: linux/amd64
+    restart: unless-stopped
+    # networks:
+    #   - cm-butterfly-network
+    ports:
+      - target: 4000
+        published: 4000
+        protocol: tcp
+    networks:
+      - spider_net
+      - default
+    depends_on:
+      cm-butterfly-db:
+        condition: service_healthy
+    env_file:
+      - ./conf/cm-butterfly/api/.env
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      #- ./conf/cm-butterfly/api/conf:/conf/
+      - ./conf/cm-butterfly/api/conf/authsetting.yaml:/conf/authsetting.yaml
+      #- ./conf/cm-butterfly/api/conf/api.yaml:/conf/api.yaml
+      #- ./data/cm-butterfly/log/api.log:/app/api.log
+    # environment:
+    #   USER_AUTH_DATA_PATH: /conf/user.dat 
+    #   USER_AUTH_CONF_PATH: /conf/authsetting.yaml
+    #   MENU_CONF_DATA_PATH: /conf/menu.yaml
+    healthcheck: # for butterfly-api
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz" ]
+      #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
+      <<: *default-health-check
+
+
+
+  # cm-butterfly (front)
+  # https://github.com/cloud-barista/cm-butterfly
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/scripts/docker-compose.yaml
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
+  # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
+  cm-butterfly-front:
+    # image: cloudbaristaorg/cm-butterfly-front:edge
+    image: cloudbaristaorg/cm-butterfly-front:0.3.4
+    # image: csescsta/cm-butterfly-front:edge
+    container_name: cm-butterfly-front
+    pull_policy: always
+    platform: linux/amd64
+    restart: unless-stopped
+    # networks:
+    #   - cm-butterfly-network
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+    depends_on:
+      cm-butterfly-api:
+        condition: service_healthy
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+    healthcheck: # for butterfly-api
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front:80/" ]
+      #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
+      <<: *default-health-check
+
+
+  # cm-butterfly (db)
+  # https://github.com/cloud-barista/cm-butterfly
+  # https://github.com/cloud-barista/cm-butterfly/blob/main/api/.env.sample to .env
+  cm-butterfly-db:
+    container_name: cm-butterfly-db
+    image: postgres:14-alpine
+    restart: unless-stopped
+    # networks:
+    #   - cm-butterfly-network
+    ports:
+      - target: 5432
+        published: 543
+        protocol: tcp
+    env_file:
+      - ./conf/cm-butterfly/api/.env
+    volumes:
+      - cm-butterfly-db:/var/lib/postgresql/data
+    user: root
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "butterflyadmin", "-d", "butterfly-db" ]
+      <<: *default-health-check
+
+
+  # @TODO - **Airflow 등 연계 시스템 필요함**
+  # cm-honeybee
+  # https://github.com/cloud-barista/cm-honeybee/tree/main/server
+  # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
+  # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
+  cm-honeybee:
+    #image: cloudbaristaorg/cm-honeybee:edge
+    image: cloudbaristaorg/cm-honeybee:0.3.6
+    container_name: cm-honeybee
+    pull_policy: always
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      # 8081 : Server / 8082 : Agent
+      - "8081:8081"
+      #- "8082:8082"
+    # depends_on:
+    #   - cm-honeybee-agent
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz" ]
+      <<: *default-health-check
+
+  # cm-damselfly
+  # https://github.com/cloud-barista/cm-damselfly
+  # https://hub.docker.com/r/cloudbaristaorg/cm-damselfly
+  cm-damselfly:
+    # image: cloudbaristaorg/cm-damselfly:edge
+    image: cloudbaristaorg/cm-damselfly:0.3.6
+    container_name: cm-damselfly
+    pull_policy: always
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - target: 8088
+        published: 8088
+        protocol: tcp
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./data/cm-damselfly/db:/app/db/
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+      #- ./conf/cm-damselfly/conf:/app/conf/
+    healthcheck: # for CM-Damselfly
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz" ]
+      <<: *default-health-check
+
+
+  # cm-cicada
+  # https://github.com/cloud-barista/cm-cicada
+  # https://hub.docker.com/r/cloudbaristaorg/cm-cicada
+  # **important** : The cm-beetle, cm-grasshopper, and airflow-server containers must be in a readyz state and running beforehand
+  cm-cicada:
+    image: cloudbaristaorg/cm-cicada:0.3.6
+    #image: cloudbaristaorg/cm-cicada:edge
+    container_name: cm-cicada
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    depends_on:
+      cm-damselfly:
+        condition: service_healthy
+      cm-beetle:
+        condition: service_healthy
+      cm-grasshopper:
+        condition: service_healthy
+      airflow-server:
+        condition: service_healthy
+    volumes:
+      #- ./conf/cm-cicada/conf:/root/.cm-cicada/conf:rw
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./conf/depends_on_order/entrypoint_cm_cicada.sh:/tool/entrypoint.sh
+      - ./conf/cm-cicada/conf:/conf:rw
+      - ./conf/cm-cicada/example:/lib/airflow/example:ro
+      - ./conf/cm-cicada/_airflow:/_airflow:rw
+      - ./data/cm-cicada/cicada_root:/cicada_root:rw
+    environment:
+      - CMCICADA_ROOT=/cicada_root
+    # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
+    entrypoint: ["/tool/entrypoint.sh"]
+    command: ["/cm-cicada"]
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
+      <<: *default-health-check
+
+
+  # airflow-redis
+  # used by cm-cicada
+  # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  airflow-redis:
+    container_name: airflow-redis
+    image: redis:7.2-alpine
+    command: redis-server --requirepass airflow_pass --port 6379
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+
+  # airflow-mysql
+  # used by cm-cicada
+  # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  # ./conf/_airflow/create_airflow_db.sql : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/create_airflow_db.sql
+  airflow-mysql:
+    container_name: airflow-mysql
+    image: mysql:8.0-debian
+    cap_add:
+      - SYS_NICE
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    # 외부 접근 차단 및 컨테이너 내부에서만 접근 가능하도록 설정
+    # expose:
+    #   - "3306"        
+    environment:
+        - MYSQL_ROOT_PASSWORD=airflow_pass
+        - MYSQL_USER=airflow
+        - MYSQL_PASSWORD=airflow_pass
+        - MYSQL_DATABASE=airflow
+    volumes:
+        - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
+        - ./data/cm-cicada/db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "airflow", "-pairflow_pass" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+
+  # airflow-server
+  # used by cm-cicada
+  # reference : https://github.com/cloud-barista/cm-cicada/blob/main/_airflow/docker-compose.yml
+  airflow-server:
+    # build:
+    #     context: ./conf/cm-cicada/_airflow ## build Docker file location
+    container_name: airflow-server
+    image: cloudbaristaorg/airflow-server:0.3.6
+    #image: cloudbaristaorg/airflow-server:edge
+    restart: unless-stopped
+    env_file:
+      - ./conf/cm-cicada/airflow_smtp.env
+    environment:
+        - MYSQL_USER=airflow
+        - MYSQL_PASSWORD=airflow_pass
+        - MYSQL_HOST=airflow-mysql
+        - MYSQL_DATABASE=airflow
+    ports:
+        - "5555:5555"
+        - "8080:8080"
+    command: >
+        /bin/bash -c "
+            # Wait for MySQL(airflow-mysql) to be ready
+            # sleep 10
+            # move to check logic : entrypoint_airflow_depends_on.sh
+
+            # Clean up pid
+            rm -f airflow-webserver.pid
+
+            # Set up metadata database
+            airflow db upgrade
+
+            # Create default user
+            airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin
+
+            # Start airflow
+            airflow scheduler &
+            airflow celery worker &
+            airflow celery flower &
+            airflow webserver
+
+            # Keep the server on no matter what
+            sleep infinity
+        "
+    depends_on:
+      airflow-mysql:
+        condition: service_healthy
+      airflow-redis:
+        condition: service_healthy
+    volumes:
+        - ./tool/mayfly:/app/tool/mayfly
+        - ./conf/depends_on_order/entrypoint_cm_cicada_airflow.sh:/tool/entrypoint.sh
+        - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
+        - /var/run/docker.sock:/var/run/docker.sock
+    # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
+    entrypoint: ["/tool/entrypoint.sh"]
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/health" ]
+      <<: *default-health-check
+
+  # cm-grasshopper
+  # https://github.com/cloud-barista/cm-grasshopper
+  # https://hub.docker.com/r/cloudbaristaorg/cm-grasshopper
+  # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
+  cm-grasshopper:
+    #image: cloudbaristaorg/cm-grasshopper:edge
+    image: cloudbaristaorg/cm-grasshopper:0.3.5
+    container_name: cm-grasshopper
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    depends_on:
+      cm-honeybee:
+        condition: service_healthy
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./conf/cm-grasshopper/conf:/conf
+      - ./data/cm-grasshopper/software_temp:/software_temp:rw
+      - ./data/cm-grasshopper/software_log:/software_log:rw
+      - ./data/cm-honeybee/:/root/.cm-grasshopper/honeybee:ro
+    command: >
+      /bin/sh -c "
+        if [ ! -f /root/.ssh/known_hosts ]; then
+          mkdir -p /root/.ssh
+          touch /root/.ssh/known_hosts
+        fi
+        if [ ! -f /root/.cm-grasshopper/honeybee/honeybee.key ]; then
+          echo 'honeybee.key not found, exiting...';
+          exit 1;
+        else
+         cp /root/.cm-grasshopper/honeybee/honeybee.key /root/.cm-grasshopper/ && echo 'Finished copying the honeybee.key file.';
+          /cm-grasshopper;
+        fi
+      "
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
+      <<: *default-health-check
+
+  # cm-ant
+  # https://github.com/cloud-barista/cm-ant
+  # https://hub.docker.com/r/cloudbaristaorg/cm-ant
+  cm-ant:
+    container_name: cm-ant
+    image: cloudbaristaorg/cm-ant:0.4.0
+    # image: cloudbaristaorg/cm-ant:edge
+    platform: linux/amd64
+    pull_policy: always
+    ports:
+        - 8880:8880
+    networks:
+      - spider_net
+      - default
+    depends_on:
+      cb-tumblebug:
+        condition: service_healthy
+      ant-postgres:
+        condition: service_healthy
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./data/cm-ant:/app/result
+    environment:
+      - ANT_SPIDER_HOST=http://cb-spider
+      - ANT_SPIDER_PORT=1024
+      - ANT_TUMBLEBUG_HOST=http://cb-tumblebug
+      - ANT_TUMBLEBUG_PORT=1323
+      - ANT_DATABASE_HOST=ant-postgres
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/readyz" ]
+      <<: *default-health-check
+    restart: unless-stopped
+
+
+  # ant-postgres
+  # used by cm-ant
+  ant-postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: ant-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=cm-ant-user
+      - POSTGRES_PASSWORD=cm-ant-secret
+      - POSTGRES_DB=cm-ant-db
+    #networks:
+      # - cm-ant-db-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "cm-ant-user", "-d", "cm-ant-db" ]
+      <<: *default-health-check
+    restart: unless-stopped
+
+
+  # cm-mayfly:
+  # #   image: cloudbaristaorg/cm-mayfly:v0.1.0
+  #   image: dev4unet/cm-mayfly:v0.2.0
+  #   container_name: cm-mayfly
+  #   platform: linux/amd64
+  #   stdin_open: true
+  #   tty: true
+  #   networks:
+  #     - spider_net
+  #     - default
+
+
+networks:
+  spider_net: #Network for cb-spider isolation
+  cm-butterfly-network: #Network for web isolation
+  #cm-ant-db-network: #Network for cm-ant database isolation
+
+volumes:
+  cm-butterfly-db:

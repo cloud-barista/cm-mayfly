@@ -24,5 +24,11 @@ yarn.lock
 src/mayfly
 docker-compose-mode-files/data/*
 
+# test data
+conf/docker/data/*
+
 # IDE's
 *.idea
+
+# container-volume
+container-volume/

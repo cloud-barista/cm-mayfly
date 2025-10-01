@@ -1,0 +1,15 @@
+{{- if and (.Values.persistence.enabled) (eq "manual" .Values.persistence.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "airflow-redis.fullname" . }}
+spec:
+  capacity:
+    storage: {{ .Values.persistence.size }}
+  accessModes:
+    - {{ .Values.persistence.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end -}}

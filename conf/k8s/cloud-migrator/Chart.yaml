@@ -1,0 +1,31 @@
+apiVersion: v2
+name: cloud-migrator
+description: A Helm chart for Cloud-Migrator platform
+type: application
+version: 0.3.0
+appVersion: "0.3.0"
+dependencies:
+  - name: cb-spider
+    version: 0.9.2
+    condition: cb-spider.enabled
+  - name: cb-tumblebug
+    version: 0.9.7
+    condition: cb-tumblebug.enabled
+  - name: cm-beetle
+    version: 0.2.0
+    condition: cm-beetle.enabled
+  - name: cm-honeybee
+    version: 0.2.1
+    condition: cm-honeybee.enabled
+  - name: cm-cicada
+    version: 0.2.0
+    condition: cm-cicada.enabled
+  - name: cm-grasshopper
+    version: 0.2.0
+    condition: cm-grasshopper.enabled
+  - name: cm-ant
+    version: 0.2.2
+    condition: cm-ant.enabled
+  - name: cm-butterfly
+    version: 0.2.0
+    condition: cm-butterfly.enabled

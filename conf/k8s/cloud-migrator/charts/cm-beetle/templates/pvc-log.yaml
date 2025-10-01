@@ -1,0 +1,18 @@
+{{- if .Values.persistence.log.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "cm-beetle.fullname" . }}-log
+  labels:
+    app: {{ template "cm-beetle.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+spec:
+  accessModes:
+    - {{ .Values.persistence.log.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.log.size | quote }}
+  storageClassName: {{ .Values.persistence.log.storageClass }}
+{{- end -}}

@@ -1,0 +1,12 @@
+dependencies:
+- name: airflow-mysql
+  repository: ""
+  version: 0.1.0
+- name: airflow-redis
+  repository: ""
+  version: 0.1.0
+- name: airflow-server
+  repository: ""
+  version: 0.1.0
+digest: sha256:d3823c5733a7454729a67f12e4530e9da6c641b73820ca0edd887aeeea49b544
+generated: "2024-09-03T17:25:08.455087757+09:00"

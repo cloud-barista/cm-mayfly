@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cm-grasshopper.fullname" . }}
+  labels:
+    {{- include "cm-grasshopper.labels" .  | nindent 4 }}
+data:
+  cm-grasshopper.yaml: |-
+    {{ range .Files.Lines "files/conf/cm-grasshopper.yaml" }}
+    {{ . }}
+    {{ end }}

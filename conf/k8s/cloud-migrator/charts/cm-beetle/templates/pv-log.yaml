@@ -1,0 +1,15 @@
+{{- if and (.Values.persistence.log.enabled) (eq "manual" .Values.persistence.log.storageClass) }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "cm-beetle.fullname" . }}-log
+spec:
+  capacity:
+    storage: {{ .Values.persistence.log.size }}
+  accessModes:
+    - {{ .Values.persistence.log.accessMode | quote }}
+  storageClassName: {{ .Values.persistence.log.storageClass }}
+  hostPath:
+    path: {{ .Values.persistence.log.hostPath }}
+  persistentVolumeReclaimPolicy: Retain
+{{- end -}}

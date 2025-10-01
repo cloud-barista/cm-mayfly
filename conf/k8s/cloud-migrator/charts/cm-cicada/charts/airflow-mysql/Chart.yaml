@@ -1,0 +1,6 @@
+apiVersion: v2
+name: airflow-mysql
+description: A Helm chart for airflow-mysql
+type: application
+version: 0.1.0
+appVersion: "8.0-debian"
