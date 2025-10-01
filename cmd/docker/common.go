@@ -30,29 +30,71 @@ func parseDockerComposeImages() (map[string]ServiceInfo, error) {
 
 	lines := strings.Split(string(content), "\n")
 	var currentService string
+	inService := false
+	indentLevel := 0
 
-	for _, line := range lines {
+	for i, line := range lines {
 		// Check for service name (e.g., "  cm-ant:")
 		if matches := serviceRegex.FindStringSubmatch(line); matches != nil {
-			currentService = matches[1]
-			continue
+			serviceName := matches[1]
+
+			// Check if this is a top-level service (not inside depends_on or other sections)
+			trimmedLine := strings.TrimLeft(line, " \t")
+			if strings.HasPrefix(trimmedLine, serviceName+":") {
+				// Check if we're not inside depends_on section by looking at previous lines
+				isInDependsOn := false
+				for j := i - 1; j >= 0 && j >= i-10; j-- {
+					prevLine := strings.TrimSpace(lines[j])
+					if prevLine == "depends_on:" {
+						isInDependsOn = true
+						break
+					}
+					if prevLine != "" && !strings.HasPrefix(lines[j], " ") && !strings.HasPrefix(lines[j], "\t") {
+						break
+					}
+				}
+
+				if !isInDependsOn {
+					currentService = serviceName
+					inService = true
+					// Calculate the indentation level of the service
+					indentLevel = len(line) - len(strings.TrimLeft(line, " \t"))
+					continue
+				}
+			}
 		}
 
-		// Check for image definition (e.g., "    image: cloudbaristaorg/cm-ant:0.4.0")
-		if matches := imageRegex.FindStringSubmatch(line); matches != nil && currentService != "" {
-			imageName := matches[1]
-			tag := matches[2]
-			fullImage := fmt.Sprintf("%s:%s", imageName, tag)
+		// If we're in the service section, look for image field
+		if inService {
+			currentIndent := len(line) - len(strings.TrimLeft(line, " \t"))
 
-			// Categorize services
-			category := categorizeService(currentService, imageName)
-
-			services[currentService] = ServiceInfo{
-				Name:     currentService,
-				Image:    fullImage,
-				Category: category,
+			// Check if we've moved to another service or section (same or less indentation)
+			if strings.TrimSpace(line) != "" && currentIndent <= indentLevel && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+				// We've moved to another service or section
+				inService = false
+				currentService = ""
+				continue
 			}
-			currentService = ""
+
+			// Check for image definition (e.g., "    image: cloudbaristaorg/cm-ant:0.4.0")
+			if matches := imageRegex.FindStringSubmatch(line); matches != nil && currentService != "" {
+				imageName := matches[1]
+				tag := matches[2]
+				fullImage := fmt.Sprintf("%s:%s", imageName, tag)
+
+				// Categorize services
+				category := categorizeService(currentService, imageName)
+
+				services[currentService] = ServiceInfo{
+					Name:     currentService,
+					Image:    fullImage,
+					Category: category,
+				}
+
+				// Reset for next service
+				inService = false
+				currentService = ""
+			}
 		}
 	}
 
