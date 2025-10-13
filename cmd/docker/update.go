@@ -62,9 +62,28 @@ func checkDockerHubTagUpdate(imageName, tag string) (string, error) {
 
 // getCurrentLocalVersion gets the current local image version of a service
 func getCurrentLocalVersion(imageName, tag string) (string, error) {
-	// Check if image exists locally
-	cmdStr := fmt.Sprintf("docker images --format '{{.Tag}}' %s:%s 2>/dev/null || echo 'not_installed'", imageName, tag)
+	// Extract service name from image name (e.g., "cloudbaristaorg/cm-beetle" -> "cm-beetle")
+	serviceName := imageName
+	if strings.Contains(imageName, "/") {
+		parts := strings.Split(imageName, "/")
+		serviceName = parts[len(parts)-1]
+	}
+
+	// Check if container is running and get its image tag
+	cmdStr := fmt.Sprintf("docker ps --filter name=%s --format '{{.Image}}' 2>/dev/null | head -1", serviceName)
 	output := common.SysCallWithOutput(cmdStr)
+
+	if strings.TrimSpace(output) != "" {
+		// Extract tag from image:tag format
+		parts := strings.Split(strings.TrimSpace(output), ":")
+		if len(parts) > 1 {
+			return parts[len(parts)-1], nil
+		}
+	}
+
+	// Fallback: Check if the specific image exists locally
+	cmdStr = fmt.Sprintf("docker images --format '{{.Tag}}' %s:%s 2>/dev/null || echo 'not_installed'", imageName, tag)
+	output = common.SysCallWithOutput(cmdStr)
 
 	if strings.TrimSpace(output) == "not_installed" {
 		return "not_installed", nil
