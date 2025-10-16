@@ -20,13 +20,18 @@ var infoAllFlag bool
 // infoHumanFlag represents the --human flag for showing human-readable service status
 var infoHumanFlag bool
 
+// infoTestVersionsFlag represents the --test-versions flag for debugging version extraction
+var infoTestVersionsFlag bool
+
 // infoCmd represents the info command.
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get information of Cloud-Migrator System",
 	Long:  `Get information of Cloud-Migrator System. Information about containers and container images`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if infoHumanFlag {
+		if infoTestVersionsFlag {
+			showVersionTestInfo()
+		} else if infoHumanFlag {
 			showHumanReadableInfo()
 		} else {
 			fmt.Println("\n[Get info for Cloud-Migrator runtimes]")
@@ -55,6 +60,8 @@ func init() {
 	infoCmd.Flags().BoolVarP(&infoAllFlag, "all", "a", false, "Show all containers including stopped ones")
 	// Add --human flag to info command
 	infoCmd.Flags().BoolVarP(&infoHumanFlag, "human", "u", false, "Show human-readable service status table")
+	// Add --test-versions flag to info command
+	infoCmd.Flags().BoolVarP(&infoTestVersionsFlag, "test-versions", "t", false, "Test version extraction from docker-compose.yaml and show service status")
 }
 
 // HumanServiceInfo represents service information for human-readable display
@@ -147,8 +154,13 @@ func showHumanReadableInfo() {
 			info.Healthy = "-"
 			info.InternalPort = "-"
 			info.ExternalPort = "-"
-			// For non-running services, get version from docker-compose.yaml
-			info.Version = getVersionFromComposeFile(service)
+			// For non-running services, get version from docker-compose.yaml with "(?)" suffix
+			version := getVersionFromComposeFile(service)
+			if version != "-" {
+				info.Version = version + " (?)"
+			} else {
+				info.Version = version
+			}
 		}
 
 		// Get image size - prioritize running container's image
@@ -281,7 +293,8 @@ func getContainerInfo(showAll bool) map[string]ContainerInfo {
 		// Extract version from image tag if available, otherwise use fallback
 		version := extractVersionFromImage(container.Image)
 		if version == "" {
-			version = getVersionFromService(container.Service)
+			// If running container has no version tag (e.g., image ID), get from docker-compose.yaml
+			version = getVersionFromComposeFile(container.Service)
 		}
 
 		// Normalize status display
@@ -309,6 +322,19 @@ func extractVersionFromImage(imageName string) string {
 		return ""
 	}
 
+	// Check if imageName is a SHA256 image ID (sha256:64-character-hex)
+	if strings.HasPrefix(imageName, "sha256:") {
+		hash := strings.TrimPrefix(imageName, "sha256:")
+		if len(hash) == 64 && isHexString(hash) {
+			return "" // Return empty to trigger fallback to getVersionFromComposeFile
+		}
+	}
+
+	// Check if imageName is a short image ID (12 character hex string)
+	if len(imageName) == 12 && isHexString(imageName) {
+		return "" // Return empty to trigger fallback to getVersionFromComposeFile
+	}
+
 	// Split by colon to get tag part
 	parts := strings.Split(imageName, ":")
 	if len(parts) > 1 {
@@ -316,6 +342,16 @@ func extractVersionFromImage(imageName string) string {
 	}
 
 	return ""
+}
+
+// isHexString checks if a string contains only hexadecimal characters
+func isHexString(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 // getImageInfo gets image information using docker images
@@ -367,7 +403,7 @@ func getImageInfo() map[string]ImageInfo {
 	for serviceName, imageList := range allImages {
 		if len(imageList) > 0 {
 			// If multiple images exist, prefer the one matching docker-compose.yaml version
-			expectedVersion := getVersionFromService(serviceName)
+			expectedVersion := getVersionFromComposeFile(serviceName)
 			selectedImage := imageList[0] // default to first
 
 			for _, img := range imageList {
@@ -419,7 +455,7 @@ func getVersionFromComposeFile(serviceName string) string {
 
 	// Use regex to find the service and its image
 	// Pattern: serviceName: at the beginning of a line (with minimal indentation)
-	servicePattern := fmt.Sprintf(`^\s*%s:\s*$`, serviceName)
+	servicePattern := fmt.Sprintf(`^\s*%s:\s*$`, regexp.QuoteMeta(serviceName))
 	imagePattern := `^\s*image:\s*(.+)$`
 
 	serviceRegex, err := regexp.Compile(servicePattern)
@@ -498,6 +534,59 @@ func getVersionFromComposeFile(serviceName string) string {
 	return "-"
 }
 
+// showVersionTestInfo displays version extraction test results and service status
+func showVersionTestInfo() {
+	fmt.Println("\n=== Version Extraction Test & Service Status ===")
+	fmt.Println()
+
+	// Get services from docker-compose.yaml
+	allServices := getServicesFromCompose()
+
+	// Get running containers
+	containers := getContainerInfo(false)
+
+	// Get image information
+	images := getImageInfo()
+
+	fmt.Printf("%-20s %-15s %-12s %-15s %s\n", "SERVICE", "COMPOSE_VERSION", "STATUS", "ACTUAL_VERSION", "IMAGE_SIZE")
+	fmt.Println(strings.Repeat("-", 80))
+
+	for _, service := range allServices {
+		// Get version from docker-compose.yaml
+		composeVersion := getVersionFromComposeFile(service)
+
+		// Get actual running status and version
+		var status, actualVersion, imageSize string
+
+		if container, exists := containers[service]; exists {
+			status = container.Status
+			actualVersion = container.Version
+
+			// Get image size
+			if image, exists := images[service]; exists {
+				imageSize = image.Size
+			} else {
+				imageSize = "-"
+			}
+		} else {
+			status = "Not Running"
+			actualVersion = "-"
+			imageSize = "-"
+		}
+
+		fmt.Printf("%-20s %-15s %-12s %-15s %s\n",
+			service, composeVersion, status, actualVersion, imageSize)
+	}
+
+	fmt.Println()
+	fmt.Println("Legend:")
+	fmt.Println("  COMPOSE_VERSION: Version specified in docker-compose.yaml")
+	fmt.Println("  STATUS: Current container status (running/stopped/Not Running)")
+	fmt.Println("  ACTUAL_VERSION: Version from running container image tag")
+	fmt.Println("  IMAGE_SIZE: Size of the container image")
+	fmt.Println("===============================================")
+}
+
 // checkImageExists checks if the specified image exists locally
 func checkImageExists(imageName string) bool {
 	cmd := exec.Command("docker", "images", "--format", "{{.Repository}}:{{.Tag}}", imageName)
@@ -514,36 +603,6 @@ func checkImageExists(imageName string) bool {
 		}
 	}
 	return false
-}
-
-// getVersionFromService gets version information from docker-compose.yaml for a specific service
-func getVersionFromService(serviceName string) string {
-	// Service to version mapping based on docker-compose.yaml
-	serviceVersions := map[string]string{
-		"cb-spider":             "0.11.13",
-		"cb-tumblebug":          "0.11.13",
-		"cb-tumblebug-etcd":     "v3.5.21",
-		"cb-tumblebug-postgres": "16-alpine",
-		"cb-mapui":              "0.11.16",
-		"cm-beetle":             "0.3.9",
-		"cm-butterfly-api":      "0.3.4",
-		"cm-butterfly-front":    "0.3.4",
-		"cm-butterfly-db":       "14-alpine",
-		"cm-honeybee":           "0.3.6",
-		"cm-damselfly":          "0.3.6",
-		"cm-cicada":             "0.3.6", // Updated to match actual running version
-		"airflow-redis":         "7.2-alpine",
-		"airflow-mysql":         "8.0-debian",
-		"airflow-server":        "0.3.6", // Updated to match actual running version
-		"cm-grasshopper":        "0.3.5",
-		"cm-ant":                "0.4.0",
-		"ant-postgres":          "latest-pg16",
-	}
-
-	if version, exists := serviceVersions[serviceName]; exists {
-		return version
-	}
-	return "-"
 }
 
 // parsePorts parses port information from docker compose ps output

@@ -16,6 +16,10 @@
   - [mc-datamanager 인증 정보 설정](#mc-datamanager-인증-정보-설정)
 - [Cloud-Migrator 인프라 구축](#cloud-migrator-인프라-구축)
 - [Cloud-Migrator 실행상태 확인](#cloud-migrator-실행상태-확인)
+  - [기본 사용법](#기본-사용법)
+  - [옵션 설명](#옵션-설명)
+  - [사용 예시](#사용-예시)
+  - [실행 결과 예시](#실행-결과-예시)
 - [Cloud-Migrator 업데이트](#cloud-migrator-업데이트)
   - [기본 업데이트](#기본-업데이트)
   - [버전 체크 및 업데이트 확인](#버전-체크-및-업데이트-확인)
@@ -137,6 +141,10 @@ $ ./mayfly infra info
   - **특징**: docker-compose.yaml에 정의된 모든 서비스의 상태를 표 형태로 표시
   - **표시 항목**: 서비스명, 버전, 상태, 헬스 상태, 내부 포트, 외부 포트, 이미지 크기
   - **서비스 분류**: 요청된 서비스와 의존성 서비스를 구분하여 표시
+- `-t, --test-versions`: 서비스명과 버전 추출 테스트 및 디버깅용 정보 표시
+  - **목적**: docker-compose.yaml와 실행 중인 서비스의 버전 정보 추출 테스트 및 서비스 실행 상태 비교
+  - **표시 항목**: 서비스명, docker-compose.yaml 버전, 실행 상태, 실제 이미지 버전, 이미지 크기
+  - **디버깅**: -u 옵션의 동작 테스트를 겸하고 있으며 docker-compose.yaml과 실제 실행 중인 서비스로 항목이 구분되어 있어서 -u 옵션 보다 조금 더 현재 상태 파악이 직관적일 수도 있음.
 
 ### 사용 예시
 ```bash
@@ -165,6 +173,10 @@ $ ./mayfly infra info -s cb-tumblebug -u
 
 # 여러 서비스와 의존성을 테이블 형태로 표시
 $ ./mayfly infra info -s "cb-tumblebug cm-ant" -u
+
+# 버전 추출 테스트 및 디버깅 정보 표시
+$ ./mayfly infra info -t
+$ ./mayfly infra info --test-versions
 ```
 
 ### 실행 결과 예시
@@ -247,6 +259,51 @@ $ ./mayfly infra info -s cb-tumblebug --human
 │cb-tumblebug-postgres  │16-alpine     │running       │✓         │5432          │6432          │281MB            │
 └───────────────────────┴──────────────┴──────────────┴──────────┴──────────────┴──────────────┴─────────────────┘
 ```
+
+#### --test-versions 옵션 사용
+```bash
+$ ./mayfly infra info --test-versions
+```
+```
+=== Version Extraction Test & Service Status ===
+
+SERVICE              COMPOSE_VERSION STATUS       ACTUAL_VERSION  IMAGE_SIZE
+--------------------------------------------------------------------------------
+cb-spider            0.11.13         running      0.11.13         436MB
+cb-tumblebug         0.11.13         running      0.11.13         146MB
+cb-tumblebug-etcd    v3.5.21         running      v3.5.21         60.4MB
+cb-tumblebug-postgres 16-alpine       running      16-alpine       281MB
+cb-mapui             0.11.16         running      0.11.16         422MB
+cm-beetle            0.4.0           running      0.4.0           137MB
+cm-butterfly-api     0.4.0           running      0.4.0           94.4MB
+cm-butterfly-front   0.4.0           Not Running  -               -
+cm-butterfly-db      14-alpine       running      14-alpine       278MB
+cm-honeybee          0.4.0           running      0.4.0           56.2MB
+cm-damselfly         0.3.6           running      0.3.6           100MB
+cm-cicada            0.4.0           running      0.4.0           890MB
+airflow-redis        7.2-alpine      running      7.2-alpine      40.9MB
+airflow-mysql        8.0-debian      running      8.0-debian      610MB
+airflow-server       0.4.0 (Not Downloaded) running      0.3.6           1.57GB
+cm-grasshopper       0.4.0           running      0.4.0           448MB
+cm-ant               0.4.0           running      0.4.0           193MB
+ant-postgres         latest-pg16     running      latest-pg16     1.07GB
+
+Legend:
+  COMPOSE_VERSION: Version specified in docker-compose.yaml
+  STATUS: Current container status (running/stopped/Not Running)
+  ACTUAL_VERSION: Version from running container image tag
+  IMAGE_SIZE: Size of the container image
+===============================================
+```
+
+**--test-versions 옵션의 장점:**
+- **버전 비교**: docker-compose.yaml에 정의된 버전과 실제 실행 중인 이미지 버전을 한눈에 비교
+- **디버깅**: 버전 정보 추출 문제나 서비스 상태 불일치 버그를 쉽게 파악
+- **상태 분석**: 실행 중이 아닌 서비스("Not Running")를 명확히 식별
+- **이미지 관리**: 로컬에 다운로드되지 않은 이미지("Not Downloaded") 확인 가능
+- **버전 불일치 감지**: docker-compose.yaml 버전과 실제 실행 버전이 다른 경우를 쉽게 발견
+  - `(Not Downloaded)` 표시는 docker-compose.yaml에 정의된 이미지가 로컬에 없을 때 나타남
+  - 이 경우 실제로는 다른 버전의 이미지로 컨테이너가 실행 중일 수 있음 (예: airflow-server의 경우 0.4.0이 정의되어 있지만 0.3.6으로 실행 중)
 
 **--human 옵션의 장점:**
 - **직관적**: docker-compose.yaml에 정의된 모든 서비스가 한눈에 보임
