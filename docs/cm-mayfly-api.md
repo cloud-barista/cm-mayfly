@@ -141,14 +141,30 @@ serviceActions:
       resourcePath: /driver/{driver_name}
 ```
 
-`{driver_name}`처럼 {}로 지정된 액션의 경우에는, {}안에 있는 변수명이 매개변수 이름이되며, 사용자로부터 `-p` 또는 `--pathParam` 플래그를 이용해서 `--pathParam driver_name:AWS` 형태로 값을 전달 받을 수 있습니다.
+**PathParam 사용법**   
+`{driver_name}`처럼 {}로 지정된 액션의 경우에는, {}안에 있는 변수명이 매개변수 이름이되며, 사용자로부터 `-p` 또는 `--pathParam` 플래그를 이용해서 `--pathParam driver_name:AWS` 형태로 값을 전달 받을 수 있습니다.   
+여러 개의 PathParam이 필요한 경우 공백으로 구분하여 `"key1:value1 key2:value2"` 형태로 지정합니다.
 
 ```
-$ ./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
+$ ./mayfly api --service cb-spider --action GetCloudDriver --pathParam driver_name:AWS
 
-$ ./mayfly api -s spider -a GetCloudDriver -p driver_name:AWS
+$ ./mayfly api -s cb-spider -a GetCloudDriver -p driver_name:AWS
 
-$ ./mayfly api -s spider -a GetCloudDriver -p driver_name:GCP
+$ ./mayfly api -s cb-spider -a GetCloudDriver -p driver_name:GCP
+```
+
+**QueryString 사용법**   
+REST API에 쿼리 문자열이 필요한 경우 `-q` 또는 `--queryString` 플래그를 사용합니다.   
+쿼리 문자열은 `param=value` 형태로 지정하며, 여러 개인 경우 `&`로 구분합니다.   
+`?`는 자동으로 추가되므로 생략 가능하지만, 포함해도 정상 동작합니다.
+
+```
+# 단일 쿼리 문자열
+$ ./mayfly api -s cb-spider -a GetRegionZone -p region_name:ap-northeast-3 -q ConnectionName=aws-config01
+$ ./mayfly api -s cb-spider -a GetRegionZone -p region_name:ap-northeast-3 -q "?ConnectionName=aws-config01"
+
+# 복수 쿼리 문자열 (&로 구분)
+$ ./mayfly api -s cb-tumblebug -a Getmcivm -p "nsId:ns01 mciId:mci01 vmId:vm01" -q "option=status&accessInfo=showSshKey"
 ```
 
 예로 설명드렸던, ListCloudOS와 GetCloudDriver 액션들의 최종 정의 형태는 아래와 같습니다.
@@ -222,10 +238,12 @@ Base Paht: /tumblebug
 Call the action of the service defined in api.yaml. For example:
 $ ./mayfly api --help
 $ ./mayfly api --list
-$ ./mayfly api --service spider --list
-$ ./mayfly api --service spider --action ListCloudOS
-$ ./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
-$ ./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
+$ ./mayfly api --service cb-spider --list
+$ ./mayfly api --service cb-spider --action ListCloudOS
+$ ./mayfly api --service cb-spider --action GetCloudDriver --pathParam driver_name:AWS
+$ ./mayfly api --service cb-spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName=aws-config01
+$ ./mayfly api --service cb-tumblebug --action Getmcivm --pathParam "nsId:ns01 mciId:mci01 vmId:vm01" --queryString "option=status&accessInfo=showSshKey"
+$ ./mayfly api --service cm-beetle --action Deleteinfra --pathParam "nsId:mig01 mciId:mmci01" --queryString "option=terminate"
 
 Usage:
   mayfly api [flags]
@@ -254,8 +272,8 @@ Use "mayfly api [command] --help" for more information about a command.
 ### 주요 flag 설명
 --service (-s) : 호출할 서비스의 이름을 지정합니다.   
 --action (-a) : 호출할 액션의 이름을 지정합니다.   
---pathParam (-p) : 경로 파라미터를 지정합니다.   
---queryString (-q) : 쿼리 문자열을 지정합니다.   
+--pathParam (-p) : 경로 파라미터를 지정합니다. (형식: "key1:value1 key2:value2")   
+--queryString (-q) : 쿼리 문자열을 지정합니다. (형식: "param1=value1" 또는 "param1=value1&param2=value2")   
 --data (-d) : 서버에 전송할 데이터를 지정합니다.   
 --file (-f) : 서버에 전송할 데이터가 포함된 파일을 지정합니다.   
 --output (-o) : 서버 응답을 파일에 저장합니다.   
@@ -272,11 +290,12 @@ $ ./mayfly api -s <service_name> -a <action_name>
 ```
 
 만약, 가변 경로와 쿼리 스트링이 존재하는 경우 아래처럼 지정합니다.   
-전달할 경로 파라메터가 많은 경우 "key1:value1 key2:value2"처럼 각각은 공백으로 구분합니다.
+전달할 경로 파라메터가 많은 경우 "key1:value1 key2:value2"처럼 각각은 공백으로 구분합니다.   
+쿼리 문자열은 "param1=value1" 형태로 지정하며, 여러 개인 경우 "&"로 구분합니다.
 ```
-$ ./mayfly api --service <service_name> --action <action_name> --pathParam <key1:value1 key2:value2> --queryString <query_string>
+$ ./mayfly api --service <service_name> --action <action_name> --pathParam "key1:value1 key2:value2" --queryString "param1=value1&param2=value2"
 
-$ ./mayfly api -s <service_name> -a <action_name> -p <key1:value1 key2:value2> -queryString <query_string>
+$ ./mayfly api -s <service_name> -a <action_name> -p "key1:value1 key2:value2" -q "param1=value1&param2=value2"
 ```
 
 ### 환경 설정 파일과 실행 명령의 맵핑 관계
@@ -286,12 +305,29 @@ $ ./mayfly api -s <service_name> -a <action_name> -p <key1:value1 key2:value2> -
 
 ### 기본 사용 예시 
 ```
+# 도움말 및 목록 조회
 $ ./mayfly api --help
 $ ./mayfly api --list
 $ ./mayfly api --service cb-spider --list
+
+# 단순 액션 호출
 $ ./mayfly api --service cb-spider --action ListCloudOS
+
+# PathParam 사용 (가변 경로)
 $ ./mayfly api --service cb-spider --action GetCloudDriver --pathParam driver_name:AWS
-$ ./mayfly api --service cb-spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
+
+# PathParam + QueryString 사용 (단일 쿼리)
+$ ./mayfly api --service cb-spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName=aws-config01
+
+# PathParam + QueryString 사용 (복수 쿼리 - &로 구분)
+$ ./mayfly api --service cb-tumblebug --action Getmcivm --pathParam "nsId:ns01 mciId:mci01 vmId:vm01" --queryString "option=status&accessInfo=showSshKey"
+
+# 마이그레이션된 인프라 삭제 (cm-beetle 사용 예시)
+$ ./mayfly api --service cm-beetle --action Deleteinfra --pathParam "nsId:mig01 mciId:mmci01" --queryString "option=terminate"
+
+# 또는 짧은 플래그 사용
+$ ./mayfly api -s cb-tumblebug -a Getmcivm -p "nsId:ns01 mciId:mci01 vmId:vm01" -q "option=status&accessInfo=showSshKey"
+$ ./mayfly api -s cm-beetle -a Deleteinfra -p "nsId:mig01 mciId:mmci01" -q "option=terminate"
 ```
 
 

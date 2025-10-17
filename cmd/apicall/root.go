@@ -77,10 +77,12 @@ var apiCmd = &cobra.Command{
 	Long: `Call the action of the service defined in api.yaml. For example:
 ./mayfly api --help
 ./mayfly api --list
-./mayfly api --service spider --list
-./mayfly api --service spider --action ListCloudOS
-./mayfly api --service spider --action GetCloudDriver --pathParam driver_name:AWS
-./mayfly api --service spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName:aws-config01
+./mayfly api --service cb-spider --list
+./mayfly api --service cb-spider --action ListCloudOS
+./mayfly api --service cb-spider --action GetCloudDriver --pathParam driver_name:AWS
+./mayfly api --service cb-spider --action GetRegionZone --pathParam region_name:ap-northeast-3 --queryString ConnectionName=aws-config01
+./mayfly api --service cb-tumblebug --action Getmcivm --pathParam "nsId:ns01 mciId:mci01 vmId:vm01" --queryString "option=status&accessInfo=showSshKey"
+./mayfly api --service cm-beetle --action Deleteinfra --pathParam "nsId:mig01 mciId:mmci01" --queryString "option=terminate"
 `,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		//fmt.Printf("len(args) : %d\n", len(args))
@@ -450,8 +452,8 @@ func init() {
 	apiCmd.PersistentFlags().StringVarP(&actionName, "action", "a", "", "Action to perform")
 	//apiCmd.PersistentFlags().StringVarP(&method, "method", "m", "", "HTTP Method")
 	apiCmd.PersistentFlags().BoolVarP(&isVerbose, "verbose", "v", false, "Show more detail information")
-	apiCmd.PersistentFlags().StringVarP(&pathParam, "pathParam", "p", "", "Variable path info set \"key1:value1 key2:value2\" for URIs")
-	apiCmd.PersistentFlags().StringVarP(&queryString, "queryString", "q", "", "Use if you have a query string to add to URIs")
+	apiCmd.PersistentFlags().StringVarP(&pathParam, "pathParam", "p", "", "Variable path info set \"key1:value1 key2:value2\" for URIs (separated by space)")
+	apiCmd.PersistentFlags().StringVarP(&queryString, "queryString", "q", "", "Query string to add to URIs (format: \"param1=value1\" or \"param1=value1&param2=value2\")")
 
 	apiCmd.Flags().BoolVarP(&isListMode, "list", "l", false, "Show Service or Action list")
 	apiCmd.PersistentFlags().StringVarP(&sendData, "data", "d", "", "Data to send to the server")

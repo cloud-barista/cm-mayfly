@@ -219,6 +219,14 @@ $ ./mayfly infra run -s cb-spider
 $ ./mayfly infra run -s "cb-spider cb-tumblebug"
 ```
 
+
+You can clean up migrated resources in CSP using the `api` command with cm-beetle's Deleteinfra API.
+```
+$ ./mayfly api --service cm-beetle --action Deleteinfra --pathParam "nsId:mig01 mciId:mmci01" --queryString "option=terminate"
+```
+For more details about the `api` command, please refer to the [api sub-command guide](https://github.com/cloud-barista/cm-mayfly/blob/main/docs/cm-mayfly-api.md).
+
+
 ## 7. Trouble Shooting
 For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. 
 For cm-cicada, please check the logs and restart if any errors occur.
