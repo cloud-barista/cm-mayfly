@@ -557,8 +557,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-grasshopper
   # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
   cm-grasshopper:
+    image: cloudbaristaorg/cm-grasshopper:0.4.1
     #image: cloudbaristaorg/cm-grasshopper:edge
-    image: cloudbaristaorg/cm-grasshopper:0.4.0
     container_name: cm-grasshopper
     pull_policy: always
     restart: unless-stopped
