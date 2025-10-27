@@ -20,7 +20,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.11.13
+    image: cloudbaristaorg/cb-spider:0.11.15
     pull_policy: always
     container_name: cb-spider
     platform: linux/amd64
@@ -44,6 +44,7 @@ services:
       - SPIDER_LOG_LEVEL=error
       - SPIDER_HISCALL_LOG_LEVEL=error
       - ID_TRANSFORM_MODE=OFF
+      - ADMINWEB=ON # ON or OFF Spider Admin Web Console
     healthcheck: # for CB-Spider
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1024/spider/readyz" ]
       <<: *default-health-check
@@ -53,7 +54,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.11.13
+    image: cloudbaristaorg/cb-tumblebug:0.11.15
     container_name: cb-tumblebug
     pull_policy: always
     platform: linux/amd64
@@ -189,7 +190,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.11.16
+    image: cloudbaristaorg/cb-mapui:0.11.17
     container_name: cb-mapui
     pull_policy: always
     ports:
@@ -212,7 +213,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.4.0
+    image: cloudbaristaorg/cm-beetle:0.4.1
     container_name: cm-beetle
     pull_policy: always
     platform: linux/amd64
