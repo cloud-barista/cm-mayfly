@@ -572,6 +572,7 @@ services:
       - ./conf/cm-grasshopper/conf:/conf
       - ./data/cm-grasshopper/software_temp:/software_temp:rw
       - ./data/cm-grasshopper/software_log:/software_log:rw
+      - ./data/cm-grasshopper/data_root/:/root/.cm-grasshopper:rw
       - ./data/cm-honeybee/:/root/.cm-grasshopper/honeybee:ro
     command: >
       /bin/sh -c "
