@@ -103,6 +103,16 @@ var runCmd = &cobra.Command{
 			showServiceInfo(services)
 		}
 
+		// Ask user for confirmation before proceeding with installation
+		fmt.Print("\nDo you want to proceed with the installation? (y/N): ")
+		var response string
+		fmt.Scanln(&response)
+
+		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+			fmt.Println("❌ Installation cancelled by user")
+			return
+		}
+
 		// Always use detached mode to avoid dependency issues
 		// If user wants to see logs, we'll show them after containers are started
 		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
