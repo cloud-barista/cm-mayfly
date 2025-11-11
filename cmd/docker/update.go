@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
@@ -61,36 +62,55 @@ func checkDockerHubTagUpdate(imageName, tag string) (string, error) {
 }
 
 // getCurrentLocalVersion gets the current local image version of a service
-func getCurrentLocalVersion(imageName, tag string) (string, error) {
-	// Extract service name from image name (e.g., "cloudbaristaorg/cm-beetle" -> "cm-beetle")
-	serviceName := imageName
-	if strings.Contains(imageName, "/") {
-		parts := strings.Split(imageName, "/")
-		serviceName = parts[len(parts)-1]
-	}
+// It first tries to get the actual running container's image, then falls back to checking local images
+func getCurrentLocalVersion(imageName, tag string, serviceName string) (string, error) {
+	// First, try to get the actual running container's image using docker compose ps
+	// This is more accurate than docker ps --filter because it uses the service name from docker-compose.yaml
+	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps --format json", ProjectName, DockerFilePath)
+	cmd := exec.Command("bash", "-c", cmdStr)
+	output, err := cmd.Output()
+	if err == nil {
+		// Parse JSON output to find the container for this service
+		lines := strings.Split(string(output), "\n")
+		for _, line := range lines {
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
 
-	// Check if container is running and get its image tag
-	cmdStr := fmt.Sprintf("docker ps --filter name=%s --format '{{.Image}}' 2>/dev/null | head -1", serviceName)
-	output := common.SysCallWithOutput(cmdStr)
+			var container struct {
+				Name    string `json:"Name"`
+				Service string `json:"Service"`
+				State   string `json:"State"`
+				Image   string `json:"Image"`
+			}
 
-	if strings.TrimSpace(output) != "" {
-		// Extract tag from image:tag format
-		parts := strings.Split(strings.TrimSpace(output), ":")
-		if len(parts) > 1 {
-			return parts[len(parts)-1], nil
+			if err := json.Unmarshal([]byte(line), &container); err != nil {
+				continue
+			}
+
+			// Check if this container belongs to the service we're looking for
+			if container.Service == serviceName && container.State == "running" {
+				// Extract tag from image:tag format
+				parts := strings.Split(container.Image, ":")
+				if len(parts) > 1 {
+					return parts[len(parts)-1], nil
+				}
+				// If no tag, return the full image (might be image ID)
+				return container.Image, nil
+			}
 		}
 	}
 
 	// Fallback: Check if the specific image exists locally
 	cmdStr = fmt.Sprintf("docker images --format '{{.Tag}}' %s:%s 2>/dev/null || echo 'not_installed'", imageName, tag)
-	output = common.SysCallWithOutput(cmdStr)
+	output2 := common.SysCallWithOutput(cmdStr)
 
-	if strings.TrimSpace(output) == "not_installed" {
+	if strings.TrimSpace(output2) == "not_installed" {
 		return "not_installed", nil
 	}
 
 	// Return the tag if image exists locally
-	return strings.TrimSpace(output), nil
+	return strings.TrimSpace(output2), nil
 }
 
 // checkVersionUpdates checks for version updates and displays comparison
@@ -110,8 +130,8 @@ func checkVersionUpdates(services map[string]ServiceInfo) (bool, error) {
 		imageName := parts[0]
 		composeTag := parts[1]
 
-		// Get current local version
-		currentVersion, err := getCurrentLocalVersion(imageName, composeTag)
+		// Get current local version (pass serviceName to get actual running container's image)
+		currentVersion, err := getCurrentLocalVersion(imageName, composeTag, serviceName)
 		if err != nil {
 			currentVersion = "unknown"
 		}
@@ -244,7 +264,14 @@ var updateCmd = &cobra.Command{
 				fmt.Printf("🔄 Proceeding with regular pull...\n")
 			} else if !hasUpdates {
 				fmt.Println("✅ All services are up to date!")
-				fmt.Println("🔄 Proceeding with restart...")
+				fmt.Print("Do you want to proceed with pull and restart anyway? (y/N): ")
+				var response string
+				fmt.Scanln(&response)
+
+				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+					fmt.Println("❌ Update cancelled by user")
+					return
+				}
 			} else {
 				// Ask user for confirmation
 				fmt.Print("Do you want to proceed with the update? (y/N): ")
