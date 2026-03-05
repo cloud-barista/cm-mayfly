@@ -355,7 +355,7 @@ services:
     # networks:
     #   - cm-butterfly-network
     ports:
-      - target: 5174
+      - target: 80
         published: 5174
         protocol: tcp
     depends_on:
