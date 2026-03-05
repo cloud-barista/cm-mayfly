@@ -23,6 +23,7 @@ services:
     image: cloudbaristaorg/cb-spider:0.12.0
     pull_policy: always
     container_name: cb-spider
+    restart: unless-stopped
     platform: linux/amd64
     networks:
       - spider_net
@@ -56,6 +57,7 @@ services:
   cb-tumblebug:
     image: cloudbaristaorg/cb-tumblebug:0.12.1
     container_name: cb-tumblebug
+    restart: unless-stopped
     pull_policy: always
     platform: linux/amd64
     networks:
@@ -119,6 +121,7 @@ services:
   cb-tumblebug-etcd:
     image: gcr.io/etcd-development/etcd:v3.5.21
     container_name: cb-tumblebug-etcd
+    restart: unless-stopped
     networks:
       - default
     ports:
@@ -192,6 +195,7 @@ services:
   cb-mapui:
     image: cloudbaristaorg/cb-mapui:0.12.1
     container_name: cb-mapui
+    restart: unless-stopped
     pull_policy: always
     ports:
       - target: 1324
