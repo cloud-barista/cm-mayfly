@@ -313,7 +313,7 @@ services:
     # image: cloudbaristaorg/cm-butterfly-front:edge
     # image: cloudbaristaorg/cm-butterfly-front:0.5.0
     # image: csescsta/cm-butterfly-front:edge
-    image: csescsta/cm-butterfly-front:20260102154107-develop
+    image: csescsta/cm-butterfly-front:20260210173357-develop
 
     container_name: cm-butterfly-front
     pull_policy: always
