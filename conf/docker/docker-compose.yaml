@@ -365,7 +365,7 @@ services:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
     healthcheck: # for butterfly-api
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front-dev:5174/" ]
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front-dev:80/" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
       <<: *default-health-check
 
