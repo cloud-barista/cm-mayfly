@@ -32,3 +32,5 @@ conf/docker/data/*
 
 # container-volume
 container-volume/
+# Claude Code
+.claude/
