@@ -272,7 +272,7 @@ services:
   cm-butterfly-api:
     # image: cloudbaristaorg/cm-butterfly-api:edge
     # image: cloudbaristaorg/cm-butterfly-api:0.5.0
-    image: csescsta/cm-butterfly-api:20260102154107-develop
+    image: csescsta/cm-butterfly-api:20260408145340-develop
     container_name: cm-butterfly-api
     pull_policy: always
     platform: linux/amd64
@@ -317,7 +317,7 @@ services:
     # image: cloudbaristaorg/cm-butterfly-front:edge
     # image: cloudbaristaorg/cm-butterfly-front:0.5.0
     # image: csescsta/cm-butterfly-front:edge
-    image: csescsta/cm-butterfly-front:20260210173357-develop
+    image: csescsta/cm-butterfly-front:20260408145340-develop
 
     container_name: cm-butterfly-front
     pull_policy: always
