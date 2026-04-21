@@ -11,7 +11,7 @@ apache-airflow-providers-ftp==3.11.1
 apache-airflow-providers-cncf-kubernetes==9.0.1
 gusty==0.22.1
 ipykernel==6.29.5
-nbconvert==7.16.4
+nbconvert==7.17.1
 siuba==0.4.4
 SQLAlchemy-Utils==0.41.2
 yfinance==0.2.49
