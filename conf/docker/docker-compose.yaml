@@ -342,33 +342,33 @@ services:
 
 
 
-  cm-butterfly-front-dev:
-    # image: cloudbaristaorg/cm-butterfly-front:edge
-    # image: cloudbaristaorg/cm-butterfly-front:0.5.0
-    # image: csescsta/cm-butterfly-front:edge
-    # image: csescsta/cm-butterfly-front:20260304041627-feature-260220-jsonviewer-jsyoo
-    image: csescsta/cm-butterfly-front:20260318094849-feature-260318-jsonviewer-workflow-jsyoo
-
-    container_name: cm-butterfly-front-dev
-    pull_policy: always
-    platform: linux/amd64
-    restart: unless-stopped
-    # networks:
-    #   - cm-butterfly-network
-    ports:
-      - target: 80
-        published: 5174
-        protocol: tcp
-    depends_on:
-      cm-butterfly-api:
-        condition: service_healthy
-    volumes:
-      - ./tool/mayfly:/app/tool/mayfly
-      - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
-    healthcheck: # for butterfly-api
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front-dev:80/" ]
-      #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
-      <<: *default-health-check
+  # cm-butterfly-front-dev:
+  #   # image: cloudbaristaorg/cm-butterfly-front:edge
+  #   # image: cloudbaristaorg/cm-butterfly-front:0.5.0
+  #   # image: csescsta/cm-butterfly-front:edge
+  #   # image: csescsta/cm-butterfly-front:20260304041627-feature-260220-jsonviewer-jsyoo
+  #   image: csescsta/cm-butterfly-front:20260318094849-feature-260318-jsonviewer-workflow-jsyoo
+  #
+  #   container_name: cm-butterfly-front-dev
+  #   pull_policy: always
+  #   platform: linux/amd64
+  #   restart: unless-stopped
+  #   # networks:
+  #   #   - cm-butterfly-network
+  #   ports:
+  #     - target: 80
+  #       published: 5174
+  #       protocol: tcp
+  #   depends_on:
+  #     cm-butterfly-api:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./tool/mayfly:/app/tool/mayfly
+  #     - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+  #   healthcheck: # for butterfly-api
+  #     test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front-dev:80/" ]
+  #     #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
+  #     <<: *default-health-check
 
 
   # cm-butterfly (db)
