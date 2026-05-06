@@ -23,6 +23,7 @@ services:
     image: cloudbaristaorg/cb-spider:0.12.0
     pull_policy: always
     container_name: cb-spider
+    restart: unless-stopped
     platform: linux/amd64
     networks:
       - spider_net
@@ -56,6 +57,7 @@ services:
   cb-tumblebug:
     image: cloudbaristaorg/cb-tumblebug:0.12.1
     container_name: cb-tumblebug
+    restart: unless-stopped
     pull_policy: always
     platform: linux/amd64
     networks:
@@ -119,6 +121,7 @@ services:
   cb-tumblebug-etcd:
     image: gcr.io/etcd-development/etcd:v3.5.21
     container_name: cb-tumblebug-etcd
+    restart: unless-stopped
     networks:
       - default
     ports:
@@ -192,6 +195,7 @@ services:
   cb-mapui:
     image: cloudbaristaorg/cb-mapui:0.12.1
     container_name: cb-mapui
+    restart: unless-stopped
     pull_policy: always
     ports:
       - target: 1324
@@ -267,8 +271,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
     # image: cloudbaristaorg/cm-butterfly-api:edge
-    image: cloudbaristaorg/cm-butterfly-api:0.5.0
-    # image: csescsta/cm-butterfly-api:20251110035245-develop
+    image: cloudbaristaorg/cm-butterfly-api:0.5.1
+    # image: csescsta/cm-butterfly-api:20260408145340-develop
     container_name: cm-butterfly-api
     pull_policy: always
     platform: linux/amd64
@@ -311,9 +315,10 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
     # image: cloudbaristaorg/cm-butterfly-front:edge
-    image: cloudbaristaorg/cm-butterfly-front:0.5.0
+    image: cloudbaristaorg/cm-butterfly-front:0.5.1
     # image: csescsta/cm-butterfly-front:edge
-    # image: csescsta/cm-butterfly-front:20251110035245-develop    
+    # image: csescsta/cm-butterfly-front:20260408145340-develop
+
     container_name: cm-butterfly-front
     pull_policy: always
     platform: linux/amd64
@@ -334,6 +339,36 @@ services:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front:80/" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
       <<: *default-health-check
+
+
+
+  # cm-butterfly-front-dev:
+  #   # image: cloudbaristaorg/cm-butterfly-front:edge
+  #   # image: cloudbaristaorg/cm-butterfly-front:0.5.0
+  #   # image: csescsta/cm-butterfly-front:edge
+  #   # image: csescsta/cm-butterfly-front:20260304041627-feature-260220-jsonviewer-jsyoo
+  #   image: csescsta/cm-butterfly-front:20260318094849-feature-260318-jsonviewer-workflow-jsyoo
+  #
+  #   container_name: cm-butterfly-front-dev
+  #   pull_policy: always
+  #   platform: linux/amd64
+  #   restart: unless-stopped
+  #   # networks:
+  #   #   - cm-butterfly-network
+  #   ports:
+  #     - target: 80
+  #       published: 5174
+  #       protocol: tcp
+  #   depends_on:
+  #     cm-butterfly-api:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./tool/mayfly:/app/tool/mayfly
+  #     - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+  #   healthcheck: # for butterfly-api
+  #     test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front-dev:80/" ]
+  #     #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
+  #     <<: *default-health-check
 
 
   # cm-butterfly (db)
