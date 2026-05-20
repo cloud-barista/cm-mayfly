@@ -109,10 +109,27 @@ $ cd cm-mayfly
 ```
 
 ## 2. Prerequisites
-Some sub systems may require initial setup, including changing the default password. If changes or settings are needed, modify the information in the `./conf/docker` folder.
 
-For example, to change the SMTP settings for cm-cicada, modify the following file:
-`./conf/docker/conf/cm-cicada/airflow_smtp.env`
+### 2.1. Configure the docker-compose environment file
+The docker-compose stack reads credentials, DB settings, SMTP settings, and log
+levels from a single environment file: `./conf/docker/.env`. This file is
+gitignored and is **not** included in the repository, so you must create it from
+the provided template before running any `infra` command:
+
+```
+$ cp conf/docker/.env.example conf/docker/.env
+# then edit conf/docker/.env and fill in the secret values (passwords, SMTP credentials)
+```
+
+The non-secret defaults in `.env.example` match the previous built-in values, so
+you only need to set the blank secret entries (e.g. `*_PASSWORD`, `SMTP_USER`,
+`SMTP_PASSWORD`, `SMTP_MAIL_FROM`). If `conf/docker/.env` is missing, cm-mayfly's
+`infra` commands stop with a clear error before running docker compose.
+
+### 2.2. Other initial setup
+Some sub systems may require additional initial setup. If changes or settings are needed, modify the information in the `./conf/docker` folder.
+
+For example, the SMTP settings for cm-cicada are now configured through `conf/docker/.env` (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_PORT`, `SMTP_MAIL_FROM`).
 
 [For more details, refer to the cm-cicada SMTP configuration guide.](https://github.com/cloud-barista/cm-cicada?tab=readme-ov-file#smtp)
 
