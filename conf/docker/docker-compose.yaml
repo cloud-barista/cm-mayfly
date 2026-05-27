@@ -42,8 +42,8 @@ services:
       # if you leave these values empty, REST Auth will be disabled.
       # - API_USERNAME=
       # - API_PASSWORD=
-      - SPIDER_LOG_LEVEL=error
-      - SPIDER_HISCALL_LOG_LEVEL=error
+      - SPIDER_LOG_LEVEL=${SPIDER_LOG_LEVEL}
+      - SPIDER_HISCALL_LOG_LEVEL=${SPIDER_HISCALL_LOG_LEVEL}
       - ID_TRANSFORM_MODE=OFF
       - ADMINWEB=ON # ON or OFF Spider Admin Web Console
     healthcheck: # for CB-Spider
@@ -92,9 +92,9 @@ services:
       # - TB_ETCD_USERNAME=default
       # - TB_ETCD_PASSWORD=default
       - TB_POSTGRES_ENDPOINT=cb-tumblebug-postgres:5432
-      - TB_POSTGRES_DATABASE=tumblebug
-      - TB_POSTGRES_USER=tumblebug
-      - TB_POSTGRES_PASSWORD=tumblebug
+      - TB_POSTGRES_DATABASE=${TUMBLEBUG_DB_NAME}
+      - TB_POSTGRES_USER=${TUMBLEBUG_DB_USER}
+      - TB_POSTGRES_PASSWORD=${TUMBLEBUG_DB_PASSWORD}
       # - TB_TERRARIUM_API_USERNAME=default
       # - TB_TERRARIUM_API_PASSWORD=default
       # - TB_ALLOW_ORIGINS=*
@@ -181,11 +181,11 @@ services:
     volumes:
       - ./data/cb-tumblebug/meta_db/postgres:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=tumblebug
-      - POSTGRES_PASSWORD=tumblebug
-      - POSTGRES_DB=tumblebug
+      - POSTGRES_USER=${TUMBLEBUG_DB_USER}
+      - POSTGRES_PASSWORD=${TUMBLEBUG_DB_PASSWORD}
+      - POSTGRES_DB=${TUMBLEBUG_DB_NAME}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tumblebug"]
+      test: ["CMD-SHELL", "pg_isready -U ${TUMBLEBUG_DB_USER}"]
       <<: *default-health-check
 
 
@@ -239,15 +239,15 @@ services:
       - BEETLE_SELF_ENDPOINT=localhost:8056
       # - BEETLE_API_ALLOW_ORIGINS=*
       # - BEETLE_API_AUTH_ENABLED=true
-      - BEETLE_API_USERNAME=default
-      - BEETLE_API_PASSWORD=default
+      - BEETLE_API_USERNAME=${BEETLE_API_USERNAME}
+      - BEETLE_API_PASSWORD=${BEETLE_API_PASSWORD}
       # - BEETLE_LKVSTORE_PATH=/app/db/beetle.db
       # - BEETLE_LOGFILE_PATH=/app/log/beetle.log
       # - BEETLE_LOGFILE_MAXSIZE=1000
       # - BEETLE_LOGFILE_MAXBACKUPS=3
       # - BEETLE_LOGFILE_MAXAGE=30
       # - BEETLE_LOGFILE_COMPRESS=false
-      - BEETLE_LOGLEVEL=debug
+      - BEETLE_LOGLEVEL=${BEETLE_LOGLEVEL}
       # - BEETLE_LOGWRITER=both
       - BEETLE_NODE_ENV=development
       # - BEETLE_AUTOCONTROL_DURATION_MS=10000
@@ -289,18 +289,35 @@ services:
     depends_on:
       cm-butterfly-db:
         condition: service_healthy
-    env_file:
-      - ./conf/cm-butterfly/api/.env
+    # ─────────────────────────────────────────────────────────────
+    # DEPRECATED: the per-service env_file is no longer used.
+    # Credentials and DB settings now come from the host conf/docker/.env
+    # via ${VAR} interpolation (single source of truth).
+    # The file (./conf/cm-butterfly/api/.env) is kept on disk for reference
+    # only and may be removed in a future release.
+    # ─────────────────────────────────────────────────────────────
+    # env_file:
+    #   - ./conf/cm-butterfly/api/.env
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       #- ./conf/cm-butterfly/api/conf:/conf/
       - ./conf/cm-butterfly/api/conf/authsetting.yaml:/conf/authsetting.yaml
       #- ./conf/cm-butterfly/api/conf/api.yaml:/conf/api.yaml
       #- ./data/cm-butterfly/log/api.log:/app/api.log
-    # environment:
-    #   USER_AUTH_DATA_PATH: /conf/user.dat 
-    #   USER_AUTH_CONF_PATH: /conf/authsetting.yaml
-    #   MENU_CONF_DATA_PATH: /conf/menu.yaml
+    environment:
+      # API listen address (fixed inside the cm-butterfly-api container; not secrets)
+      - API_ADDR=0.0.0.0
+      - API_PORT=4000
+      # User auth / menu config paths (container-internal paths; not secrets)
+      - USER_AUTH_DATA_PATH=conf/user.dat
+      - USER_AUTH_CONF_PATH=conf/authsetting.yaml
+      - MENU_CONF_DATA_PATH=conf/menu.yaml
+      # PostgreSQL credentials (managed centrally in the host .env)
+      - POSTGRES_USER=${BUTTERFLY_DB_USER}
+      - POSTGRES_PASSWORD=${BUTTERFLY_DB_PASSWORD}
+      - POSTGRES_DATABASE_HOST=cm-butterfly-db
+      - POSTGRES_DB=${BUTTERFLY_DB_NAME}
+      - DATABASE_URL=postgres://${BUTTERFLY_DB_USER}:${BUTTERFLY_DB_PASSWORD}@cm-butterfly-db:5432/${BUTTERFLY_DB_NAME}
     healthcheck: # for butterfly-api
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz" ]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
@@ -384,13 +401,24 @@ services:
       - target: 5432
         published: 543
         protocol: tcp
-    env_file:
-      - ./conf/cm-butterfly/api/.env
+    # ─────────────────────────────────────────────────────────────
+    # DEPRECATED: the per-service env_file is no longer used.
+    # DB credentials now come from the host conf/docker/.env via
+    # ${VAR} interpolation (shared with cm-butterfly-api).
+    # The file (./conf/cm-butterfly/api/.env) is kept on disk for reference
+    # only and may be removed in a future release.
+    # ─────────────────────────────────────────────────────────────
+    # env_file:
+    #   - ./conf/cm-butterfly/api/.env
+    environment:
+      - POSTGRES_USER=${BUTTERFLY_DB_USER}
+      - POSTGRES_PASSWORD=${BUTTERFLY_DB_PASSWORD}
+      - POSTGRES_DB=${BUTTERFLY_DB_NAME}
     volumes:
       - cm-butterfly-db:/var/lib/postgresql/data
     user: root
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "butterflyadmin", "-d", "butterfly-db" ]
+      test: [ "CMD", "pg_isready", "-U", "${BUTTERFLY_DB_USER}", "-d", "${BUTTERFLY_DB_NAME}" ]
       <<: *default-health-check
 
 
@@ -514,10 +542,10 @@ services:
     # expose:
     #   - "3306"        
     environment:
-        - MYSQL_ROOT_PASSWORD=airflow_pass
-        - MYSQL_USER=airflow
-        - MYSQL_PASSWORD=airflow_pass
-        - MYSQL_DATABASE=airflow
+        - MYSQL_ROOT_PASSWORD=${AIRFLOW_DB_ROOT_PASSWORD}
+        - MYSQL_USER=${AIRFLOW_DB_USER}
+        - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
+        - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
     volumes:
         - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
         - ./data/cm-cicada/db_data:/var/lib/mysql
@@ -539,13 +567,27 @@ services:
     image: cloudbaristaorg/airflow-server:0.5.0
     #image: cloudbaristaorg/airflow-server:edge
     restart: unless-stopped
-    env_file:
-      - ./conf/cm-cicada/airflow_smtp.env
+    # ─────────────────────────────────────────────────────────────
+    # DEPRECATED: the SMTP env_file is no longer used.
+    # SMTP settings now come from the host conf/docker/.env via
+    # ${VAR} interpolation (single source of truth for secrets).
+    # The file (./conf/cm-cicada/airflow_smtp.env) is kept on disk for
+    # reference only and may be removed in a future release.
+    # ─────────────────────────────────────────────────────────────
+    # env_file:
+    #   - ./conf/cm-cicada/airflow_smtp.env
     environment:
-        - MYSQL_USER=airflow
-        - MYSQL_PASSWORD=airflow_pass
+        # SMTP settings (managed centrally in the host .env)
+        - AIRFLOW__SMTP__SMTP_HOST=${SMTP_HOST}
+        - AIRFLOW__SMTP__SMTP_USER=${SMTP_USER}
+        - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
+        - AIRFLOW__SMTP__SMTP_PORT=${SMTP_PORT}
+        - AIRFLOW__SMTP__SMTP_MAIL_FROM=${SMTP_MAIL_FROM}
+        # MySQL credentials (managed centrally in the host .env)
+        - MYSQL_USER=${AIRFLOW_DB_USER}
+        - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
         - MYSQL_HOST=airflow-mysql
-        - MYSQL_DATABASE=airflow
+        - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
     ports:
         - "5555:5555"
         - "8080:8080"
@@ -671,13 +713,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=cm-ant-user
-      - POSTGRES_PASSWORD=cm-ant-secret
-      - POSTGRES_DB=cm-ant-db
+      - POSTGRES_USER=${ANT_DB_USER}
+      - POSTGRES_PASSWORD=${ANT_DB_PASSWORD}
+      - POSTGRES_DB=${ANT_DB_NAME}
     #networks:
       # - cm-ant-db-network
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "cm-ant-user", "-d", "cm-ant-db" ]
+      test: [ "CMD", "pg_isready", "-U", "${ANT_DB_USER}", "-d", "${ANT_DB_NAME}" ]
       <<: *default-health-check
     restart: unless-stopped
 

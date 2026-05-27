@@ -5,6 +5,8 @@ package docker
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/cmd"
@@ -42,6 +44,40 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 		//fmt.Println(cmd.Help())
 		cmd.Help()
 	},
+	// Before any docker (infra) subcommand runs a `docker compose` command,
+	// make sure the shared environment file exists. The compose file relies on
+	// it for ${VAR} interpolation, so running without it would fail with
+	// confusing "variable is not set" warnings.
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// The bare `infra` command only prints help and does not invoke
+		// docker compose, so it does not require the .env file.
+		if !cmd.HasParent() || cmd.Name() == "infra" {
+			return nil
+		}
+		return ensureDockerEnvFile()
+	},
+}
+
+// ensureDockerEnvFile verifies that the docker-compose environment file exists
+// next to the compose file (DockerFilePath). It returns an error with English
+// guidance if the file is missing, so the docker compose command is never run
+// with unset variables.
+func ensureDockerEnvFile() error {
+	dir := filepath.Dir(DockerFilePath)
+	envPath := filepath.Join(dir, ".env")
+	examplePath := filepath.Join(dir, ".env.example")
+	if _, err := os.Stat(envPath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("environment file not found: %s\n\n"+
+				"docker-compose.yaml requires this file for ${VAR} interpolation "+
+				"(DB credentials, SMTP, log levels, etc.).\n"+
+				"Create it from the template, then edit the values before running this command again:\n\n"+
+				"  cp %s %s\n",
+				envPath, examplePath, envPath)
+		}
+		return fmt.Errorf("failed to check environment file %s: %w", envPath, err)
+	}
+	return nil
 }
 
 // convertServiceNameForDockerCompose converts comma-separated service names to space-separated

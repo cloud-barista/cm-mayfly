@@ -27,6 +27,10 @@ docker-compose-mode-files/data/*
 # test data
 conf/docker/data/*
 
+# Local docker-compose environment file (contains secrets; never commit).
+# The committed template is conf/docker/.env.example.
+conf/docker/.env
+
 # IDE's
 *.idea
 
