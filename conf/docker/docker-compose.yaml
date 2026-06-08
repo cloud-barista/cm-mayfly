@@ -20,7 +20,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.12.0
+    image: cloudbaristaorg/cb-spider:0.12.17
     pull_policy: always
     container_name: cb-spider
     restart: unless-stopped
@@ -39,9 +39,9 @@ services:
     environment:
       - PLUGIN_SW=OFF
       - SERVER_ADDRESS=0.0.0.0:1024
-      # if you leave these values empty, REST Auth will be disabled.
-      # - API_USERNAME=
-      # - API_PASSWORD=
+      # cb-spider 0.12.17+ enforces authentication — empty values cause log.Fatal on startup
+      - SPIDER_USERNAME=${SPIDER_USERNAME}
+      - SPIDER_PASSWORD=${SPIDER_PASSWORD}
       - SPIDER_LOG_LEVEL=${SPIDER_LOG_LEVEL}
       - SPIDER_HISCALL_LOG_LEVEL=${SPIDER_HISCALL_LOG_LEVEL}
       - ID_TRANSFORM_MODE=OFF
@@ -55,7 +55,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.12.1
+    image: cloudbaristaorg/cb-tumblebug:0.12.9
     container_name: cb-tumblebug
     restart: unless-stopped
     pull_policy: always
@@ -73,7 +73,9 @@ services:
       cb-spider:
         condition: service_started
       cb-tumblebug-postgres:
-        condition: service_healthy      
+        condition: service_healthy
+      mc-terrarium:
+        condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cb-tumblebug/conf:/app/conf/:ro
@@ -86,7 +88,7 @@ services:
       # - TB_SELF_ENDPOINT=xxx.xxx.xxx.xxx:1323
       - TB_SPIDER_REST_URL=http://cb-spider:1024/spider
       - TB_ETCD_ENDPOINTS=http://cb-tumblebug-etcd:2379
-      # - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
+      - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
       # - TB_IAM_MANAGER_REST_URL=http://mc-iam-manager:5000
       # - TB_ETCD_AUTH_ENABLED=false
       # - TB_ETCD_USERNAME=default
@@ -95,13 +97,13 @@ services:
       - TB_POSTGRES_DATABASE=${TUMBLEBUG_DB_NAME}
       - TB_POSTGRES_USER=${TUMBLEBUG_DB_USER}
       - TB_POSTGRES_PASSWORD=${TUMBLEBUG_DB_PASSWORD}
-      # - TB_TERRARIUM_API_USERNAME=default
-      # - TB_TERRARIUM_API_PASSWORD=default
+      - TB_TERRARIUM_API_USERNAME=${TERRARIUM_API_USERNAME}
+      - TB_TERRARIUM_API_PASSWORD=${TERRARIUM_API_PASSWORD}
       # - TB_ALLOW_ORIGINS=*
       # - TB_AUTH_ENABLED=true
       # - TB_AUTH_MODE=jwt
-      # - TB_API_USERNAME=default
-      # - TB_API_PASSWORD=$$2a$$10$$4PKzCuJ6fPYsbCF.HR//ieLjaCzBAdwORchx62F2JRXQsuR3d9T0q
+      - TB_API_USERNAME=${TB_API_USERNAME}
+      - TB_API_PASSWORD=${TB_API_PASSWORD}
       # - TB_AUTOCONTROL_DURATION_MS=10000
       # - TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
       # - TB_DEFAULT_NAMESPACE=default
@@ -111,9 +113,12 @@ services:
       # - TB_LOGFILE_MAXBACKUPS=3
       # - TB_LOGFILE_MAXAGE=30
       # - TB_LOGFILE_COMPRESS=false
-      # - TB_LOGLEVEL=debug
+      - TB_LOGLEVEL=${TB_LOGLEVEL}
       # - TB_LOGWRITER=both
       # - TB_NODE_ENV=development
+      # OpenBao (시크릿 매니저) 연동
+      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_TOKEN=${VAULT_TOKEN}
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1323/tumblebug/readyz" ]
       <<: *default-health-check
@@ -180,6 +185,8 @@ services:
       - 6432:5432
     volumes:
       - ./data/cb-tumblebug/meta_db/postgres:/var/lib/postgresql/data
+    # cb-tumblebug 0.12.9 권장 — 동시 연결 한도 확장
+    command: postgres -c max_connections=500
     environment:
       - POSTGRES_USER=${TUMBLEBUG_DB_USER}
       - POSTGRES_PASSWORD=${TUMBLEBUG_DB_PASSWORD}
@@ -193,7 +200,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.12.1
+    image: cloudbaristaorg/cb-mapui:0.12.30
     container_name: cb-mapui
     restart: unless-stopped
     pull_policy: always
@@ -207,6 +214,168 @@ services:
       #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
       test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
       <<: *default-health-check
+
+
+  # mc-terrarium
+  # OpenTofu 기반 자원 확장(AWS site-to-site VPN 등)
+  # cb-tumblebug 0.12.9+에서 신규 의존성으로 추가됨
+  # See https://github.com/cloud-barista/mc-terrarium
+  mc-terrarium:
+    image: cloudbaristaorg/mc-terrarium:0.1.4
+    container_name: mc-terrarium
+    restart: unless-stopped
+    pull_policy: always
+    platform: linux/amd64
+    networks:
+      - spider_net
+      - default
+    ports:
+      - target: 8055
+        published: 8055
+        protocol: tcp
+    depends_on:
+      openbao-unseal:
+        condition: service_completed_successfully
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./data/mc-terrarium/.terrarium:/app/.terrarium
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+    environment:
+      - TERRARIUM_ROOT=/app
+      - TERRARIUM_API_USERNAME=${TERRARIUM_API_USERNAME}
+      - TERRARIUM_API_PASSWORD=${TERRARIUM_API_PASSWORD}
+      - TERRARIUM_LOGLEVEL=info
+      # OpenBao 시크릿 매니저 연동 (CSP 자격증명 조회)
+      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+    healthcheck:
+      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:8055/terrarium/readyz" ]
+      <<: *default-health-check
+
+
+  # openbao
+  # OpenBao 시크릿 매니저 (Vault fork) — CSP 자격증명 보관
+  # cb-tumblebug 0.12.9+에서 mc-terrarium의 시크릿 백엔드로 사용
+  # See https://openbao.org/
+  openbao:
+    image: openbao/openbao:2.5.1
+    container_name: openbao
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - default
+    ports:
+      - target: 8200
+        published: 8200
+        protocol: tcp
+    environment:
+      - BAO_ADDR=http://0.0.0.0:8200
+      - SKIP_SETCAP=true
+    # Persistent 모드 (file-based storage) — 시크릿이 재기동에도 유지
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        chown -R openbao:openbao /openbao/data || { echo "ERROR: chown failed on /openbao/data"; exit 1; }
+        exec docker-entrypoint.sh server -config=/openbao/config/openbao-config.hcl
+    volumes:
+      - ./data/openbao/data:/openbao/data
+      - ./data/openbao/secrets:/openbao/secrets
+      - ./conf/openbao/openbao-config.hcl:/openbao/config/openbao-config.hcl:ro
+    healthcheck:
+      # bao status exit codes: 0 = unsealed, 1 = sealed but running, 2 = uninitialized
+      # 셋 다 OpenBao 프로세스가 동작 중임을 의미하므로 healthy로 판정
+      test: ["CMD", "sh", "-c", "rc=0; bao status || rc=$$?; [ $$rc -le 2 ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+
+  # openbao-unseal (sidecar)
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 재기동 시 OpenBao가 sealed 상태로 기동되므로, 사용자가 매번 수동
+  # unseal 명령을 입력하지 않도록 자동화하는 1회 실행 sidecar.
+  #
+  # ⚠ 보안 트레이드오프 (운영 환경에서 반드시 검토 필요)
+  # ──────────────────────────────────────────────────────────────────────
+  # 본 sidecar는 unseal key를 호스트 파일(data/openbao/secrets/openbao-init.json)
+  # 에 평문으로 보관하고 자동 unseal한다. 이는 OpenBao/Vault의 Shamir
+  # secret sharing 의도(키 분산 보관으로 단일 노출 방지)를 무력화한다.
+  # 즉 호스트가 침해되면 누구든 OpenBao 전체 시크릿에 접근 가능.
+  #
+  # 운영 보안 등급에 따라 다음을 검토:
+  #   1) 수동 unseal — 본 sidecar 주석 처리 후 사용자가 매 재기동마다
+  #      `bao operator unseal` 또는 호스트에서 키 직접 입력.
+  #      가장 안전하지만 가용성·운영 부담 증가.
+  #   2) 클라우드 KMS Auto-Unseal — AWS KMS / GCP Cloud KMS / Azure
+  #      Key Vault 사용. conf/openbao/openbao-config.hcl 에 `seal "awskms"`
+  #      stanza 추가 → unseal key가 KMS 키로 봉인되어 호스트 파일 불필요.
+  #      권장 운영 방식.
+  #   3) HSM — 하드웨어 보안 모듈로 봉인. 가장 강력하지만 비용·복잡도↑.
+  #
+  # 본 sidecar는 워크숍·dev·내부 PoC 환경에서 운영 편의성을 우선한 기본
+  # 채택안이며, 운영 등급에서는 (2) KMS 방식 또는 (1) 수동 방식으로
+  # 전환을 권장한다. 자세한 절차는 docs/upgrade-cb-tb-0.12.9.md 참조.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  openbao-unseal:
+    image: alpine:3.20
+    container_name: openbao-unseal
+    restart: "no"     # one-shot — exit 후 종료
+    networks:
+      - default
+    depends_on:
+      openbao:
+        condition: service_healthy
+    volumes:
+      - ./tool/mayfly:/app/tool/mayfly:ro
+      - ./data/openbao/secrets:/secrets:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        VAULT_ADDR=http://openbao:8200
+        INIT_FILE=/secrets/openbao-init.json
+        MAYFLY=/app/tool/mayfly
+
+        # 1. openbao API 대기 (mayfly rest get 사용)
+        until $$MAYFLY rest get $${VAULT_ADDR}/v1/sys/seal-status -o /tmp/status.json > /dev/null 2>&1; do
+          echo "[openbao-unseal] waiting for openbao..."
+          sleep 2
+        done
+
+        # 2. 상태 분기 (alpine 기본 sh + grep/sed/cut 사용)
+        SEALED=$$(grep -o '"sealed":[^,]*' /tmp/status.json | cut -d: -f2)
+        INITIALIZED=$$(grep -o '"initialized":[^,]*' /tmp/status.json | cut -d: -f2)
+
+        if [ "$$INITIALIZED" = "false" ]; then
+          echo "[openbao-unseal] OpenBao not initialized. Run 'mayfly setup tumblebug-init' for first-time setup."
+          exit 0    # skip — 첫 init 전이므로 정상 흐름
+        fi
+
+        if [ "$$SEALED" = "false" ]; then
+          echo "[openbao-unseal] already unsealed. nothing to do."
+          exit 0
+        fi
+
+        # 3. sealed → unseal
+        if [ ! -f "$$INIT_FILE" ]; then
+          echo "[openbao-unseal] ERROR: $$INIT_FILE not found. Cannot unseal."
+          exit 1
+        fi
+
+        # OpenBao init 응답의 keys[0]는 16진수 unseal key (keys_base64[0]은 base64 인코딩 동일 키).
+        # /sys/unseal는 양쪽 모두 수용하며 cb-tumblebug 공식 unseal.sh도 keys[0] 사용.
+        UNSEAL_KEY=$$(grep -o '"keys":\["[^"]*"' "$$INIT_FILE" | cut -d'"' -f4)
+        if [ -z "$$UNSEAL_KEY" ]; then
+          echo "[openbao-unseal] ERROR: cannot extract unseal key from $$INIT_FILE"
+          exit 1
+        fi
+        echo "[openbao-unseal] unsealing via mayfly rest..."
+        $$MAYFLY rest post $${VAULT_ADDR}/v1/sys/unseal \
+          -H "Content-Type: application/json" \
+          -d "{\"key\":\"$$UNSEAL_KEY\"}" > /dev/null
+        echo "[openbao-unseal] OpenBao is now unsealed."
 
 
   # cm-beetle
@@ -289,15 +458,6 @@ services:
     depends_on:
       cm-butterfly-db:
         condition: service_healthy
-    # ─────────────────────────────────────────────────────────────
-    # DEPRECATED: the per-service env_file is no longer used.
-    # Credentials and DB settings now come from the host conf/docker/.env
-    # via ${VAR} interpolation (single source of truth).
-    # The file (./conf/cm-butterfly/api/.env) is kept on disk for reference
-    # only and may be removed in a future release.
-    # ─────────────────────────────────────────────────────────────
-    # env_file:
-    #   - ./conf/cm-butterfly/api/.env
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       #- ./conf/cm-butterfly/api/conf:/conf/
@@ -401,15 +561,6 @@ services:
       - target: 5432
         published: 543
         protocol: tcp
-    # ─────────────────────────────────────────────────────────────
-    # DEPRECATED: the per-service env_file is no longer used.
-    # DB credentials now come from the host conf/docker/.env via
-    # ${VAR} interpolation (shared with cm-butterfly-api).
-    # The file (./conf/cm-butterfly/api/.env) is kept on disk for reference
-    # only and may be removed in a future release.
-    # ─────────────────────────────────────────────────────────────
-    # env_file:
-    #   - ./conf/cm-butterfly/api/.env
     environment:
       - POSTGRES_USER=${BUTTERFLY_DB_USER}
       - POSTGRES_PASSWORD=${BUTTERFLY_DB_PASSWORD}
@@ -567,15 +718,6 @@ services:
     image: cloudbaristaorg/airflow-server:0.5.0
     #image: cloudbaristaorg/airflow-server:edge
     restart: unless-stopped
-    # ─────────────────────────────────────────────────────────────
-    # DEPRECATED: the SMTP env_file is no longer used.
-    # SMTP settings now come from the host conf/docker/.env via
-    # ${VAR} interpolation (single source of truth for secrets).
-    # The file (./conf/cm-cicada/airflow_smtp.env) is kept on disk for
-    # reference only and may be removed in a future release.
-    # ─────────────────────────────────────────────────────────────
-    # env_file:
-    #   - ./conf/cm-cicada/airflow_smtp.env
     environment:
         # SMTP settings (managed centrally in the host .env)
         - AIRFLOW__SMTP__SMTP_HOST=${SMTP_HOST}

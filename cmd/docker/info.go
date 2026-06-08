@@ -213,6 +213,9 @@ func getServicesFromCompose() []string {
 		"cb-tumblebug-etcd",
 		"cb-tumblebug-postgres",
 		"cb-mapui",
+		"mc-terrarium",
+		"openbao",
+		"openbao-unseal",
 		"cm-beetle",
 		"cm-butterfly-api",
 		"cm-butterfly-front",
@@ -428,6 +431,9 @@ func getServiceImageMapping() map[string]string {
 		"cb-tumblebug-etcd":     "etcd",
 		"cb-tumblebug-postgres": "postgres",
 		"cb-mapui":              "cb-mapui",
+		"mc-terrarium":          "mc-terrarium",
+		"openbao":               "openbao",
+		"openbao-unseal":        "alpine",
 		"cm-beetle":             "cm-beetle",
 		"cm-butterfly-api":      "cm-butterfly-api",
 		"cm-butterfly-front":    "cm-butterfly-front",
@@ -831,7 +837,9 @@ func getDependencyServices(services []string) []string {
 
 	// Define service dependencies based on docker-compose.yaml
 	serviceDependencies := map[string][]string{
-		"cb-tumblebug":       {"cb-tumblebug-etcd", "cb-spider", "cb-tumblebug-postgres"},
+		"cb-tumblebug":       {"cb-tumblebug-etcd", "cb-spider", "cb-tumblebug-postgres", "mc-terrarium"},
+		"mc-terrarium":       {"openbao-unseal"},
+		"openbao-unseal":     {"openbao"},
 		"cm-beetle":          {"cb-tumblebug"},
 		"cm-butterfly-api":   {"cm-butterfly-db"},
 		"cm-butterfly-front": {"cm-butterfly-api"},
