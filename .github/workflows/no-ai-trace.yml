@@ -1,0 +1,144 @@
+name: AI 흔적 검증 (커밋 메시지·작성자 점검)
+
+# C-Mig 정책 — cmig-workflow 본 저장소 외 모든 c-mig 관련 git 저장소에 AI 도구 흔적 노출 차단.
+# 본 yaml 원본: https://github.com/MZC-CSC/cmig-workflow/blob/main/conf/workflow-templates/no-ai-trace.yml
+# 정책 문서: https://github.com/MZC-CSC/cmig-workflow/blob/main/POLICY-AI-TRACE-GUARD.md
+# 적용 위치: 각 대상 저장소의 .github/workflows/no-ai-trace.yml
+
+on:
+  pull_request:
+    branches: [main, develop, master]
+  push:
+    branches: [main, develop, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-ai-trace:
+    name: AI 흔적 키워드 차단
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 검사 대상 commit 결정
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "from=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+            echo "to=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
+              # 신규 브랜치 push (이전 SHA 없음) → 직전 1개만 검사
+              echo "from=${{ github.sha }}~1" >> $GITHUB_OUTPUT
+            else
+              echo "from=$BEFORE" >> $GITHUB_OUTPUT
+            fi
+            echo "to=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: AI 흔적 키워드 검사
+        id: scan
+        run: |
+          FROM="${{ steps.range.outputs.from }}"
+          TO="${{ steps.range.outputs.to }}"
+
+          # commit message·body·trailer 검사용 패턴
+          BODY_PATTERNS='Co-Authored-By:.*[Cc]laude|Co-Authored-By:.*[Aa]nthropic|Co-Authored-By:.*[Cc]opilot|Generated-By:.*[Cc]laude|Generated-By:.*[Cc]ode|Assisted-By|Co-Developed-By|noreply@anthropic\.com'
+
+          # author·committer email 검사용 패턴
+          EMAIL_PATTERNS='@anthropic\.com|copilot-swe-agent'
+
+          FOUND=""
+          for sha in $(git rev-list "$FROM..$TO" 2>/dev/null); do
+            SUBJECT=$(git log -1 --pretty='%s' "$sha")
+            BODY=$(git log -1 --pretty='%B' "$sha")
+            AUTHOR_EMAIL=$(git log -1 --pretty='%ae' "$sha")
+            COMMITTER_EMAIL=$(git log -1 --pretty='%ce' "$sha")
+
+            BAD=""
+            # 1) message·body·trailer
+            HIT=$(echo "$BODY" | grep -iE "$BODY_PATTERNS" | head -3)
+            if [ -n "$HIT" ]; then
+              BAD="$BAD"$'\n'"  - trailer/body 매치:"$'\n'"$(echo "$HIT" | sed 's/^/      /')"
+            fi
+
+            # 2) email
+            for email in "$AUTHOR_EMAIL" "$COMMITTER_EMAIL"; do
+              if echo "$email" | grep -iqE "$EMAIL_PATTERNS"; then
+                BAD="$BAD"$'\n'"  - AI 도구 email 매치: $email"
+              fi
+            done
+
+            if [ -n "$BAD" ]; then
+              FOUND="$FOUND"$'\n\n'"### $sha"$'\n'"  subject: $SUBJECT$BAD"
+            fi
+          done
+
+          if [ -n "$FOUND" ]; then
+            {
+              echo "found=true"
+              echo "details<<EOF"
+              echo "$FOUND"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+
+            echo "::error::❌ AI 흔적이 포함된 commit이 발견되었습니다."
+            echo "$FOUND"
+            exit 1
+          fi
+
+          echo "found=false" >> $GITHUB_OUTPUT
+          echo "✅ AI 흔적 없음 — 정책 준수"
+
+      - name: PR에 실패 알림 코멘트
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const details = `${{ steps.scan.outputs.details }}`;
+            const body = [
+              '## ⚠️ AI 흔적 검증 실패',
+              '',
+              '**C-Mig 정책 위반** — 다음 commit에서 AI 도구 흔적이 발견되었습니다.',
+              '',
+              '<details><summary>매치된 commit 상세</summary>',
+              '',
+              '```',
+              details,
+              '```',
+              '',
+              '</details>',
+              '',
+              '### 정책',
+              '- 핵심 원칙: *cmig-workflow 본 저장소 외 모든 C-Mig 관련 git 저장소에는 AI의 존재를 노출하지 않습니다.*',
+              '- [cmig-workflow §커밋 메시지 규칙](https://github.com/MZC-CSC/cmig-workflow/blob/main/CLAUDE.md#%EC%BB%A4%EB%B0%8B-%EB%A9%94%EC%8B%9C%EC%A7%80-%EA%B7%9C%EC%B9%99)',
+              '- [POLICY-AI-TRACE-GUARD](https://github.com/MZC-CSC/cmig-workflow/blob/main/POLICY-AI-TRACE-GUARD.md)',
+              '',
+              '### 수정 방법',
+              '',
+              '**가장 최근 1건만** trailer 제거:',
+              '```bash',
+              'git commit --amend --message="$(git log -1 --pretty=\'%s%n%n%b\' | grep -vE \'Co-Authored-By:|Generated-By:|Assisted-By:|Co-Developed-By:\')"',
+              'git push --force-with-lease',
+              '```',
+              '',
+              '**여러 건 일괄 처리** (interactive rebase):',
+              '```bash',
+              'git rebase -i HEAD~5   # 마지막 5개 commit',
+              '# 각 commit에 \\'reword\\' 설정 → 편집기에서 trailer 라인 삭제',
+              'git push --force-with-lease',
+              '```',
+              '',
+              '수정 후 Actions가 재실행되면 자동으로 머지 가능해집니다.'
+            ].join('\\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
