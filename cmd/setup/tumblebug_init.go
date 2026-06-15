@@ -3,6 +3,7 @@ package setup
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -208,12 +209,43 @@ func showCredentialWarning(gitTag string) {
 	fmt.Println()
 }
 
+// readLine reads one line from r byte-by-byte, returning the line content
+// without the trailing newline.
+//
+// Why not bufio.Reader.ReadString('\n')? bufio pre-fetches up to its buffer
+// size (4096 bytes by default) into a process-local buffer on each Read call.
+// When this command hands stdin off to a child shell (multi-init.sh,
+// openbao-register-creds.sh, init.py), the child only sees what's still
+// unread on the fd — anything bufio already pulled into our memory is
+// invisible to the child. Under piped input like
+//
+//	printf "y\n2\ndefault\n" | mayfly setup tumblebug-init
+//
+// that means multi-init.sh's `read -s -p` would block waiting for a password
+// we've already "consumed" into our buffer. Reading exactly one byte per
+// kernel call keeps the unread bytes on the fd where the child can see them.
+func readLine(r io.Reader) (string, error) {
+	var sb strings.Builder
+	buf := make([]byte, 1)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			if buf[0] == '\n' {
+				return sb.String(), nil
+			}
+			sb.WriteByte(buf[0])
+		}
+		if err != nil {
+			return sb.String(), err
+		}
+	}
+}
+
 // askForConfirmation asks user for confirmation
 func askForConfirmation(message string) bool {
-	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Printf("%s (y/N): ", message)
-		response, err := reader.ReadString('\n')
+		response, err := readLine(os.Stdin)
 		if err != nil {
 			fmt.Printf("Error reading input: %v\n", err)
 			return false
@@ -387,8 +419,6 @@ func isTagExistsInRepo(cbTumblebugDir, gitTag string) bool {
 
 // showMenuAndHandleChoice shows menu and handles user choice
 func showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, existingVersion string, isDifferentVersion bool) error {
-	reader := bufio.NewReader(os.Stdin)
-
 	for {
 		if isDifferentVersion {
 			fmt.Println("\nPlease select an option:")
@@ -405,7 +435,7 @@ func showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, exi
 			fmt.Print("Enter your choice (0-2): ")
 		}
 
-		response, err := reader.ReadString('\n')
+		response, err := readLine(os.Stdin)
 		if err != nil {
 			return fmt.Errorf("error reading input: %v", err)
 		}
@@ -503,14 +533,28 @@ func removeAndDownloadFresh(cbTumblebugDir, gitTag, targetDir, originalDir strin
 func initializeTumblebug(cbTumblebugDir, originalDir string) error {
 	fmt.Printf("Starting CB-Tumblebug initialization: %s\n", cbTumblebugDir)
 
+	// Resolve mayfly's docker .env to an absolute path so openbao-init.sh
+	// (which runs from cb-tumblebug source dir) can find it. The script also
+	// uses this to persist VAULT_TOKEN back into the file mayfly's compose
+	// reads, so cb-tumblebug containers pick up the new token on restart.
+	absEnvFile, err := filepath.Abs("./conf/docker/.env")
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path of conf/docker/.env: %v", err)
+	}
+
 	// Create a script that will run in isolation
 	script := fmt.Sprintf(`#!/bin/bash
 set -e
+
+# Absolute path to mayfly's docker .env (consumed by cb-tumblebug's
+# openbao-init.sh below + by openbao-register-creds.py for VAULT_TOKEN read).
+export ENV_FILE="%s"
 
 # Change to cb-tumblebug directory
 cd "%s"
 
 echo "Current location: $(pwd)"
+echo "Using ENV_FILE: $ENV_FILE"
 
 # Source setup.env if it exists
 # Note: Currently commented out as it causes errors during initialization
@@ -522,24 +566,49 @@ echo "Current location: $(pwd)"
 #     echo "Warning: conf/setup.env file not found."
 # fi
 
-# Run init.sh if it exists
-if [ -f "init/init.sh" ]; then
-    echo "Executing init.sh file..."
+# Phase 0: OpenBao one-time initialization (cb-tumblebug 0.12.9+ only)
+# multi-init.sh assumes OpenBao is already initialized (it only registers
+# credentials, expecting a working VAULT_TOKEN). openbao-init.sh is what
+# generates the unseal key + root token and writes VAULT_TOKEN into .env.
+# Use OpenBao API as the source of truth — file on host may be stale after
+# a volume wipe.
+if [ -f "init/openbao/openbao-init.sh" ]; then
+    BAO_INIT=$(curl -sf http://localhost:8200/v1/sys/seal-status 2>/dev/null | grep -o '"initialized":[^,]*' | cut -d: -f2 | tr -d ' ')
+    if [ "$BAO_INIT" = "false" ]; then
+        echo "OpenBao not initialized (API check) - running init/openbao/openbao-init.sh"
+        chmod +x init/openbao/openbao-init.sh
+        ./init/openbao/openbao-init.sh
+        echo "openbao-init.sh execution completed"
+    elif [ "$BAO_INIT" = "true" ]; then
+        echo "OpenBao already initialized (API check) - skipping"
+    else
+        echo "Warning: OpenBao API unreachable - skipping Phase 0 (multi-init.sh will fail if OpenBao is not actually initialized)"
+    fi
+fi
+
+# cb-tumblebug 0.12.9+ uses multi-init.sh (OpenBao + Tumblebug unified init)
+# cb-tumblebug 0.12.8 and below uses init.sh (legacy fallback)
+if [ -f "init/multi-init.sh" ]; then
+    echo "Detected init/multi-init.sh - using unified init (OpenBao + Tumblebug)"
+    chmod +x init/multi-init.sh
+    ./init/multi-init.sh
+    echo "multi-init.sh execution completed"
+elif [ -f "init/init.sh" ]; then
+    echo "Detected init/init.sh (legacy) - using Tumblebug-only init"
     chmod +x init/init.sh
-    # Run init.sh with proper stdin/stdout/stderr handling
     ./init/init.sh
     echo "init.sh execution completed"
 else
-    echo "Error: init/init.sh file not found."
+    echo "Error: neither init/multi-init.sh nor init/init.sh found."
     exit 1
 fi
 
 echo "CB-Tumblebug initialization completed."
-`, cbTumblebugDir)
+`, absEnvFile, cbTumblebugDir)
 
 	// Write script to temporary file
 	tmpScript := filepath.Join(os.TempDir(), "tumblebug_init.sh")
-	err := os.WriteFile(tmpScript, []byte(script), 0755)
+	err = os.WriteFile(tmpScript, []byte(script), 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create temporary script: %v", err)
 	}

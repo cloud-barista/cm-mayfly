@@ -4,6 +4,7 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package docker
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,8 +55,26 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 		if !cmd.HasParent() || cmd.Name() == "infra" {
 			return nil
 		}
-		return ensureDockerEnvFile()
+		if err := ensureDockerEnvFile(); err != nil {
+			return err
+		}
+		return validateDockerEnvFile()
 	},
+}
+
+// requiredEnvKeys lists conf/docker/.env entries that must hold a non-empty
+// value before any `mayfly infra` subcommand may run docker compose. Each key
+// here corresponds to a subsystem that hard-fails on startup when the value is
+// blank (cb-spider 0.12.17+ aborts with log.Fatal when REST auth is unset; the
+// postgres/mysql images refuse to initialize without a password).
+var requiredEnvKeys = []string{
+	"SPIDER_USERNAME",
+	"SPIDER_PASSWORD",
+	"TUMBLEBUG_DB_PASSWORD",
+	"BUTTERFLY_DB_PASSWORD",
+	"ANT_DB_PASSWORD",
+	"AIRFLOW_DB_PASSWORD",
+	"AIRFLOW_DB_ROOT_PASSWORD",
 }
 
 // ensureDockerEnvFile verifies that the docker-compose environment file exists
@@ -78,6 +97,74 @@ func ensureDockerEnvFile() error {
 		return fmt.Errorf("failed to check environment file %s: %w", envPath, err)
 	}
 	return nil
+}
+
+// validateDockerEnvFile parses conf/docker/.env and reports any requiredEnvKeys
+// that are missing or set to an empty value. It assumes ensureDockerEnvFile has
+// already confirmed the file exists.
+func validateDockerEnvFile() error {
+	dir := filepath.Dir(DockerFilePath)
+	envPath := filepath.Join(dir, ".env")
+	examplePath := filepath.Join(dir, ".env.example")
+	values, err := parseDotEnv(envPath)
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", envPath, err)
+	}
+	var missing []string
+	for _, key := range requiredEnvKeys {
+		if strings.TrimSpace(values[key]) == "" {
+			missing = append(missing, key)
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf("required values are missing or blank in %s:\n  - %s\n\n"+
+		"These fields must be set before running this command:\n"+
+		"  * SPIDER_USERNAME / SPIDER_PASSWORD — cb-spider 0.12.17+ exits with log.Fatal when blank.\n"+
+		"  * *_DB_PASSWORD — the postgres / mysql images refuse to start without a password.\n\n"+
+		"See %s for guidance and edit %s accordingly.\n",
+		envPath, strings.Join(missing, "\n  - "), examplePath, envPath)
+}
+
+// parseDotEnv reads a docker-compose .env file and returns a key→value map.
+// It supports KEY=value lines (with optional surrounding double or single
+// quotes on the value), ignores blank lines and comments, and tolerates
+// `export KEY=value` shell-style prefixes. Unknown line shapes are skipped
+// rather than erroring out — docker compose's own parser is the source of
+// truth for full syntax, this routine only needs to surface blanks.
+func parseDotEnv(path string) (map[string]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	values := map[string]string{}
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "export ")
+		eq := strings.Index(line, "=")
+		if eq < 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:eq])
+		val := strings.TrimSpace(line[eq+1:])
+		if len(val) >= 2 {
+			first, last := val[0], val[len(val)-1]
+			if (first == '"' || first == '\'') && first == last {
+				val = val[1 : len(val)-1]
+			}
+		}
+		values[key] = val
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return values, nil
 }
 
 // convertServiceNameForDockerCompose converts comma-separated service names to space-separated

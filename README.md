@@ -123,8 +123,14 @@ $ cp conf/docker/.env.example conf/docker/.env
 
 The non-secret defaults in `.env.example` match the previous built-in values, so
 you only need to set the blank secret entries (e.g. `*_PASSWORD`, `SMTP_USER`,
-`SMTP_PASSWORD`, `SMTP_MAIL_FROM`). If `conf/docker/.env` is missing, cm-mayfly's
-`infra` commands stop with a clear error before running docker compose.
+`SMTP_PASSWORD`, `SMTP_MAIL_FROM`, `SPIDER_USERNAME`, `SPIDER_PASSWORD`).
+
+**Note**: cb-spider 0.12.17 enforces REST authentication and exits with
+`log.Fatal` if `SPIDER_USERNAME` or `SPIDER_PASSWORD` is empty, so both
+fields are required and must be filled in `conf/docker/.env` before running.
+
+If `conf/docker/.env` is missing, cm-mayfly's `infra` commands stop with a
+clear error before running docker compose.
 
 ### 2.2. Other initial setup
 Some sub systems may require additional initial setup. If changes or settings are needed, modify the information in the `./conf/docker` folder.
@@ -172,12 +178,12 @@ Example output:
 ```
 [v]Status of Cloud-Migrator runtime images
 CONTAINER           REPOSITORY                     TAG                 IMAGE ID            SIZE
-cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.11.9              d4c2abdc0e21        118MB
+cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.12.9              d4c2abdc0e21        118MB
 ```
 
-Based on the cb-tumblebug version (e.g., v0.11.9), download the corresponding cb-tumblebug repository:
+Based on the cb-tumblebug version (e.g., v0.12.9), download the corresponding cb-tumblebug repository:
 ```
-$ git clone -b v0.11.9 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.11.9
+$ git clone -b v0.12.9 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.12.9
 ```
 
 Then follow the detailed guide at:
