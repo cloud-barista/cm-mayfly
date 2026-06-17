@@ -2,9 +2,11 @@ package docker
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
+	"github.com/cm-mayfly/cm-mayfly/internal/openbao"
 	"github.com/spf13/cobra"
 )
 
@@ -111,6 +113,29 @@ var runCmd = &cobra.Command{
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("❌ Installation cancelled by user")
 			return
+		}
+
+		// Mirror the upstream cb-tumblebug `make up` staged flow: bring up
+		// openbao alone first, initialize it (which writes VAULT_TOKEN into
+		// .env), then bring up the rest with the token already populated.
+		// Without this step, cb-tumblebug / mc-terrarium would start with an
+		// empty VAULT_TOKEN frozen into their environment and a `docker
+		// compose restart` after a sidecar init wouldn't re-evaluate .env —
+		// that's the regression we hit on stage (BAR-1291). Skipped when
+		// targeting a specific service (only the full-stack default path
+		// needs it) and when .env already has VAULT_TOKEN (re-runs;
+		// sidecar handles unseal).
+		if ServiceName == "" && !openbao.HasVaultToken() {
+			fmt.Println()
+			fmt.Println("ℹ VAULT_TOKEN not found in .env — initializing OpenBao first")
+			fmt.Println("  (mirrors cb-tumblebug `make up` staged flow: openbao alone, then init, then the rest).")
+			if err := openbao.Init(true); err != nil {
+				fmt.Fprintf(os.Stderr, "\n❌ OpenBao initialization failed: %v\n", err)
+				fmt.Println("Aborting `infra run`. Once the cause is resolved, re-run this command")
+				fmt.Println("or run `./mayfly setup openbao init` manually.")
+				return
+			}
+			fmt.Println()
 		}
 
 		// Always use detached mode to avoid dependency issues

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
+	"github.com/cm-mayfly/cm-mayfly/internal/openbao"
 	"github.com/spf13/cobra"
 )
 
@@ -58,6 +59,25 @@ func runTumblebugInit() {
 	}
 
 	fmt.Println("✅ CB-Tumblebug is running.")
+
+	// OpenBao must already be initialized — multi-init.sh registers credentials
+	// against the secret store and silently fails (Phase 1 logs flood with
+	// "VAULT_TOKEN is not set") when the running cb-tumblebug container holds
+	// an empty token. The official cb-tumblebug make-up flow handles this by
+	// initializing OpenBao before bringing the rest of the stack up; cm-mayfly
+	// mirrors that via `setup openbao init` (manual) or `infra run`'s auto-init
+	// branch. Guard here so a stray `tumblebug-init` invocation fails loudly
+	// instead of producing a half-registered catalog.
+	if !openbao.HasVaultToken() {
+		fmt.Println("❌ OpenBao is not initialized (VAULT_TOKEN missing in .env).")
+		fmt.Println("Please initialize OpenBao first:")
+		fmt.Println("   ./mayfly setup openbao init")
+		fmt.Println()
+		fmt.Println("Or simply re-run `./mayfly infra run` — it will auto-init OpenBao")
+		fmt.Println("when VAULT_TOKEN is missing.")
+		return
+	}
+	fmt.Println("✅ OpenBao VAULT_TOKEN is present in .env.")
 	fmt.Println("Checking Tumblebug execution version...")
 
 	// Get current running CB-Tumblebug version
@@ -533,21 +553,27 @@ func removeAndDownloadFresh(cbTumblebugDir, gitTag, targetDir, originalDir strin
 func initializeTumblebug(cbTumblebugDir, originalDir string) error {
 	fmt.Printf("Starting CB-Tumblebug initialization: %s\n", cbTumblebugDir)
 
-	// Resolve mayfly's docker .env to an absolute path so openbao-init.sh
-	// (which runs from cb-tumblebug source dir) can find it. The script also
-	// uses this to persist VAULT_TOKEN back into the file mayfly's compose
-	// reads, so cb-tumblebug containers pick up the new token on restart.
-	absEnvFile, err := filepath.Abs("./conf/docker/.env")
-	if err != nil {
-		return fmt.Errorf("failed to resolve absolute path of conf/docker/.env: %v", err)
-	}
+	// Resolve mayfly's docker .env to an absolute path. cb-tumblebug's
+	// openbao-register-creds.py inside multi-init.sh reads VAULT_TOKEN from
+	// this file. Build from originalDir (mayfly's initial cwd) — by this
+	// point cwd has been changed to targetDir, so filepath.Abs("./...")
+	// would resolve relative to the wrong root.
+	absEnvFile := filepath.Join(originalDir, "conf", "docker", ".env")
 
-	// Create a script that will run in isolation
+	// Phase 0 (OpenBao init + container restart + init.json verify) is now
+	// owned by internal/openbao.Init() and triggered explicitly via
+	// `setup openbao init` or implicitly by `infra run` before any other
+	// service is brought up. By the time we reach here:
+	//   - VAULT_TOKEN is in .env  (runTumblebugInit guards this)
+	//   - cb-tumblebug is healthy and started with that token in its env
+	// So this script only runs Phase 1: multi-init.sh (or init.sh on
+	// legacy 0.12.8 and below) to register credentials and fetch the
+	// multi-CSP catalog.
 	script := fmt.Sprintf(`#!/bin/bash
 set -e
 
-# Absolute path to mayfly's docker .env (consumed by cb-tumblebug's
-# openbao-init.sh below + by openbao-register-creds.py for VAULT_TOKEN read).
+# Absolute path to mayfly's docker .env — consumed by openbao-register-creds.py
+# inside cb-tumblebug for VAULT_TOKEN read.
 export ENV_FILE="%s"
 
 # Change to cb-tumblebug directory
@@ -556,47 +582,43 @@ cd "%s"
 echo "Current location: $(pwd)"
 echo "Using ENV_FILE: $ENV_FILE"
 
-# Source setup.env if it exists
-# Note: Currently commented out as it causes errors during initialization
-# if [ -f "conf/setup.env" ]; then
-#     echo "Executing setup.env file..."
-#     source conf/setup.env
-#     echo "setup.env execution completed"
-# else
-#     echo "Warning: conf/setup.env file not found."
-# fi
-
-# Phase 0: OpenBao one-time initialization (cb-tumblebug 0.12.9+ only)
-# multi-init.sh assumes OpenBao is already initialized (it only registers
-# credentials, expecting a working VAULT_TOKEN). openbao-init.sh is what
-# generates the unseal key + root token and writes VAULT_TOKEN into .env.
-# Use OpenBao API as the source of truth — file on host may be stale after
-# a volume wipe.
-if [ -f "init/openbao/openbao-init.sh" ]; then
-    BAO_INIT=$(curl -sf http://localhost:8200/v1/sys/seal-status 2>/dev/null | grep -o '"initialized":[^,]*' | cut -d: -f2 | tr -d ' ')
-    if [ "$BAO_INIT" = "false" ]; then
-        echo "OpenBao not initialized (API check) - running init/openbao/openbao-init.sh"
-        chmod +x init/openbao/openbao-init.sh
-        ./init/openbao/openbao-init.sh
-        echo "openbao-init.sh execution completed"
-    elif [ "$BAO_INIT" = "true" ]; then
-        echo "OpenBao already initialized (API check) - skipping"
-    else
-        echo "Warning: OpenBao API unreachable - skipping Phase 0 (multi-init.sh will fail if OpenBao is not actually initialized)"
-    fi
+# Resolve the encryption password. cb-tumblebug's init.py honours an explicit
+# --key-file argument first, then ~/.cloud-barista/.tmp_enc_key, then the
+# MULTI_INIT_PWD environment variable, and finally falls back to an interactive
+# prompt. multi-init.sh wraps init.py but starts with its own non-skippable
+# read for MULTI_INIT_PWD, so we always have to feed it something on stdin.
+# The token doesn't actually matter — .tmp_enc_key wins downstream — but the
+# read has to be satisfied. Use the project-standard "default".
+KEYFILE="$HOME/.cloud-barista/.tmp_enc_key"
+PWD_CHANNEL="prompt"
+if [ -f "$KEYFILE" ]; then
+    PWD_CHANNEL="keyfile"
+elif [ -n "$MULTI_INIT_PWD" ]; then
+    PWD_CHANNEL="env"
 fi
+echo "tumblebug-init password channel: ${PWD_CHANNEL}"
+# Fetch method choice presented inside init.py:
+#   a/a+ : restore from bundled assets (no live CSP fetch)
+#   b    : fresh fetch from CSPs (excluding Azure) — what cm-mayfly defaults to
+#   c    : fresh fetch including Azure (~40+ minutes)
+TB_INIT_PWD_INPUT="${MULTI_INIT_PWD:-default}"
+TB_INIT_FETCH_METHOD="${TB_INIT_FETCH_METHOD:-b}"
 
 # cb-tumblebug 0.12.9+ uses multi-init.sh (OpenBao + Tumblebug unified init)
 # cb-tumblebug 0.12.8 and below uses init.sh (legacy fallback)
 if [ -f "init/multi-init.sh" ]; then
     echo "Detected init/multi-init.sh - using unified init (OpenBao + Tumblebug)"
     chmod +x init/multi-init.sh
-    ./init/multi-init.sh
+    # Feed (1) the password line for multi-init.sh's read -s -p, then
+    # (2) the fetch-method line for init.py's "Choose Initialization Method"
+    # prompt. Without this both reads stall on stdin and the script either
+    # hangs or loops on "Invalid input".
+    { echo "$TB_INIT_PWD_INPUT"; echo "$TB_INIT_FETCH_METHOD"; for i in 1 2 3 4 5; do echo y; done; } | ./init/multi-init.sh
     echo "multi-init.sh execution completed"
 elif [ -f "init/init.sh" ]; then
     echo "Detected init/init.sh (legacy) - using Tumblebug-only init"
     chmod +x init/init.sh
-    ./init/init.sh
+    { echo "$TB_INIT_PWD_INPUT"; echo "$TB_INIT_FETCH_METHOD"; for i in 1 2 3 4 5; do echo y; done; } | ./init/init.sh
     echo "init.sh execution completed"
 else
     echo "Error: neither init/multi-init.sh nor init/init.sh found."
@@ -608,7 +630,7 @@ echo "CB-Tumblebug initialization completed."
 
 	// Write script to temporary file
 	tmpScript := filepath.Join(os.TempDir(), "tumblebug_init.sh")
-	err = os.WriteFile(tmpScript, []byte(script), 0755)
+	err := os.WriteFile(tmpScript, []byte(script), 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create temporary script: %v", err)
 	}
