@@ -805,11 +805,14 @@ services:
     depends_on:
       cm-honeybee:
         condition: service_healthy
+      cm-grasshopper-rustfs:
+        condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-grasshopper/conf:/conf
       - ./data/cm-grasshopper/software_temp:/software_temp:rw
       - ./data/cm-grasshopper/software_log:/software_log:rw
+      - ./data/cm-grasshopper/k8s_job_log:/k8s_job_log:rw
       - ./data/cm-grasshopper/data_root/:/root/.cm-grasshopper:rw
       - ./data/cm-honeybee/:/root/.cm-grasshopper/honeybee:ro
     command: >
@@ -828,6 +831,28 @@ services:
       "
     healthcheck:
       test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
+      <<: *default-health-check
+
+  # cm-grasshopper-rustfs
+  # S3-compatible object storage used by cm-grasshopper for k8s velero backup/restore
+  # See https://github.com/cloud-barista/cm-grasshopper/blob/main/docker-compose.yaml
+  cm-grasshopper-rustfs:
+    image: rustfs/rustfs:latest
+    container_name: cm-grasshopper-rustfs
+    pull_policy: always
+    restart: unless-stopped
+    user: "0:0"
+    ports:
+      - "19000:9000"
+    environment:
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=:9000
+    volumes:
+      - ./data/cm-grasshopper/rustfs_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:9000/" ]
       <<: *default-health-check
 
   # cm-ant

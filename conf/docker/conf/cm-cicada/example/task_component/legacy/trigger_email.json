@@ -1,8 +1,8 @@
 {
   "name": "trigger_email",
   "description": "trigger email alert",
-  "type": "trigger_workflow",
-  "spec": {
+  "extra": {
+    "operator": "airflow.operators.trigger_dagrun.TriggerDagRunOperator",
     "trigger_dag_id": "monitor_dag",
     "task_id": "trigger",
     "execution_date": "{{ execution_date }}",
