@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/cmd"
@@ -90,20 +91,20 @@ var apiCmd = &cobra.Command{
 		//fmt.Printf("cmd.HasSubCommands() : %v\n", !cmd.HasSubCommands())
 
 		isInit = false
-		// tool 서브 커맨드가 입력되었을 때에는 도움말을 출력하지 않음.
+		// Do not print help when a tool subcommand is entered.
 		if len(args) == 0 && cmd.Flags().NFlag() == 0 && cmd.HasSubCommands() {
 			//fmt.Println(cmd.Help())
 			cmd.Help()
 			return
 		}
 
-		//fmt.Println("============ 아규먼트 :  " + strconv.Itoa(len(args)))
-		//fmt.Println("============ 플래그 수 :  " + strconv.Itoa(cmd.Flags().NFlag()))
+		//fmt.Println("============ arguments :  " + strconv.Itoa(len(args)))
+		//fmt.Println("============ flag count :  " + strconv.Itoa(cmd.Flags().NFlag()))
 
 		//viper.AddConfigPath("../conf")
 		viper.SetConfigFile(configFile)
 
-		// 설정 파일 읽어오기
+		// Read the config file
 		err := viper.ReadInConfig()
 		if err != nil {
 			fmt.Printf("Error reading config file: %s\n", err)
@@ -125,7 +126,7 @@ var apiCmd = &cobra.Command{
 		}
 
 		//
-		// list 명령어 처리
+		// handle the list command
 		//
 		if isListMode {
 			if isVerbose {
@@ -142,7 +143,7 @@ var apiCmd = &cobra.Command{
 			return
 		}
 
-		// 호출할 서비스 정보 처리
+		// process the service info to call
 		errParse := parseRequestInfo()
 		if errParse != nil {
 			fmt.Println(errParse)
@@ -171,7 +172,7 @@ var apiCmd = &cobra.Command{
 	},
 }
 
-// 서비스 목록 조회
+// query the service list
 func showServiceList() {
 	services := viper.GetStringMap("services")
 
@@ -184,7 +185,7 @@ func showServiceList() {
 	}
 }
 
-// 서비스 하위의 액션 목록 조회
+// query the action list under a service
 func showActionList(serviceName string) {
 	spiderActions := viper.GetStringMap("serviceActions." + serviceName)
 
@@ -196,9 +197,9 @@ func showActionList(serviceName string) {
 	}
 }
 
-// 입력 값 기반으로 호출할 서비스 정보를 정리함.
+// Organize the service info to call based on the input values.
 func parseRequestInfo() error {
-	// 서비스 검증
+	// validate the service
 	if serviceName == "" {
 		return errors.New("no service is specified to call")
 	}
@@ -208,7 +209,7 @@ func parseRequestInfo() error {
 		return errors.New("the name of the service[" + serviceName + "] you want to call is not on the list of supported services.\nPlease check the api.yaml configuration file or the list of available services")
 	}
 
-	// 액션 검증
+	// validate the action
 	if actionName == "" {
 		return errors.New("no action name is specified to call")
 	}
@@ -217,13 +218,31 @@ func parseRequestInfo() error {
 		return errors.New("the requested action[" + actionName + "] does not exist for the service[" + serviceName + "] you are trying to call\nPlease check the api.yaml configuration file or the list of available actions for the service you want to call.")
 	}
 
-	// 서비스 정보 파싱
+	// parse the service info
 	err := viper.UnmarshalKey("services."+serviceName, &serviceInfo)
 	if err != nil {
 		return err
 	}
 
-	// 인증 정보를 CLI로 전달 받았을 경우 처리
+	// When an api.yaml auth value is written as ${VAR}, resolve it from the
+	// environment. Priority: (CLI flag) > process OS env > conf/docker/.env file.
+	// CLI flags override further below, so env resolution is done first here.
+	// There is no silent default fallback — if no source holds the value it
+	// stays empty and a warning is printed.
+	if v, unset := common.ResolveEnvRef(serviceInfo.Auth.Username); unset {
+		fmt.Fprintf(os.Stderr, "Warning: api.yaml auth username for service %q references an unset env var (%s); sending empty credential.\n", serviceName, serviceInfo.Auth.Username)
+		serviceInfo.Auth.Username = ""
+	} else {
+		serviceInfo.Auth.Username = v
+	}
+	if v, unset := common.ResolveEnvRef(serviceInfo.Auth.Password); unset {
+		fmt.Fprintf(os.Stderr, "Warning: api.yaml auth password for service %q references an unset env var (%s); sending empty credential.\n", serviceName, serviceInfo.Auth.Password)
+		serviceInfo.Auth.Password = ""
+	} else {
+		serviceInfo.Auth.Password = v
+	}
+
+	// handle the case where auth info is passed via the CLI
 	if authToken != "" {
 		serviceInfo.Auth.Token = authToken
 	}
@@ -238,7 +257,7 @@ func parseRequestInfo() error {
 		return errors.New("couldn't find the BaseURL information for the service to call\nPlease check the api.yaml configuration file")
 	}
 
-	// 액션 정보 파싱
+	// parse the action info
 	err = viper.UnmarshalKey("serviceActions."+serviceName+"."+actionName, &serviceInfo)
 	if err != nil {
 		return err
@@ -248,19 +267,19 @@ func parseRequestInfo() error {
 		return errors.New("couldn't find the ResourcePath information for the action to call\nPlease check the api.yaml configuration file")
 	}
 
-	// 가변 URI 처리
+	// handle the variable URI
 	errParam := parsePathParam()
 	if errParam != nil {
 		//fmt.Println(errParam)
 		return errParam
 	}
 
-	// 쿼리 문자열 처리
+	// handle the query string
 	if queryString != "" {
-		// queryString 값이 ?로 시작하는지 확인
+		// check whether the queryString value starts with ?
 		startsWithQuestionMark := strings.HasPrefix(queryString, "?")
 
-		// ResourcePath가 ?로 끝나는 경우
+		// when ResourcePath ends with ?
 		if strings.HasSuffix(serviceInfo.ResourcePath, "?") {
 			if startsWithQuestionMark {
 				serviceInfo.ResourcePath = serviceInfo.ResourcePath + queryString[1:]
@@ -279,7 +298,7 @@ func parseRequestInfo() error {
 	return nil
 }
 
-// 가변 경로를 처리 함.
+// Handle the variable path.
 func parsePathParam() error {
 	if isVerbose {
 		fmt.Println("pathParam:", pathParam)
@@ -287,13 +306,13 @@ func parsePathParam() error {
 		fmt.Println("checking path paramter infomation...")
 	}
 
-	//Path 파라메터 처리
+	//handle Path parameters
 	if strings.Contains(serviceInfo.ResourcePath, "{") {
 		if pathParam == "" {
 			return errors.New("couldn't find uri path parameter(key:value) information for URI PATH\nThis URI requires the following path parameter information\n" + serviceInfo.ResourcePath)
 		}
 
-		//가변 경로 처리
+		//handle the variable path
 		pathParams := make(map[string]string)
 		params := strings.Fields(pathParam)
 		for _, param := range params {
@@ -306,7 +325,7 @@ func parsePathParam() error {
 			}
 		}
 
-		// resourcePath의 키를 대소문자 구분하여 치환
+		// replace the resourcePath keys case-sensitively
 		for key, value := range pathParams {
 			//lowerKey := strings.ToLower(key)
 			placeholder := "{" + key + "}"
@@ -337,11 +356,11 @@ func SetBasicAuth() {
 	}
 }
 
-// 인증 처리
+// handle auth
 func SetAuth() {
 	switch strings.ToLower(serviceInfo.Auth.Type) {
 	case "none", "":
-		// 인증이 필요 없는 경우 아무 것도 하지 않음
+		// do nothing when no auth is required
 	case "basic":
 		// Set basic authentication
 		SetBasicAuth()
@@ -367,7 +386,7 @@ func SetReqData() error {
 			fmt.Printf("use [%s] data file\n" + inputFileData)
 		}
 
-		// 파일에서 데이터 읽기
+		// read the data from the file
 		data, err := ioutil.ReadFile(inputFileData)
 		if err != nil {
 			return err
@@ -397,18 +416,18 @@ func ProcessResultInfo(resp *resty.Response) {
 	fmt.Println(string(resp.Body()))
 }
 
-// REST API를 호출한다.
+// Call the REST API.
 func callRest() error {
 	var resp *resty.Response
 	var err error
 
-	SetAuth()          // 인증 처리
-	err = SetReqData() // 전송 데이터 처리
+	SetAuth()          // handle auth
+	err = SetReqData() // handle the data to send
 	if err != nil {
 		return err
 	}
 
-	//출력 파일 지정
+	//specify the output file
 	if outputFile != "" {
 		req.SetOutput(outputFile)
 	}
@@ -444,7 +463,7 @@ func init() {
 	apiCmd.PersistentFlags().StringVarP(&username, "authUser", "", "", "Username for basic authentication") // - sets the basic authentication header in the HTTP request
 	apiCmd.PersistentFlags().StringVarP(&password, "authPassword", "", "", "Password for basic authentication")
 
-	// 인증 토큰 설정
+	// set the auth token
 	apiCmd.PersistentFlags().StringVarP(&authToken, "authToken", "", "", "sets the auth token of the 'Authorization' header for all HTTP requests.(The default auth scheme is 'Bearer')")
 	//apiCmd.PersistentFlags().StringVarP(&authScheme, "authScheme", "", "", "sets the auth scheme type in the HTTP request.(Exam. OAuth)(The default auth scheme is Bearer)")
 

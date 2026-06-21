@@ -4,7 +4,6 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package docker
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,9 +63,12 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 
 // requiredEnvKeys lists conf/docker/.env entries that must hold a non-empty
 // value before any `mayfly infra` subcommand may run docker compose. Each key
-// here corresponds to a subsystem that hard-fails on startup when the value is
-// blank (cb-spider 0.12.17+ aborts with log.Fatal when REST auth is unset; the
-// postgres/mysql images refuse to initialize without a password).
+// here corresponds to a subsystem that hard-fails or silently misbehaves on
+// startup when the value is blank (cb-spider 0.12.17+ aborts with log.Fatal when
+// REST auth is unset; the postgres/mysql images refuse to initialize without a
+// password; cm-beetle binds BEETLE_API_PASSWORD to its basic-auth credential and,
+// because the published image ships no config file, falls back to an empty
+// password when this value is blank).
 var requiredEnvKeys = []string{
 	"SPIDER_USERNAME",
 	"SPIDER_PASSWORD",
@@ -75,6 +77,7 @@ var requiredEnvKeys = []string{
 	"ANT_DB_PASSWORD",
 	"AIRFLOW_DB_PASSWORD",
 	"AIRFLOW_DB_ROOT_PASSWORD",
+	"BEETLE_API_PASSWORD",
 }
 
 // ensureDockerEnvFile verifies that the docker-compose environment file exists
@@ -122,49 +125,16 @@ func validateDockerEnvFile() error {
 	return fmt.Errorf("required values are missing or blank in %s:\n  - %s\n\n"+
 		"These fields must be set before running this command:\n"+
 		"  * SPIDER_USERNAME / SPIDER_PASSWORD — cb-spider 0.12.17+ exits with log.Fatal when blank.\n"+
-		"  * *_DB_PASSWORD — the postgres / mysql images refuse to start without a password.\n\n"+
+		"  * *_DB_PASSWORD — the postgres / mysql images refuse to start without a password.\n"+
+		"  * BEETLE_API_PASSWORD — cm-beetle basic-auth password; left blank it becomes empty (the image has no default).\n\n"+
 		"See %s for guidance and edit %s accordingly.\n",
 		envPath, strings.Join(missing, "\n  - "), examplePath, envPath)
 }
 
-// parseDotEnv reads a docker-compose .env file and returns a key→value map.
-// It supports KEY=value lines (with optional surrounding double or single
-// quotes on the value), ignores blank lines and comments, and tolerates
-// `export KEY=value` shell-style prefixes. Unknown line shapes are skipped
-// rather than erroring out — docker compose's own parser is the source of
-// truth for full syntax, this routine only needs to surface blanks.
+// parseDotEnv delegates to common.ParseDotEnv so the .env parser is shared with
+// the api/rest auth env resolution (single source of truth).
 func parseDotEnv(path string) (map[string]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	values := map[string]string{}
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		line = strings.TrimPrefix(line, "export ")
-		eq := strings.Index(line, "=")
-		if eq < 0 {
-			continue
-		}
-		key := strings.TrimSpace(line[:eq])
-		val := strings.TrimSpace(line[eq+1:])
-		if len(val) >= 2 {
-			first, last := val[0], val[len(val)-1]
-			if (first == '"' || first == '\'') && first == last {
-				val = val[1 : len(val)-1]
-			}
-		}
-		values[key] = val
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return values, nil
+	return common.ParseDotEnv(path)
 }
 
 // convertServiceNameForDockerCompose converts comma-separated service names to space-separated

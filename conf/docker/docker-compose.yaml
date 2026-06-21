@@ -3,10 +3,10 @@
 
 # Default health check configuration
 x-default-health-check: &default-health-check
-  interval: 30s      # 30초마다 헬스체크 실행
-  timeout: 5s        # 각 헬스체크 명령의 타임아웃 (5초)
-  retries: 3         # 연속으로 3번 실패하면 unhealthy로 판단
-  start_period: 10s  # 컨테이너 시작 후 10초 동안은 실패를 무시  
+  interval: 30s      # run the health check every 30s
+  timeout: 5s        # timeout for each health check command (5s)
+  retries: 3         # mark unhealthy after 3 consecutive failures
+  start_period: 10s  # ignore failures for the first 10s after the container starts
 
 services:
 # The priority used by Compose to choose which env var value to use:
@@ -20,7 +20,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.12.26
+    image: cloudbaristaorg/cb-spider:0.12.30
     pull_policy: always
     container_name: cb-spider
     restart: unless-stopped
@@ -55,7 +55,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.12.13
+    image: cloudbaristaorg/cb-tumblebug:0.12.15
     container_name: cb-tumblebug
     restart: unless-stopped
     pull_policy: always
@@ -116,7 +116,7 @@ services:
       - TB_LOGLEVEL=${TB_LOGLEVEL}
       # - TB_LOGWRITER=both
       # - TB_NODE_ENV=development
-      # OpenBao (시크릿 매니저) 연동
+      # OpenBao (secrets manager) integration
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN=${VAULT_TOKEN}
     healthcheck:
@@ -185,7 +185,7 @@ services:
       - 6432:5432
     volumes:
       - ./data/cb-tumblebug/meta_db/postgres:/var/lib/postgresql/data
-    # cb-tumblebug 0.12.9 권장 — 동시 연결 한도 확장
+    # Recommended for cb-tumblebug 0.12.9 — raise the concurrent connection limit
     command: postgres -c max_connections=500
     environment:
       - POSTGRES_USER=${TUMBLEBUG_DB_USER}
@@ -200,7 +200,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.12.41
+    image: cloudbaristaorg/cb-mapui:0.12.39
     container_name: cb-mapui
     restart: unless-stopped
     pull_policy: always
@@ -217,8 +217,8 @@ services:
 
 
   # mc-terrarium
-  # OpenTofu 기반 자원 확장(AWS site-to-site VPN 등)
-  # cb-tumblebug 0.12.9+에서 신규 의존성으로 추가됨
+  # OpenTofu-based resource provisioning (AWS site-to-site VPN, etc.)
+  # Added as a new dependency in cb-tumblebug 0.12.9+
   # See https://github.com/cloud-barista/mc-terrarium
   mc-terrarium:
     image: cloudbaristaorg/mc-terrarium:0.1.4
@@ -245,7 +245,7 @@ services:
       - TERRARIUM_API_USERNAME=${TERRARIUM_API_USERNAME}
       - TERRARIUM_API_PASSWORD=${TERRARIUM_API_PASSWORD}
       - TERRARIUM_LOGLEVEL=info
-      # OpenBao 시크릿 매니저 연동 (CSP 자격증명 조회)
+      # OpenBao secrets manager integration (CSP credential lookup)
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN=${VAULT_TOKEN}
     healthcheck:
@@ -254,8 +254,8 @@ services:
 
 
   # openbao
-  # OpenBao 시크릿 매니저 (Vault fork) — CSP 자격증명 보관
-  # cb-tumblebug 0.12.9+에서 mc-terrarium의 시크릿 백엔드로 사용
+  # OpenBao secrets manager (Vault fork) — stores CSP credentials
+  # Used as the secrets backend for mc-terrarium in cb-tumblebug 0.12.9+
   # See https://openbao.org/
   openbao:
     image: openbao/openbao:2.5.1
@@ -272,7 +272,7 @@ services:
     environment:
       - BAO_ADDR=http://0.0.0.0:8200
       - SKIP_SETCAP=true
-    # Persistent 모드 (file-based storage) — 시크릿이 재기동에도 유지
+    # Persistent mode (file-based storage) — secrets survive restarts
     entrypoint: ["sh", "-c"]
     command:
       - |
@@ -284,7 +284,7 @@ services:
       - ./conf/openbao/openbao-config.hcl:/openbao/config/openbao-config.hcl:ro
     healthcheck:
       # bao status exit codes: 0 = unsealed, 1 = sealed but running, 2 = uninitialized
-      # 셋 다 OpenBao 프로세스가 동작 중임을 의미하므로 healthy로 판정
+      # all three mean the OpenBao process is running, so treat as healthy
       test: ["CMD", "sh", "-c", "rc=0; bao status || rc=$$?; [ $$rc -le 2 ]"]
       interval: 10s
       timeout: 5s
@@ -294,34 +294,36 @@ services:
 
   # openbao-unseal (sidecar)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 재기동 시 OpenBao가 sealed 상태로 기동되므로, 사용자가 매번 수동
-  # unseal 명령을 입력하지 않도록 자동화하는 1회 실행 sidecar.
+  # On restart OpenBao comes up in the sealed state, so this one-shot sidecar
+  # automates unsealing so the user doesn't have to enter the manual unseal command every time.
   #
-  # ⚠ 보안 트레이드오프 (운영 환경에서 반드시 검토 필요)
+  # ⚠ Security trade-off (must be reviewed for production environments)
   # ──────────────────────────────────────────────────────────────────────
-  # 본 sidecar는 unseal key를 호스트 파일(data/openbao/secrets/openbao-init.json)
-  # 에 평문으로 보관하고 자동 unseal한다. 이는 OpenBao/Vault의 Shamir
-  # secret sharing 의도(키 분산 보관으로 단일 노출 방지)를 무력화한다.
-  # 즉 호스트가 침해되면 누구든 OpenBao 전체 시크릿에 접근 가능.
+  # This sidecar stores the unseal key in plaintext in a host file
+  # (data/openbao/secrets/openbao-init.json) and unseals automatically. This defeats
+  # the intent of OpenBao/Vault's Shamir secret sharing (distributing the key across
+  # holders to prevent single-point exposure).
+  # In other words, if the host is compromised, anyone can access all OpenBao secrets.
   #
-  # 운영 보안 등급에 따라 다음을 검토:
-  #   1) 수동 unseal — 본 sidecar 주석 처리 후 사용자가 매 재기동마다
-  #      `bao operator unseal` 또는 호스트에서 키 직접 입력.
-  #      가장 안전하지만 가용성·운영 부담 증가.
-  #   2) 클라우드 KMS Auto-Unseal — AWS KMS / GCP Cloud KMS / Azure
-  #      Key Vault 사용. conf/openbao/openbao-config.hcl 에 `seal "awskms"`
-  #      stanza 추가 → unseal key가 KMS 키로 봉인되어 호스트 파일 불필요.
-  #      권장 운영 방식.
-  #   3) HSM — 하드웨어 보안 모듈로 봉인. 가장 강력하지만 비용·복잡도↑.
+  # Depending on your production security level, consider the following:
+  #   1) Manual unseal — comment out this sidecar and have the user run
+  #      `bao operator unseal` or enter the key directly on the host on every restart.
+  #      Most secure, but increases availability and operational burden.
+  #   2) Cloud KMS Auto-Unseal — use AWS KMS / GCP Cloud KMS / Azure
+  #      Key Vault. Add a `seal "awskms"` stanza to conf/openbao/openbao-config.hcl
+  #      → the unseal key is sealed with the KMS key, so no host file is needed.
+  #      Recommended production approach.
+  #   3) HSM — sealed with a hardware security module. Strongest, but higher cost and complexity.
   #
-  # 본 sidecar는 워크숍·dev·내부 PoC 환경에서 운영 편의성을 우선한 기본
-  # 채택안이며, 운영 등급에서는 (2) KMS 방식 또는 (1) 수동 방식으로
-  # 전환을 권장한다. 자세한 절차는 docs/upgrade-cb-tb-0.12.9.md 참조.
+  # This sidecar is the default choice that prioritizes operational convenience in
+  # workshop, dev, and internal PoC environments; for production-grade deployments
+  # we recommend switching to (2) the KMS approach or (1) the manual approach.
+  # For detailed procedures, see docs/upgrade-cb-tb-0.12.9.md.
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   openbao-unseal:
     image: alpine:3.20
     container_name: openbao-unseal
-    restart: "no"     # one-shot — exit 후 종료
+    restart: "no"     # one-shot — terminates after exit
     networks:
       - default
     depends_on:
@@ -338,19 +340,19 @@ services:
         INIT_FILE=/secrets/openbao-init.json
         MAYFLY=/app/tool/mayfly
 
-        # 1. openbao API 대기 (mayfly rest get 사용)
+        # 1. wait for the openbao API (using mayfly rest get)
         until $$MAYFLY rest get $${VAULT_ADDR}/v1/sys/seal-status -o /tmp/status.json > /dev/null 2>&1; do
           echo "[openbao-unseal] waiting for openbao..."
           sleep 2
         done
 
-        # 2. 상태 분기 (alpine 기본 sh + grep/sed/cut 사용)
+        # 2. branch on status (using alpine's default sh + grep/sed/cut)
         SEALED=$$(grep -o '"sealed":[^,]*' /tmp/status.json | cut -d: -f2)
         INITIALIZED=$$(grep -o '"initialized":[^,]*' /tmp/status.json | cut -d: -f2)
 
         if [ "$$INITIALIZED" = "false" ]; then
           echo "[openbao-unseal] OpenBao not initialized. Run 'mayfly setup tumblebug-init' for first-time setup."
-          exit 0    # skip — 첫 init 전이므로 정상 흐름
+          exit 0    # skip — normal flow since this is before the first init
         fi
 
         if [ "$$SEALED" = "false" ]; then
@@ -364,8 +366,8 @@ services:
           exit 1
         fi
 
-        # OpenBao init 응답의 keys[0]는 16진수 unseal key (keys_base64[0]은 base64 인코딩 동일 키).
-        # /sys/unseal는 양쪽 모두 수용하며 cb-tumblebug 공식 unseal.sh도 keys[0] 사용.
+        # keys[0] in the OpenBao init response is the hex unseal key (keys_base64[0] is the same key, base64-encoded).
+        # /sys/unseal accepts both, and cb-tumblebug's official unseal.sh also uses keys[0].
         UNSEAL_KEY=$$(grep -o '"keys":\["[^"]*"' "$$INIT_FILE" | cut -d'"' -f4)
         if [ -z "$$UNSEAL_KEY" ]; then
           echo "[openbao-unseal] ERROR: cannot extract unseal key from $$INIT_FILE"
@@ -573,7 +575,7 @@ services:
       <<: *default-health-check
 
 
-  # @TODO - **Airflow 등 연계 시스템 필요함**
+  # @TODO - **Linked systems such as Airflow are required**
   # cm-honeybee
   # https://github.com/cloud-barista/cm-honeybee/tree/main/server
   # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
@@ -608,6 +610,12 @@ services:
     pull_policy: always
     platform: linux/amd64
     restart: unless-stopped
+    environment:
+      # Basic Auth is enforced only when DAMSELFLY_API_AUTH_ENABLED=true (default false).
+      # The same credentials are referenced by conf/api.yaml so cm-mayfly sends matching values.
+      - DAMSELFLY_API_AUTH_ENABLED=${DAMSELFLY_API_AUTH_ENABLED}
+      - DAMSELFLY_API_USERNAME=${DAMSELFLY_API_USERNAME}
+      - DAMSELFLY_API_PASSWORD=${DAMSELFLY_API_PASSWORD}
     ports:
       - target: 8088
         published: 8088
@@ -689,7 +697,7 @@ services:
     restart: unless-stopped
     ports:
       - "3306:3306"
-    # 외부 접근 차단 및 컨테이너 내부에서만 접근 가능하도록 설정
+    # Block external access and allow access only from within the container
     # expose:
     #   - "3306"        
     environment:

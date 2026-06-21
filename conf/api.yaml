@@ -1,19 +1,58 @@
+# =============================================================================
+# Service registry for the `mayfly api` / `mayfly rest` commands.
+#
+# Each service entry has a baseurl and an `auth` block that tells cm-mayfly how
+# to authenticate when it calls that service.
+#
+# auth.type — the authentication METHOD to use (it declares HOW to authenticate,
+# not whether the remote service enforces auth):
+#   * none   — send no credentials. This is also the effective default when the
+#              auth block is omitted.
+#   * basic  — HTTP Basic Auth built from auth.username + auth.password.
+#   * bearer — send auth.token as a Bearer token.
+#
+# Credential values (username / password / token) may each be written either as
+# a literal or as a ${VAR} reference:
+#   * literal   e.g. "username: default" — the value is taken from this file.
+#   * ${VAR}    e.g. "password: ${TB_API_PASSWORD}" — the value is read from the
+#               environment at call time. Writing a value as ${VAR} is the
+#               explicit signal that the credential lives outside this file.
+#
+# Resolution order for a ${VAR} reference (first hit wins):
+#   1. the process environment (an OS-level / exported variable),
+#   2. conf/docker/.env (the single shared environment file),
+#   3. otherwise it resolves to empty — for basic auth no Authorization header
+#      is then sent, and a warning is printed. There is no implicit default.
+#
+# A --username / --password / --token flag passed on the command line overrides
+# whatever is configured here.
+#
+# api.yaml only controls what cm-mayfly SENDS. Whether a service actually
+# enforces auth is the service's own decision (for example cm-damselfly checks
+# credentials only when DAMSELFLY_API_AUTH_ENABLED=true). Sending credentials to
+# a service that is not enforcing auth is harmless — they are simply ignored —
+# so basic auth can be configured here regardless of the server's current state.
+#
+# A possible future enhancement is to make auth.type itself a ${VAR} reference,
+# for services whose method can change at runtime; that is intentionally left
+# out for now until a concrete need appears.
+# =============================================================================
 services:
   cb-spider: #service name
     version: 0.11.13
     baseurl: http://cb-spider:1024/spider # baseurl is Scheme + Host + Base Path
-    auth: #If you need an authentication method, describe the type and username and password in the sub
-      # type: basic
-      # username: default
-      # password: default
+    auth: # cb-spider 0.12.17+ requires REST auth; credentials are read from the env (see header).
+      type: basic
+      username: ${SPIDER_USERNAME}
+      password: ${SPIDER_PASSWORD}
 
   cb-tumblebug:
     version: 0.11.13
     baseurl: http://cb-tumblebug:1323/tumblebug
     auth:
       type: basic
-      username: default
-      password: default
+      username: ${TB_API_USERNAME}
+      password: ${TB_API_PASSWORD}
   cm-ant:
     version: 0.4.0
     baseurl: http://cm-ant:8880/ant
@@ -24,8 +63,8 @@ services:
     baseurl: http://cm-beetle:8056/beetle
     auth:
       type: basic
-      username: default
-      password: default
+      username: ${BEETLE_API_USERNAME}
+      password: ${BEETLE_API_PASSWORD}
 
   cm-butterfly-api:
     version: 0.4.0
@@ -54,10 +93,10 @@ services:
 
   cm-damselfly:
     baseurl: http://cm-damselfly:8088/damselfly
-    auth:
+    auth: # cm-damselfly checks these only when DAMSELFLY_API_AUTH_ENABLED=true; otherwise they are ignored.
       type: basic
-      username: default
-      password: default
+      username: ${DAMSELFLY_API_USERNAME}
+      password: ${DAMSELFLY_API_PASSWORD}
 
 serviceActions:
   cb-spider:
