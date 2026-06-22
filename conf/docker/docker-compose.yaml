@@ -569,7 +569,6 @@ services:
       - POSTGRES_DB=${BUTTERFLY_DB_NAME}
     volumes:
       - ./data/cm-butterfly-db:/var/lib/postgresql/data
-    user: root
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "${BUTTERFLY_DB_USER}", "-d", "${BUTTERFLY_DB_NAME}" ]
       <<: *default-health-check
