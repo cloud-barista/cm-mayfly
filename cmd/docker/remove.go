@@ -4,11 +4,50 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
+
+// Host data layout. Every top-level service keeps its own data (including the
+// data of its dependencies such as DBs and etcd) aggregated under
+// conf/docker/data/<service>/. The remove command relies on this convention so
+// it can wipe host data by simply listing that directory, with OpenBao as the
+// only exception that --clean-db keeps. See the FR-MM1-CLI-003-02 design.
+const (
+	hostDataDirName = "data"    // directory under the compose file dir
+	openbaoDirName  = "openbao" // single exception preserved by --clean-db
+)
+
+// removeDocsLink points to the user guide section describing the remove
+// command. It is appended to every command-definition message.
+const removeDocsLink = "https://github.com/MZC-CSC/cm-mayfly/blob/develop/docs/cm-mayfly-infra.md#cloud-migrator-삭제인프라-구축-환경-정리"
+
+// Command-definition messages. Each command prints exactly one of these
+// paragraphs up front; there is no per-service dynamic messaging.
+const (
+	msgRemoveDefault = `[mayfly infra remove]
+Stops and removes Cloud-Migrator containers. Images, volumes, and host data are preserved.
+Use 'mayfly infra run' to start the system again.
+Details: ` + removeDocsLink
+
+	msgRemoveCleanDB = `[mayfly infra remove --clean-db]
+Removes containers, images, named volumes, networks, and DB host data.
+OpenBao credentials are preserved. Use --clean-all to remove OpenBao as well.
+Details: ` + removeDocsLink
+
+	msgRemoveCleanAll = `[mayfly infra remove --clean-all]
+Removes containers, images, named volumes, networks, DB host data, and OpenBao credentials.
+You must run the OpenBao initialization again when rebuilding.
+Details: ` + removeDocsLink
+)
+
+var cleanDBFlag bool
+var cleanAllFlag bool
+var yesFlag bool
+var dryRunFlag bool
 
 // removeCmd represents the remove command
 var removeCmd = &cobra.Command{
@@ -16,136 +55,217 @@ var removeCmd = &cobra.Command{
 	Short: "Stop and Remove Cloud-Migrator System or specific services",
 	Long: `Stop and Remove Cloud-Migrator System or specific services.
 
-For entire system removal:
-  - Removes all containers, networks, and optionally images/volumes
-  - Use --all flag to remove everything including orphaned containers
+By default only containers are stopped and removed; images, volumes, and host
+data are preserved (equivalent to 'docker compose down').
 
-For specific service removal:
-  - Removes only the specified service container
-  - Preserves Docker networks to prevent connectivity issues
-  - Use -s flag to specify target service(s)`,
+  --clean-db   Also remove images, named volumes, and DB host data
+               (conf/docker/data/* except openbao). OpenBao credentials kept.
+  --clean-all  Everything --clean-db removes, plus the openbao host data.
+               A full re-initialization is required afterwards.
+  -s, --service <name>  Target specific services only. With --clean-db it also
+               wipes conf/docker/data/<name>/. Cannot be combined with --clean-all.
+  -y, --yes    Skip the confirmation prompt (for automation).
+  --dry-run    Print the commands that would run, without executing them.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		services := splitServices(ServiceName)
 
-		fmt.Println("\n[Remove Cloud-Migrator]")
-		fmt.Println()
-
-		var cmdStr string
-		var removeOptions string
-		if volFlag && imgFlag || allFlag {
-			removeOptions = "--volumes --rmi all"
-		} else if volFlag {
-			removeOptions = "--volumes"
-		} else if imgFlag {
-			removeOptions = "--rmi all"
-		} else {
-			removeOptions = ""
-		}
-
-		// Display removal target information
-		fmt.Println("Removal Target:")
-
-		// Display service target
-		if ServiceName == "" {
-			fmt.Println("  Services: All services")
-		} else {
-			fmt.Printf("  Services: %s\n", ServiceName)
-		}
-
-		// Display removal scope
-		if allFlag {
-			fmt.Println("  Scope: Containers + Images + Volumes + Orphaned Containers (all)")
-		} else if volFlag && imgFlag {
-			fmt.Println("  Scope: Containers + Images + Volumes")
-		} else if volFlag {
-			fmt.Println("  Scope: Containers + Volumes")
-		} else if imgFlag {
-			fmt.Println("  Scope: Containers + Images")
-		} else {
-			fmt.Println("  Scope: Containers only (images preserved)")
-		}
-		fmt.Println()
-
-		// Display additional options information
-		if !imgFlag && !volFlag && !allFlag {
-			fmt.Println("Additional Options:")
-			fmt.Println("  -i, --images    : Also remove images")
-			fmt.Println("  -v, --volumes   : Also remove named volumes (local mounts preserved)")
-			fmt.Println("  --all           : Remove everything (images + volumes + orphaned containers)")
+		// -s cannot be combined with --clean-all: the intent is ambiguous.
+		if len(services) > 0 && cleanAllFlag {
+			fmt.Println("\nError: the -s option cannot be combined with --clean-all.")
 			fmt.Println()
-		} else if volFlag && !allFlag {
-			fmt.Println("Note: Named volumes will be removed, but local mount volumes are preserved.")
+			fmt.Println("  To reinitialize OpenBao only:   mayfly infra remove -s openbao --clean-db")
+			fmt.Println("  For the full environment + OpenBao:   mayfly infra remove --clean-all")
 			fmt.Println()
-		}
-
-		// Request user confirmation
-		fmt.Print("Do you want to proceed with the removal? (y/N): ")
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-
-		if response != "y" && response != "yes" {
-			fmt.Println("Removal cancelled.")
 			return
 		}
 
-		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
+		// Print the single command-definition paragraph.
+		switch {
+		case cleanAllFlag:
+			fmt.Printf("\n%s\n", msgRemoveCleanAll)
+		case cleanDBFlag:
+			fmt.Printf("\n%s\n", msgRemoveCleanDB)
+		default:
+			fmt.Printf("\n%s\n", msgRemoveDefault)
+		}
+		if len(services) > 0 {
+			fmt.Printf("Target service(s): %s\n", strings.Join(services, " "))
+		}
+		fmt.Println()
 
-		if ServiceName == "" {
-			// Remove entire system
-			// Add --remove-orphans to clean up orphaned containers and networks
-			if removeOptions != "" {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s --remove-orphans", ProjectName, DockerFilePath, removeOptions)
-			} else {
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down --remove-orphans", ProjectName, DockerFilePath)
+		// Build the docker compose command(s) and the host data wipe targets.
+		composeCmds := buildComposeCommands(services)
+		hostTargets, err := hostDataTargets(services)
+		if err != nil {
+			fmt.Printf("Failed to inspect host data directory: %v\n", err)
+			return
+		}
+
+		// --dry-run: show everything that would run and stop.
+		if dryRunFlag {
+			fmt.Println("[dry-run] The following commands would be executed:")
+			for _, c := range composeCmds {
+				fmt.Printf("  %s\n", c)
 			}
-		} else {
-			// Remove specific service only
-			// 1. First stop the service
-			stopCmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", ProjectName, DockerFilePath, convertedServiceName)
-			common.SysCall(stopCmdStr)
+			for _, t := range hostTargets {
+				abs, _ := filepath.Abs(t)
+				fmt.Printf("  sudo rm -rf %s\n", abs)
+			}
+			fmt.Println("\n[dry-run] No changes were made.")
+			printDependencyHint(services)
+			return
+		}
 
-			// 2. Remove service (apply image/volume options)
-			if volFlag && imgFlag || allFlag {
-				// Remove volumes and images together
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f -v %s", ProjectName, DockerFilePath, convertedServiceName)
-				common.SysCall(cmdStr)
-				// Image removal (direct removal using docker images command)
-				// Note: Removing images for specific services is complex,
-				// so it's safer to guide users to manual removal
-				fmt.Printf("⚠️  Note: Image removal for specific services is complex.\n")
-				fmt.Printf("   To remove images manually, use: docker images | grep %s\n", convertedServiceName)
-			} else if volFlag {
-				// Remove volumes only
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f -v %s", ProjectName, DockerFilePath, convertedServiceName)
-			} else if imgFlag {
-				// Remove images only
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f %s", ProjectName, DockerFilePath, convertedServiceName)
-				common.SysCall(cmdStr)
-				// Image removal guidance
-				fmt.Printf("⚠️  Note: Image removal for specific services is complex.\n")
-				fmt.Printf("   To remove images manually, use: docker images | grep %s\n", convertedServiceName)
-			} else {
-				// Remove containers only
-				cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm -f %s", ProjectName, DockerFilePath, convertedServiceName)
+		// Confirmation prompt (unless -y). Stronger wording for destructive modes.
+		if !yesFlag {
+			var prompt string
+			switch {
+			case cleanAllFlag:
+				prompt = "This will remove OpenBao credentials, DB data, and all host bind mounts. You must redo tumblebug-init from scratch. Proceed? (y/N): "
+			case cleanDBFlag:
+				prompt = "This will remove DB data, images, named volumes, and networks (OpenBao credentials are preserved). Proceed? (y/N): "
+			default:
+				prompt = "Do you want to proceed with the removal? (y/N): "
+			}
+			if !confirm(prompt) {
+				fmt.Println("Removal cancelled.")
+				return
 			}
 		}
 
-		//fmt.Println(cmdStr)
-		common.SysCall(cmdStr)
+		// Execute compose command(s) first, then wipe host data.
+		for _, c := range composeCmds {
+			common.SysCall(c)
+		}
+		for _, t := range hostTargets {
+			abs, _ := filepath.Abs(t)
+			common.SysCall(fmt.Sprintf("sudo rm -rf %s", abs))
+		}
+
+		printDependencyHint(services)
 
 		SysCallDockerComposePsWithAll(false)
 	},
 }
 
-var allFlag bool
-var volFlag bool
-var imgFlag bool
+// printDependencyHint reminds the user that, with the flat data layout, a
+// service-scoped --clean-db removes only that service's own conf/docker/data/<svc>;
+// the data of any services it depends on lives under their own flat folders and
+// is not touched. This is the first-phase guidance; an automatic --cascade that
+// walks the depends_on graph is a planned follow-up.
+func printDependencyHint(services []string) {
+	if len(services) == 0 || !(cleanDBFlag || cleanAllFlag) {
+		return
+	}
+	fmt.Println()
+	fmt.Println("Note: with the flat data layout, --clean-db removes only the targeted")
+	fmt.Println("service's own data under conf/docker/data/<service>. A service it depends")
+	fmt.Println("on keeps its data in its own folder; remove those explicitly if needed, e.g.")
+	fmt.Println("  mayfly infra remove -s \"<service> <dependency-service>\" --clean-db")
+}
+
+// splitServices normalizes the -s value (comma- or space-separated) into a slice.
+func splitServices(serviceName string) []string {
+	if strings.TrimSpace(serviceName) == "" {
+		return nil
+	}
+	fields := strings.FieldsFunc(serviceName, func(r rune) bool {
+		return r == ',' || r == ' '
+	})
+	var out []string
+	for _, f := range fields {
+		if t := strings.TrimSpace(f); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// confirm reads a yes/no answer from stdin.
+func confirm(prompt string) bool {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	response, _ := reader.ReadString('\n')
+	response = strings.TrimSpace(strings.ToLower(response))
+	return response == "y" || response == "yes"
+}
+
+// buildComposeCommands returns the docker compose command(s) to run for the
+// requested scope. Whole-system removal uses `down`; a service-scoped removal
+// stops and removes only the named services.
+func buildComposeCommands(services []string) []string {
+	wipeImagesVolumes := cleanDBFlag || cleanAllFlag
+
+	if len(services) == 0 {
+		opts := "--remove-orphans"
+		if wipeImagesVolumes {
+			opts = "--volumes --rmi all --remove-orphans"
+		}
+		return []string{fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s down %s", ProjectName, DockerFilePath, opts)}
+	}
+
+	svc := convertServiceNameForDockerCompose(ServiceName)
+	stop := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", ProjectName, DockerFilePath, svc)
+	rmOpts := "-s -f"
+	if cleanDBFlag {
+		rmOpts = "-s -v -f" // also drop anonymous/named volumes attached to the service
+	}
+	rm := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s rm %s %s", ProjectName, DockerFilePath, rmOpts, svc)
+	return []string{stop, rm}
+}
+
+// hostDataTargets returns the host directories to wipe for the requested scope.
+//
+//   - default (no --clean-db/--clean-all): nothing is wiped.
+//   - --clean-db whole system: every conf/docker/data/* directory except openbao.
+//   - --clean-all whole system: every conf/docker/data/* directory (openbao included).
+//   - -s <svc> with --clean-db: only conf/docker/data/<svc>/ for each service.
+//
+// Listing the data directory means new services are handled automatically once
+// their data lands under conf/docker/data/<service>/ (host data aggregation).
+func hostDataTargets(services []string) ([]string, error) {
+	if !cleanDBFlag && !cleanAllFlag {
+		return nil, nil
+	}
+
+	dataRoot := filepath.Join(filepath.Dir(DockerFilePath), hostDataDirName)
+
+	if len(services) > 0 {
+		// Service-scoped wipe only applies under --clean-db (validated above to
+		// be incompatible with --clean-all).
+		var targets []string
+		for _, s := range services {
+			targets = append(targets, filepath.Join(dataRoot, s))
+		}
+		return targets, nil
+	}
+
+	entries, err := os.ReadDir(dataRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var targets []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if !cleanAllFlag && e.Name() == openbaoDirName {
+			continue // --clean-db preserves OpenBao credentials
+		}
+		targets = append(targets, filepath.Join(dataRoot, e.Name()))
+	}
+	return targets, nil
+}
 
 func init() {
 	dockerCmd.AddCommand(removeCmd)
 
 	pf := removeCmd.PersistentFlags()
-	pf.BoolVarP(&allFlag, "all", "a", false, "Remove all images, volumes, networks, and orphaned containers")
-	pf.BoolVarP(&volFlag, "volumes", "v", false, "Remove named volumes declared in the volumes section of the Compose file")
-	pf.BoolVarP(&imgFlag, "images", "i", false, "Remove all images")
+	pf.BoolVar(&cleanDBFlag, "clean-db", false, "Remove images, named volumes, and DB host data (conf/docker/data/* except openbao). OpenBao credentials preserved")
+	pf.BoolVar(&cleanAllFlag, "clean-all", false, "Everything --clean-db removes, plus openbao host data (full reset)")
+	pf.BoolVarP(&yesFlag, "yes", "y", false, "Skip the confirmation prompt")
+	pf.BoolVar(&dryRunFlag, "dry-run", false, "Print the commands that would run, without executing them")
 }

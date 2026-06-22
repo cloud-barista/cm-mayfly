@@ -37,7 +37,9 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 - ./mayfly infra info
 - ./mayfly infra stop
 - ./mayfly infra update
-- ./mayfly infra remove -v -i
+- ./mayfly infra remove
+- ./mayfly infra remove --clean-db
+- ./mayfly infra remove --clean-all
 	     `,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
