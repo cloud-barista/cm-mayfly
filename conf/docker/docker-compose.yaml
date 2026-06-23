@@ -660,6 +660,17 @@ services:
       - ./data/cm-cicada/cicada_root:/cicada_root:rw
     environment:
       - CMCICADA_ROOT=/cicada_root
+      # cm-cicada calls cm-damselfly, cm-beetle and cb-tumblebug. Those credentials are
+      # currently hardcoded as default/default in cm-cicada.yaml, so they only work while
+      # the called services also use the defaults. We pass the shared .env values here so
+      # that once cm-cicada reads its API credentials from the environment, non-default
+      # credentials work without a compose change on our side.
+      - DAMSELFLY_API_USERNAME=${DAMSELFLY_API_USERNAME}
+      - DAMSELFLY_API_PASSWORD=${DAMSELFLY_API_PASSWORD}
+      - BEETLE_API_USERNAME=${BEETLE_API_USERNAME}
+      - BEETLE_API_PASSWORD=${BEETLE_API_PASSWORD}
+      - TB_API_USERNAME=${TB_API_USERNAME}
+      - TB_API_PASSWORD=${TB_API_PASSWORD}
     # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
     entrypoint: ["/tool/entrypoint.sh"]
     command: ["/cm-cicada"]
