@@ -11,12 +11,13 @@ import (
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/cmd"
+	"github.com/cm-mayfly/cm-mayfly/common"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/cobra"
 )
 
-var client = resty.New()
+var client = common.NewHTTPClient()
 var req = client.R()
 
 var headers []string

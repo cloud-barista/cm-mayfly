@@ -29,7 +29,7 @@ var isVerbose bool
 var pathParam string
 var queryString string
 
-var client = resty.New()
+var client = common.NewHTTPClient()
 var req = client.R()
 var sendData string
 var inputFileData string
