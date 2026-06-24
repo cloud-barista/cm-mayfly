@@ -159,3 +159,16 @@ In cm-mayfly's `./cm-mayfly/conf/docker/docker-compose.yaml` file, the `cb-tumbl
 For the current CB-Tumblebug, if the `TB_API_PASSWORD` environment variable is not set, the string `default` is used as the `TB_API_PASSWORD` value.
 
 Therefore, the quickest solution is to comment out the `TB_API_PASSWORD` environment variable in the `cb-tumblebug` service defined in the `./cm-mayfly/conf/docker/docker-compose.yaml` file if it is set, and then restart the service.
+
+## Credential encryption password — resolution order
+
+This is the password that decrypts your credential file during initialization (distinct from the `TB_API_PASSWORD` above). cm-mayfly does not handle or override it — it is resolved entirely inside CB-Tumblebug's `init/multi-init.sh` / `init.py`. As of the current CB-Tumblebug `init` scripts the order is, first match wins:
+
+1. `--key-file <path>` argument passed to `init.py`
+2. `~/.cloud-barista/.tmp_enc_key` key file (written by `encCredential.sh`)
+3. `MULTI_INIT_PWD` environment variable
+4. interactive prompt (`read -s`)
+
+Note that `multi-init.sh` still performs one non-skippable read for `MULTI_INIT_PWD` even when a key file is present, so a value has to be provided on stdin during a non-interactive run (the key file takes precedence downstream).
+
+This order is owned by CB-Tumblebug and may change between versions — refer to the CB-Tumblebug `init` scripts for the authoritative behaviour. Knowing it lets you wire your own automation around `tumblebug-init` (provide the key file or `MULTI_INIT_PWD`) instead of feeding the password interactively.
