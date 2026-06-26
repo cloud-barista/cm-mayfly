@@ -18,7 +18,11 @@ package openbao
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -182,10 +186,10 @@ func Init(force bool) error {
 	return nil
 }
 
-// Unseal applies the first unseal key from openbao-init.json to OpenBao.
-// The openbao-unseal sidecar normally does this on every container start;
-// this command exists for the case where the sidecar is intentionally
-// disabled (KMS auto-unseal trial, manual ops mode).
+// Unseal applies the first unseal key from openbao-init.json to OpenBao on the
+// host (localhost). The openbao-unseal sidecar normally does this on every
+// container start; this command exists for the case where the sidecar is
+// intentionally disabled (KMS auto-unseal trial, manual ops mode).
 func Unseal() error {
 	fmt.Println("\n[OpenBao unseal]")
 	absSecretsDir, _ := filepath.Abs(filepath.Join("conf", "docker", "data", "openbao", "secrets"))
@@ -196,18 +200,110 @@ func Unseal() error {
 	if err := waitOpenbaoAPI(15 * time.Second); err != nil {
 		return fmt.Errorf("openbao API is not reachable: %w", err)
 	}
-	// Reuse the sidecar's logic (json -> first key -> POST /v1/sys/unseal)
-	// inline so this command works even when the sidecar isn't running.
-	cmdStr := fmt.Sprintf(`
-set -e
-KEY=$(python3 -c "import json; print(json.load(open('%s'))['keys'][0])" 2>/dev/null \
-      || grep -o '"keys":\["[^"]*"' '%s' | sed 's/"keys":\["//' | sed 's/"$//')
-if [ -z "$KEY" ]; then echo "could not extract unseal key from %s" >&2; exit 1; fi
-curl -sf -X POST -H 'Content-Type: application/json' \
-     -d "{\"key\":\"$KEY\"}" %s/v1/sys/unseal >/dev/null
-echo "OpenBao unseal request accepted."
-`, initOut, initOut, initOut, openbaoAddr)
-	return common.SysCallWithError(cmdStr)
+	return UnsealWith(initOut, openbaoAddr)
+}
+
+// sealStatus is the subset of GET /v1/sys/seal-status that we act on.
+type sealStatus struct {
+	Initialized bool `json:"initialized"`
+	Sealed      bool `json:"sealed"`
+}
+
+// initFileShape models cb-tumblebug's openbao-init.json. The REST
+// POST /v1/sys/init flow that openbao-init.sh uses returns "keys" (and
+// "keys_base64"); the `bao operator init -format=json` CLI would instead emit
+// "unseal_keys_hex"/"unseal_keys_b64". We read whichever is present by parsing
+// the file as JSON — this handles pretty-printed files and avoids brittle
+// text/regex scraping. /v1/sys/unseal accepts either hex or base64 keys.
+type initFileShape struct {
+	Keys          []string `json:"keys"`
+	KeysBase64    []string `json:"keys_base64"`
+	UnsealKeysHex []string `json:"unseal_keys_hex"`
+	UnsealKeysB64 []string `json:"unseal_keys_b64"`
+}
+
+func (s initFileShape) firstKey() string {
+	for _, ks := range [][]string{s.Keys, s.KeysBase64, s.UnsealKeysHex, s.UnsealKeysB64} {
+		if len(ks) > 0 && ks[0] != "" {
+			return ks[0]
+		}
+	}
+	return ""
+}
+
+// UnsealWith unseals the OpenBao reachable at addr using the first unseal key
+// found in initFile. Both the seal-status response and the init file are parsed
+// as JSON natively (no curl/grep/python), so it behaves identically whether
+// invoked on the host (`setup openbao unseal`) or from inside the
+// openbao-unseal sidecar container, which passes container paths via --file and
+// --addr. It is safe to call repeatedly: when OpenBao is already unsealed it
+// returns nil without acting (and without logging), which is exactly what the
+// sidecar's poll loop relies on for a quiet steady state.
+func UnsealWith(initFile, addr string) error {
+	st, err := fetchSealStatus(addr)
+	if err != nil {
+		return fmt.Errorf("OpenBao seal-status not reachable at %s: %w", addr, err)
+	}
+	if !st.Initialized {
+		return fmt.Errorf("OpenBao at %s is not initialized; run 'setup openbao init' first", addr)
+	}
+	if !st.Sealed {
+		return nil // already unsealed — nothing to do
+	}
+	raw, err := os.ReadFile(initFile)
+	if err != nil {
+		return fmt.Errorf("cannot read unseal key file %s: %w", initFile, err)
+	}
+	var shape initFileShape
+	if err := json.Unmarshal(raw, &shape); err != nil {
+		return fmt.Errorf("cannot parse %s as JSON: %w", initFile, err)
+	}
+	key := shape.firstKey()
+	if key == "" {
+		return fmt.Errorf("no unseal key found in %s (looked for keys/keys_base64/unseal_keys_hex/unseal_keys_b64)", initFile)
+	}
+	if err := postUnseal(addr, key); err != nil {
+		return fmt.Errorf("unseal request to %s failed: %w", addr, err)
+	}
+	fmt.Println("OpenBao is now unsealed.")
+	return nil
+}
+
+func fetchSealStatus(addr string) (sealStatus, error) {
+	var st sealStatus
+	c := &http.Client{Timeout: 10 * time.Second}
+	resp, err := c.Get(strings.TrimRight(addr, "/") + "/v1/sys/seal-status")
+	if err != nil {
+		return st, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return st, err
+	}
+	if err := json.Unmarshal(body, &st); err != nil {
+		return st, fmt.Errorf("unexpected seal-status response: %w", err)
+	}
+	return st, nil
+}
+
+func postUnseal(addr, key string) error {
+	c := &http.Client{Timeout: 10 * time.Second}
+	payload, _ := json.Marshal(map[string]string{"key": key})
+	resp, err := c.Post(strings.TrimRight(addr, "/")+"/v1/sys/unseal", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var st sealStatus
+	if err := json.Unmarshal(body, &st); err == nil && st.Sealed {
+		return fmt.Errorf("OpenBao still sealed after applying key (multi-key unseal threshold?)")
+	}
+	return nil
 }
 
 // StatusInfo is a snapshot of the OpenBao API state and how well the running

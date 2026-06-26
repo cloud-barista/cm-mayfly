@@ -60,12 +60,33 @@ Normally the openbao-unseal sidecar does this automatically on every container
 start, so this command is only needed when the sidecar is intentionally
 disabled (e.g. while trialing KMS auto-unseal, or in a manual ops mode).`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := openbao.Unseal(); err != nil {
+		var err error
+		if openbaoUnsealFile != "" || openbaoUnsealAddr != "" {
+			// Explicit paths — used by the openbao-unseal sidecar, which passes
+			// container paths (/secrets/openbao-init.json, http://openbao:8200).
+			file := openbaoUnsealFile
+			if file == "" {
+				file = "conf/docker/data/openbao/secrets/openbao-init.json"
+			}
+			addr := openbaoUnsealAddr
+			if addr == "" {
+				addr = "http://localhost:8200"
+			}
+			err = openbao.UnsealWith(file, addr)
+		} else {
+			err = openbao.Unseal()
+		}
+		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	},
 }
+
+var (
+	openbaoUnsealFile string
+	openbaoUnsealAddr string
+)
 
 var openbaoStatusCmd = &cobra.Command{
 	Use:   "status",
@@ -104,6 +125,10 @@ func yesNo(b bool, t, f string) string {
 func init() {
 	openbaoInitCmd.Flags().BoolVar(&openbaoForce, "force", false,
 		"Re-initialize even if VAULT_TOKEN is already set (existing encrypted data will be lost)")
+	openbaoUnsealCmd.Flags().StringVar(&openbaoUnsealFile, "file", "",
+		"Path to openbao-init.json (default: conf/docker/data/openbao/secrets/openbao-init.json)")
+	openbaoUnsealCmd.Flags().StringVar(&openbaoUnsealAddr, "addr", "",
+		"OpenBao address (default: http://localhost:8200; sidecar passes http://openbao:8200)")
 	openbaoCmd.AddCommand(openbaoInitCmd)
 	openbaoCmd.AddCommand(openbaoUnsealCmd)
 	openbaoCmd.AddCommand(openbaoStatusCmd)

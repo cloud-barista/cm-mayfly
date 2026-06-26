@@ -235,7 +235,7 @@ services:
         protocol: tcp
     depends_on:
       openbao-unseal:
-        condition: service_completed_successfully
+        condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./data/mc-terrarium/.terrarium:/app/.terrarium
@@ -294,8 +294,9 @@ services:
 
   # openbao-unseal (sidecar)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # On restart OpenBao comes up in the sealed state, so this one-shot sidecar
-  # automates unsealing so the user doesn't have to enter the manual unseal command every time.
+  # On restart OpenBao comes up in the sealed state, so this watcher sidecar
+  # polls and re-unseals automatically so the user doesn't have to enter the
+  # manual unseal command every time.
   #
   # ⚠ Security trade-off (must be reviewed for production environments)
   # ──────────────────────────────────────────────────────────────────────
@@ -306,9 +307,10 @@ services:
   # In other words, if the host is compromised, anyone can access all OpenBao secrets.
   #
   # Depending on your production security level, consider the following:
-  #   1) Manual unseal — comment out this sidecar and have the user run
-  #      `bao operator unseal` or enter the key directly on the host on every restart.
-  #      Most secure, but increases availability and operational burden.
+  #   1) Manual unseal — comment out this sidecar and run
+  #      `mayfly setup openbao unseal` (or enter the key directly) on the host
+  #      after every restart. Most secure, but increases availability and
+  #      operational burden.
   #   2) Cloud KMS Auto-Unseal — use AWS KMS / GCP Cloud KMS / Azure
   #      Key Vault. Add a `seal "awskms"` stanza to conf/openbao/openbao-config.hcl
   #      → the unseal key is sealed with the KMS key, so no host file is needed.
@@ -323,61 +325,52 @@ services:
   openbao-unseal:
     image: alpine:3.20
     container_name: openbao-unseal
-    restart: "no"     # one-shot — terminates after exit
+    restart: unless-stopped     # auto-unseal watcher — keeps OpenBao unsealed
     networks:
       - default
+    environment:
+      # Poll cadence (seconds) for the auto-unseal watcher. Single source of
+      # truth is conf/docker/.env (OPENBAO_UNSEAL_POLL_INTERVAL); 30 is the
+      # default if unset.
+      OPENBAO_UNSEAL_POLL_INTERVAL: ${OPENBAO_UNSEAL_POLL_INTERVAL:-30}
     depends_on:
       openbao:
         condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly:ro
       - ./data/openbao/secrets:/secrets:ro
+    healthcheck:
+      # Healthy once OpenBao reports unsealed. Dependents wait on this instead
+      # of waiting for a one-shot to complete, so the watcher can keep running
+      # and re-unseal after a restart.
+      test: ["CMD-SHELL", "/app/tool/mayfly rest get http://openbao:8200/v1/sys/seal-status -o /tmp/h.json >/dev/null 2>&1 && tr -d ' \n\t' < /tmp/h.json | grep -q '\"sealed\":false'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        set -e
-        VAULT_ADDR=http://openbao:8200
-        INIT_FILE=/secrets/openbao-init.json
         MAYFLY=/app/tool/mayfly
+        INTERVAL=$${OPENBAO_UNSEAL_POLL_INTERVAL:-30}
 
-        # 1. wait for the openbao API (using mayfly rest get)
-        until $$MAYFLY rest get $${VAULT_ADDR}/v1/sys/seal-status -o /tmp/status.json > /dev/null 2>&1; do
-          echo "[openbao-unseal] waiting for openbao..."
-          sleep 2
+        # Continuous auto-unseal watcher. OpenBao comes up SEALED on every
+        # (re)start — including a host / EC2 stop-start. `mayfly setup openbao
+        # unseal` reads the init file as JSON natively (no grep/python) and is a
+        # no-op when OpenBao is already unsealed, so polling it keeps OpenBao
+        # unsealed across the stack's lifetime. It prints only when it actually
+        # unseals, so steady-state logs stay quiet.
+        #
+        # Polling cadence is OPENBAO_UNSEAL_POLL_INTERVAL (seconds) from .env.
+        # For fully manual operation, comment this whole service out and run
+        # `mayfly setup openbao unseal` by hand after a restart.
+        echo "[openbao-unseal] auto-unseal watcher started (poll $${INTERVAL}s)"
+        while true; do
+          $$MAYFLY setup openbao unseal \
+            --file /secrets/openbao-init.json \
+            --addr http://openbao:8200 2>&1 | sed 's/^/[openbao-unseal] /'
+          sleep "$${INTERVAL}"
         done
-
-        # 2. branch on status (using alpine's default sh + grep/sed/cut)
-        SEALED=$$(grep -o '"sealed":[^,]*' /tmp/status.json | cut -d: -f2)
-        INITIALIZED=$$(grep -o '"initialized":[^,]*' /tmp/status.json | cut -d: -f2)
-
-        if [ "$$INITIALIZED" = "false" ]; then
-          echo "[openbao-unseal] OpenBao not initialized. Run 'mayfly setup tumblebug-init' for first-time setup."
-          exit 0    # skip — normal flow since this is before the first init
-        fi
-
-        if [ "$$SEALED" = "false" ]; then
-          echo "[openbao-unseal] already unsealed. nothing to do."
-          exit 0
-        fi
-
-        # 3. sealed → unseal
-        if [ ! -f "$$INIT_FILE" ]; then
-          echo "[openbao-unseal] ERROR: $$INIT_FILE not found. Cannot unseal."
-          exit 1
-        fi
-
-        # keys[0] in the OpenBao init response is the hex unseal key (keys_base64[0] is the same key, base64-encoded).
-        # /sys/unseal accepts both, and cb-tumblebug's official unseal.sh also uses keys[0].
-        UNSEAL_KEY=$$(grep -o '"keys":\["[^"]*"' "$$INIT_FILE" | cut -d'"' -f4)
-        if [ -z "$$UNSEAL_KEY" ]; then
-          echo "[openbao-unseal] ERROR: cannot extract unseal key from $$INIT_FILE"
-          exit 1
-        fi
-        echo "[openbao-unseal] unsealing via mayfly rest..."
-        $$MAYFLY rest post $${VAULT_ADDR}/v1/sys/unseal \
-          -H "Content-Type: application/json" \
-          -d "{\"key\":\"$$UNSEAL_KEY\"}" > /dev/null
-        echo "[openbao-unseal] OpenBao is now unsealed."
 
 
   # cm-beetle

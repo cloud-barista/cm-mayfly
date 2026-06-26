@@ -157,6 +157,8 @@ If you do not want to see the output logs and want to run it in the background, 
 $ ./mayfly infra run -d
 ```
 
+OpenBao (the secret manager behind cb-tumblebug's credential store) is initialized and unsealed automatically during this step, and re-unsealed automatically after restarts. For how that works, how to recover if it ever stays sealed, and the dev/test-only security note, see [docs/openbao-unseal.md](docs/openbao-unseal.md).
+
 
 ## 4. Checking the subsystem running status
 To verify that the Cloud-Migrator system is running correctly, use the `info` command to check the healthy status of each subsystem.
