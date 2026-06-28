@@ -864,8 +864,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-ant
   cm-ant:
     container_name: cm-ant
-    # image: cloudbaristaorg/cm-ant:0.5.0
-    image: cloudbaristaorg/cm-ant:edge
+    # image: cloudbaristaorg/cm-ant:edge
+    image: cloudbaristaorg/cm-ant:0.5.1
     platform: linux/amd64
     pull_policy: always
     ports:
@@ -892,6 +892,12 @@ services:
       - ANT_SPIDER_PASSWORD=${SPIDER_PASSWORD}
       - ANT_TUMBLEBUG_HOST=http://cb-tumblebug
       - ANT_TUMBLEBUG_PORT=1323
+      # cm-ant should call cb-tumblebug with the same Basic Auth credentials
+      # the rest of the stack uses (.env's TB_API_*). We map the
+      # forward-compatible TUMBLEBUG_API_* alias defined in .env.example
+      # — TB_API_* remains the source of truth and TUMBLEBUG_API_* tracks it.
+      - ANT_TUMBLEBUG_USERNAME=${TUMBLEBUG_API_USERNAME}
+      - ANT_TUMBLEBUG_PASSWORD=${TUMBLEBUG_API_PASSWORD}
       - ANT_DATABASE_HOST=ant-postgres
       # cm-ant Go application reads ANT_DATABASE_USER/PASSWORD/NAME (not ANT_DB_*),
       # so remap from the shared .env names here. Without these three lines cm-ant
