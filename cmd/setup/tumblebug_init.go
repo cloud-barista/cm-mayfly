@@ -609,16 +609,19 @@ TB_INIT_FETCH_METHOD="${TB_INIT_FETCH_METHOD:-b}"
 if [ -f "init/multi-init.sh" ]; then
     echo "Detected init/multi-init.sh - using unified init (OpenBao + Tumblebug)"
     chmod +x init/multi-init.sh
-    # Feed (1) the password line for multi-init.sh's read -s -p, then
-    # (2) the fetch-method line for init.py's "Choose Initialization Method"
-    # prompt. Without this both reads stall on stdin and the script either
-    # hangs or loops on "Invalid input".
-    { echo "$TB_INIT_PWD_INPUT"; echo "$TB_INIT_FETCH_METHOD"; for i in 1 2 3 4 5; do echo y; done; } | ./init/multi-init.sh
+    # Run interactively: the script's prompts (password read, init.py fetch-method
+    # choice, confirmations) are exposed to the user, who answers them directly.
+    # We deliberately do NOT pre-feed fixed values — the prompt sequence is owned
+    # by cb-tumblebug and changes by version/condition, so any hardcoded answer
+    # (e.g. a fixed "y") misaligns and causes wrong answers / hang / "Invalid
+    # input" loops. (MULTI_INIT_PWD/.tmp_enc_key are honoured downstream by
+    # init.py for the actual decryption regardless of this prompt.)
+    ./init/multi-init.sh
     echo "multi-init.sh execution completed"
 elif [ -f "init/init.sh" ]; then
     echo "Detected init/init.sh (legacy) - using Tumblebug-only init"
     chmod +x init/init.sh
-    { echo "$TB_INIT_PWD_INPUT"; echo "$TB_INIT_FETCH_METHOD"; for i in 1 2 3 4 5; do echo y; done; } | ./init/init.sh
+    ./init/init.sh
     echo "init.sh execution completed"
 else
     echo "Error: neither init/multi-init.sh nor init/init.sh found."
