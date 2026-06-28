@@ -884,6 +884,12 @@ services:
     environment:
       - ANT_SPIDER_HOST=http://cb-spider
       - ANT_SPIDER_PORT=1024
+      # cb-spider 0.12.17+ enforces Basic Auth; cm-ant must send credentials.
+      # Without these two lines cm-ant calls cb-spider with empty auth header,
+      # resulting in HTTP 401 from cb-spider on every price/cost lookup
+      # (observed during cm-beetle v0.5.3 lineup verification with cm-ant edge).
+      - ANT_SPIDER_USERNAME=${SPIDER_USERNAME}
+      - ANT_SPIDER_PASSWORD=${SPIDER_PASSWORD}
       - ANT_TUMBLEBUG_HOST=http://cb-tumblebug
       - ANT_TUMBLEBUG_PORT=1323
       - ANT_DATABASE_HOST=ant-postgres
