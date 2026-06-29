@@ -54,7 +54,7 @@ services:
       username: ${TB_API_USERNAME}
       password: ${TB_API_PASSWORD}
   cm-ant:
-    version: 0.5.0
+    version: 0.5.2
     baseurl: http://cm-ant:8880/ant
     auth:
       type: none
@@ -2310,7 +2310,7 @@ serviceActions:
     AntServerReadiness:
       method: get
       resourcePath: /readyz
-      description: "This endpoint checks if the CB-Ant API server is ready by verifying the status of both the load service and the cost service. If either service is unavailable, it returns a 503 status indicating the server is not ready."
+      description: "Returns CM-Ant server readiness including DB and outbound\ndependency (cb-spider, cb-tumblebug) reachability and\nauthentication. Per STANDARD-READYZ pattern B, the response\nbody always carries per-dependency status; the HTTP status is\n200 when every dependency is reachable and authenticated, and\n503 otherwise. Results are cached briefly to limit outbound\ncall rate; see STANDARD-READYZ for details."
     UpdateEstimateForecastCost:
       method: post
       resourcePath: /api/v1/cost/estimate/forecast
