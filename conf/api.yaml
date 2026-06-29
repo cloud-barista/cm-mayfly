@@ -54,7 +54,7 @@ services:
       username: ${TB_API_USERNAME}
       password: ${TB_API_PASSWORD}
   cm-ant:
-    version: 0.5.0
+    version: 0.5.1
     baseurl: http://cm-ant:8880/ant
     auth:
       type: none
