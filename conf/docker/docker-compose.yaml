@@ -865,7 +865,7 @@ services:
   cm-ant:
     container_name: cm-ant
     # image: cloudbaristaorg/cm-ant:edge
-    image: cloudbaristaorg/cm-ant:0.5.1
+    image: cloudbaristaorg/cm-ant:0.5.2
     platform: linux/amd64
     pull_policy: always
     ports:
