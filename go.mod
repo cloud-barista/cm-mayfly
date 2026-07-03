@@ -9,7 +9,7 @@ require (
 	github.com/spf13/viper v1.10.1
 	github.com/tidwall/gjson v1.17.1
 	golang.org/x/term v0.18.0
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -32,6 +32,7 @@ require (
 	golang.org/x/sys v0.18.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (

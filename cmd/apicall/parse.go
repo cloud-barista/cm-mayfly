@@ -1,22 +1,28 @@
 package apicall
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/tidwall/gjson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var swaggerFile string
 var applyToYaml bool
+var releaseVer string
+var useLatest bool
+var skipConfirm bool
 
 // parseCmd is the `api tool` subcommand. It parses a Swagger JSON (file or URL)
 // into api.yaml serviceActions and either prints them or, with --apply, writes
@@ -41,7 +47,7 @@ Examples:
   mayfly api tool -f https://.../swagger.json --service cm-ant --apply
   mayfly api tool -f ./cm-ant.swagger.json --service cm-ant --action GetEstimateCost --apply`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runTool()
+		return runTool(cmd)
 	},
 }
 
@@ -51,15 +57,181 @@ type swaggerAction struct {
 	Description  string
 }
 
-func runTool() error {
-	data, err := readSwaggerSource(swaggerFile)
+// swaggerTarget is one service to process with its resolved swagger source.
+type swaggerTarget struct {
+	svc string
+	url string
+}
+
+const (
+	hrThick = "==============================================="
+	hrThin  = "---------------------------------------------------------------------------------"
+)
+
+func runTool(cmd *cobra.Command) error {
+	// Load api.yaml so services.<svc>.swagger is available (the `api tool`
+	// subcommand does not run the parent's config load).
+	viper.SetConfigFile(configFile)
+	_ = viper.ReadInConfig()
+
+	fileSet := cmd.Flags().Changed("file")
+
+	// Source options are mutually exclusive: -f / --latest / --release.
+	srcN := 0
+	for _, on := range []bool{fileSet, useLatest, releaseVer != ""} {
+		if on {
+			srcN++
+		}
+	}
+	if srcN > 1 {
+		return fmt.Errorf("소스 옵션은 -f / --latest / --release 중 하나만 지정하세요.")
+	}
+
+	// No source given: ask (latest vs a specific release).
+	if srcN == 0 {
+		if skipConfirm {
+			return fmt.Errorf("자동화(-y) 시에는 소스(-f/--latest/--release)와 대상(--service)을 명시하세요.")
+		}
+		if promptChoice("Swagger 소스가 지정되지 않았습니다. 어떤 Swagger를 사용할까요?", "최신(각 서비스 기본 브랜치)", "특정 릴리스 버전") == 2 {
+			releaseVer = promptLine("릴리스 버전을 입력하세요 (예: v0.5.2): ")
+			if releaseVer == "" {
+				return fmt.Errorf("릴리스 버전이 입력되지 않았습니다.")
+			}
+		} else {
+			useLatest = true
+		}
+	}
+
+	if !applyToYaml {
+		fmt.Println("api.yaml에 직접 반영하려면 --apply 플래그를 지정해 주세요. (현재는 화면 출력만 합니다.)")
+	}
+
+	// Determine the target services.
+	var svcs []string
+	switch {
+	case serviceName != "":
+		svcs = []string{serviceName}
+	case fileSet:
+		return fmt.Errorf("-f로 단일 소스를 줄 때는 --service로 대상 서비스를 지정하세요.")
+	default:
+		if skipConfirm {
+			return fmt.Errorf("자동화(-y) 시에는 --service를 명시하세요.")
+		}
+		if promptChoice("--service 미지정 — 처리 대상을 선택하세요.", "특정 서비스만", "전체 서비스") == 1 {
+			s := promptLine("서비스명을 입력하세요: ")
+			if s == "" {
+				return fmt.Errorf("서비스명이 입력되지 않았습니다.")
+			}
+			svcs = []string{s}
+		} else {
+			svcs = registeredSwaggerServices()
+			if len(svcs) == 0 {
+				return fmt.Errorf("swagger 정보가 등록된 서비스가 없습니다 (api.yaml services.<svc>.swagger).")
+			}
+		}
+	}
+
+	// Resolve each service's source URL; for registry sources, check existence.
+	var present, missing []swaggerTarget
+	for _, svc := range svcs {
+		if fileSet {
+			present = append(present, swaggerTarget{svc, swaggerFile})
+			continue
+		}
+		url, ok := resolveSwaggerURL(svc)
+		if !ok {
+			if len(svcs) == 1 {
+				return fmt.Errorf("서비스 %q에 swagger 정보가 없습니다. -f로 직접 지정하거나 api.yaml의 services.%s.swagger를 확인하세요.", svc, svc)
+			}
+			missing = append(missing, swaggerTarget{svc, "(swagger 미등록)"})
+			continue
+		}
+		if swaggerExists(url) {
+			present = append(present, swaggerTarget{svc, url})
+		} else {
+			missing = append(missing, swaggerTarget{svc, url})
+		}
+	}
+
+	// Summary + confirmation.
+	verb := "api.yaml 구조로 화면에 출력합니다"
+	if applyToYaml {
+		verb = "api.yaml에 반영합니다"
+	}
+	multi := len(svcs) > 1
+	if multi {
+		relLabel := "최신"
+		if releaseVer != "" {
+			relLabel = releaseVer + " 릴리스 버전의"
+		}
+		fmt.Printf("\n모든 서비스에 대해 %s API를 %s.\n", relLabel, verb)
+		if len(missing) > 0 {
+			fmt.Println()
+			fmt.Println(hrThick)
+			fmt.Println("[경고]")
+			fmt.Println(hrThick)
+			fmt.Println("아래 서비스들은 요청한 버전의 API 문서가 존재하지 않습니다. 버전 및 URL을 확인하세요.")
+			fmt.Println("(-f 와 -s 옵션을 이용하면 특정 URL과 특정 서비스를 지정할 수 있습니다.)")
+			printTargets(missing)
+			fmt.Println(hrThin)
+		}
+		if len(present) == 0 {
+			fmt.Println("\n처리할 수 있는 서비스가 없습니다.")
+			return nil
+		}
+		fmt.Println("\n아래 서비스들의 API만 처리합니다.")
+		printTargets(present)
+	} else {
+		if len(present) == 0 {
+			m := missing[0]
+			return fmt.Errorf("요청한 Swagger를 찾을 수 없습니다: %s : %s — 버전(vX.Y.Z) 또는 --latest 를 확인하세요.", m.svc, m.url)
+		}
+		t := present[0]
+		scope := t.svc + " Service 전체"
+		if actionName != "" {
+			scope = fmt.Sprintf("%s Service의 %s 액션", t.svc, actionName)
+		}
+		fmt.Printf("\n%s에 대해 %s.\n소스: %s\n", scope, verb, t.url)
+	}
+
+	if !skipConfirm && !confirmYN("\n계속 진행하시겠습니까? (Y/n): ") {
+		fmt.Println("취소되었습니다.")
+		return nil
+	}
+
+	var firstErr error
+	for _, t := range present {
+		if err := processOne(t.svc, t.url); err != nil {
+			fmt.Printf("[%s] 실패: %v\n", t.svc, err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
+}
+
+// printTargets prints "  <svc> : <url>" with the service names left-aligned.
+func printTargets(items []swaggerTarget) {
+	w := 0
+	for _, t := range items {
+		if len(t.svc) > w {
+			w = len(t.svc)
+		}
+	}
+	for _, t := range items {
+		fmt.Printf("  %-*s : %s\n", w, t.svc, t.url)
+	}
+}
+
+// processOne reads one swagger source and prints or applies it for one service.
+func processOne(svc, source string) error {
+	data, err := readSwaggerSource(source)
 	if err != nil {
-		return fmt.Errorf("failed to read swagger source %q: %w", swaggerFile, err)
+		return fmt.Errorf("failed to read swagger %q: %w", source, err)
 	}
 	json := string(data)
 	actions := extractActions(json)
-
-	// Optional single-action filter.
 	if actionName != "" {
 		key := convertActionlName(actionName)
 		picked, ok := actions[key]
@@ -68,22 +240,128 @@ func runTool() error {
 		}
 		actions = map[string]swaggerAction{key: picked}
 	}
-
+	version := recordedVersion(gjson.Get(json, "info.version").String())
 	if !applyToYaml {
-		// Print mode: assist manual api.yaml editing (previous behavior).
-		fmt.Println("API Title:", gjson.Get(json, "info.title").String())
-		fmt.Println("API Version:", gjson.Get(json, "info.version").String())
-		fmt.Println("Host:", gjson.Get(json, "host").String())
-		fmt.Println("Base Path:", gjson.Get(json, "basePath").String())
+		fmt.Printf("\n# %s  (version=%s)\n", svc, version)
 		fmt.Print(renderActions(actions))
 		return nil
 	}
+	return applyToApiYaml(common.API_FILE, svc, actionName != "", actions, version)
+}
 
-	if serviceName == "" {
-		return fmt.Errorf("--apply requires --service to choose which service's serviceActions to update")
+// recordedVersion returns the version recorded to api.yaml as
+// "<requested version>(<swagger info.version>)".
+//
+// The leading part is what the option asked for — the tag from --release (with
+// the leading "v" stripped, since we record versions without it), or "latest"
+// for --latest. The parenthetical is exactly what the swagger document declares
+// in its info.version, taken verbatim; only a missing/blank value is recorded as
+// "None" to flag that the document carries no version:
+//
+//	--release 0.12.22, document info.version="latest" -> "0.12.22(latest)"
+//	--release 0.6.0,   document info.version="0.5.0"  -> "0.6.0(0.5.0)"
+//	--latest,          document info.version="0.6.0"  -> "latest(0.6.0)"
+//	--latest,          document info.version="latest" -> "latest(latest)"
+//	--latest,          document info.version=""       -> "latest(None)"
+//
+// A raw -f source has no requested version, so it keeps the document's own
+// value (or "None" when the document declares none).
+func recordedVersion(infoVer string) string {
+	inner := strings.TrimSpace(infoVer)
+	if inner == "" {
+		inner = "None"
 	}
-	version := gjson.Get(json, "info.version").String()
-	return applyToApiYaml(common.API_FILE, serviceName, actionName != "", actions, version)
+	switch {
+	case releaseVer != "":
+		return strings.TrimPrefix(releaseVer, "v") + "(" + inner + ")"
+	case useLatest:
+		return "latest(" + inner + ")"
+	default:
+		return inner
+	}
+}
+
+// releaseURLTag returns the tag embedded in a release swagger URL. Cloud-Barista
+// tags are "v"-prefixed, so normalize to that regardless of whether the user
+// passed the tag with or without the leading "v".
+func releaseURLTag() string {
+	return "v" + strings.TrimPrefix(releaseVer, "v")
+}
+
+// resolveSwaggerURL returns the swagger URL for svc from api.yaml's
+// services.<svc>.swagger (latest, or release with {release} substituted).
+func resolveSwaggerURL(svc string) (string, bool) {
+	if releaseVer != "" {
+		rel := viper.GetString("services." + svc + ".swagger.release")
+		if rel == "" {
+			return "", false
+		}
+		return strings.ReplaceAll(rel, "{release}", releaseURLTag()), true
+	}
+	latest := viper.GetString("services." + svc + ".swagger.latest")
+	if latest == "" {
+		return "", false
+	}
+	return latest, true
+}
+
+// swaggerExists reports whether the swagger URL responds with 200.
+func swaggerExists(url string) bool {
+	resp, err := http.Get(url) // #nosec G107 -- registry URL from api.yaml
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+// registeredSwaggerServices returns the services that have a swagger entry.
+func registeredSwaggerServices() []string {
+	var out []string
+	for svc := range viper.GetStringMap("services") {
+		if viper.IsSet("services." + svc + ".swagger") {
+			out = append(out, svc)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// stdinReader is shared across prompts so buffered input is not lost between
+// successive reads.
+var stdinReader = bufio.NewReader(os.Stdin)
+
+func promptChoice(q string, opts ...string) int {
+	fmt.Println(q)
+	for i, o := range opts {
+		fmt.Printf("  %d) %s\n", i+1, o)
+	}
+	fmt.Print("선택: ")
+	line, _ := stdinReader.ReadString('\n')
+	n, _ := strconv.Atoi(strings.TrimSpace(line))
+	if n < 1 || n > len(opts) {
+		return 1
+	}
+	return n
+}
+
+func promptLine(prompt string) string {
+	fmt.Print(prompt)
+	line, _ := stdinReader.ReadString('\n')
+	return strings.TrimSpace(line)
+}
+
+// confirmYN reads a yes/no answer. Enter (empty) defaults to yes. An EOF (no
+// input available) is treated as "no" so non-interactive runs do not proceed
+// unintentionally; use -y to skip the prompt in automation.
+func confirmYN(prompt string) bool {
+	fmt.Print(prompt)
+	line, err := stdinReader.ReadString('\n')
+	if err != nil && line == "" {
+		return false
+	}
+	s := strings.ToLower(strings.TrimSpace(line))
+	return s == "" || s == "y" || s == "yes"
 }
 
 // readSwaggerSource reads a swagger document from a local file or an http(s) URL.
@@ -195,61 +473,78 @@ func applyToApiYaml(apiFile, service string, singleAction bool, actions map[stri
 	return nil
 }
 
-// updateServiceVersion sets services.<service>.version to version (text edit, so
-// the rest of the file is preserved). It returns ok=false if the service or its
-// version line is not found, leaving the content unchanged.
+// isServiceHeaderLine reports whether line is the "  <service>:" header under
+// services:, tolerating a trailing inline comment (e.g. the api.yaml ships
+// "  cb-spider: #service name"). Matching on the exact string would miss such a
+// header and silently skip its version sync.
+// yamlRoot parses content and returns the top-level mapping node, so callers can
+// locate sections and keys by structure — and by the exact line numbers the
+// parser reports — instead of by fragile string matching. Only the located lines
+// are spliced by the callers, so comments, blank lines, ${ENV} placeholders and
+// emoji elsewhere in the file are left byte-for-byte intact.
+func yamlRoot(content string) (*yaml.Node, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(content), &doc); err != nil {
+		return nil, err
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+		return nil, fmt.Errorf("empty YAML document")
+	}
+	return doc.Content[0], nil
+}
+
+// mapChild returns the value node for key in a mapping node, or nil.
+func mapChild(m *yaml.Node, key string) *yaml.Node {
+	if m == nil || m.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return m.Content[i+1]
+		}
+	}
+	return nil
+}
+
+// keyEntryLines returns the 1-based line of key's entry in mapping m and the
+// 1-based line of the following sibling entry (nextLine == 0 when key is the last
+// entry). A returned line of 0 means the key is absent.
+func keyEntryLines(m *yaml.Node, key string) (line, nextLine int) {
+	if m == nil || m.Kind != yaml.MappingNode {
+		return 0, 0
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			line = m.Content[i].Line
+			if i+2 < len(m.Content) {
+				nextLine = m.Content[i+2].Line
+			}
+			return line, nextLine
+		}
+	}
+	return 0, 0
+}
+
+// updateServiceVersion sets services.<service>.version to version, editing only
+// that one line (the rest of the file is preserved). It returns ok=false if the
+// service or its version line is not found, leaving the content unchanged.
 func updateServiceVersion(content, service, version string) (string, bool) {
+	root, err := yamlRoot(content)
+	if err != nil {
+		return content, false
+	}
+	vLine, _ := keyEntryLines(mapChild(mapChild(root, "services"), service), "version")
+	if vLine == 0 {
+		return content, false
+	}
 	lines := strings.Split(content, "\n")
-
-	secStart := -1
-	for i, l := range lines {
-		if strings.TrimRight(l, " ") == "services:" {
-			secStart = i
-			break
-		}
-	}
-	if secStart < 0 {
+	idx := vLine - 1
+	if idx < 0 || idx >= len(lines) {
 		return content, false
 	}
-	secEnd := len(lines)
-	for i := secStart + 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == "" {
-			continue
-		}
-		if !strings.HasPrefix(lines[i], " ") {
-			secEnd = i
-			break
-		}
-	}
-
-	svcHeader := "  " + service + ":"
-	svcStart := -1
-	for i := secStart + 1; i < secEnd; i++ {
-		if strings.TrimRight(lines[i], " ") == svcHeader {
-			svcStart = i
-			break
-		}
-	}
-	if svcStart < 0 {
-		return content, false
-	}
-	svcEnd := secEnd
-	for i := svcStart + 1; i < secEnd; i++ {
-		if strings.TrimSpace(lines[i]) == "" {
-			continue
-		}
-		if strings.HasPrefix(lines[i], "  ") && !strings.HasPrefix(lines[i], "   ") {
-			svcEnd = i
-			break
-		}
-	}
-	for i := svcStart + 1; i < svcEnd; i++ {
-		if strings.HasPrefix(strings.TrimSpace(lines[i]), "version:") {
-			lines[i] = "    version: " + version
-			return strings.Join(lines, "\n"), true
-		}
-	}
-	return content, false
+	indent := lines[idx][:len(lines[idx])-len(strings.TrimLeft(lines[idx], " "))]
+	lines[idx] = indent + "version: " + version
+	return strings.Join(lines, "\n"), true
 }
 
 // verifyApiYaml re-reads api.yaml and ensures it still parses as YAML.
@@ -267,63 +562,40 @@ func verifyApiYaml(apiFile string) error {
 // replaces the whole "  <service>:" block under the top-level "serviceActions:"
 // map (full dump) or a single "    <action>:" entry within it.
 func updateServiceActionsBlock(content, service string, singleAction bool, actions map[string]swaggerAction) (string, error) {
-	lines := strings.Split(content, "\n")
-
-	// Locate top-level "serviceActions:".
-	saStart := -1
-	for i, l := range lines {
-		if strings.TrimRight(l, " ") == "serviceActions:" {
-			saStart = i
-			break
-		}
+	root, err := yamlRoot(content)
+	if err != nil {
+		return "", err
 	}
-	if saStart < 0 {
+	sa := mapChild(root, "serviceActions")
+	if sa == nil {
 		return "", fmt.Errorf("'serviceActions:' section not found in %s", common.API_FILE)
 	}
-	// End of the serviceActions section = next non-indented, non-empty line.
-	saEnd := len(lines)
-	for i := saStart + 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == "" {
-			continue
-		}
-		if !strings.HasPrefix(lines[i], " ") {
-			saEnd = i
-			break
-		}
+	lines := strings.Split(content, "\n")
+
+	// End of the serviceActions section (1-based, exclusive): the next top-level
+	// key's line, or EOF when serviceActions is the last top-level key.
+	saEnd := len(lines) + 1
+	if _, saNextTop := keyEntryLines(root, "serviceActions"); saNextTop != 0 {
+		saEnd = saNextTop
 	}
 
-	svcHeader := "  " + service + ":"
 	newSvcBody := renderActions(actions) // 4-space-indented action blocks
 
-	// Locate "  <service>:" within the serviceActions section.
-	svcStart := -1
-	for i := saStart + 1; i < saEnd; i++ {
-		if strings.TrimRight(lines[i], " ") == svcHeader {
-			svcStart = i
-			break
-		}
-	}
-
-	if svcStart < 0 {
+	svcKeyLine, svcNextLine := keyEntryLines(sa, service)
+	if svcKeyLine == 0 {
 		// Service absent: append a new "  <service>:" block at the end of the section.
-		block := []string{svcHeader}
-		block = append(block, splitNonEmpty(newSvcBody)...)
-		out := append([]string{}, lines[:saEnd]...)
+		at := saEnd - 1 // 0-based insert index
+		block := append([]string{"  " + service + ":"}, splitNonEmpty(newSvcBody)...)
+		out := append([]string{}, lines[:at]...)
 		out = append(out, block...)
-		out = append(out, lines[saEnd:]...)
+		out = append(out, lines[at:]...)
 		return strings.Join(out, "\n"), nil
 	}
 
-	// Service block body ends at the next 2-space key (next service) or section end.
-	svcEnd := saEnd
-	for i := svcStart + 1; i < saEnd; i++ {
-		if strings.TrimSpace(lines[i]) == "" {
-			continue
-		}
-		if strings.HasPrefix(lines[i], "  ") && !strings.HasPrefix(lines[i], "   ") {
-			svcEnd = i
-			break
-		}
+	svcStart := svcKeyLine - 1 // 0-based "  <service>:" line
+	svcEnd := saEnd - 1        // 0-based, exclusive
+	if svcNextLine != 0 {
+		svcEnd = svcNextLine - 1
 	}
 
 	if !singleAction {
@@ -339,34 +611,20 @@ func updateServiceActionsBlock(content, service string, singleAction bool, actio
 	for n := range actions {
 		actName = n
 	}
-	actHeader := "    " + actName + ":"
 	newActBody := splitNonEmpty(renderActions(actions))
 
-	// Locate "    <action>:" within the service block.
-	actStart := -1
-	for i := svcStart + 1; i < svcEnd; i++ {
-		if strings.TrimRight(lines[i], " ") == actHeader {
-			actStart = i
-			break
-		}
-	}
-	if actStart < 0 {
+	actKeyLine, actNextLine := keyEntryLines(mapChild(sa, service), actName)
+	if actKeyLine == 0 {
 		// Action absent: insert at the end of the service block.
 		out := append([]string{}, lines[:svcEnd]...)
 		out = append(out, newActBody...)
 		out = append(out, lines[svcEnd:]...)
 		return strings.Join(out, "\n"), nil
 	}
-	// Action body ends at the next 4-space key or the service block end.
+	actStart := actKeyLine - 1
 	actEnd := svcEnd
-	for i := actStart + 1; i < svcEnd; i++ {
-		if strings.TrimSpace(lines[i]) == "" {
-			continue
-		}
-		if strings.HasPrefix(lines[i], "    ") && !strings.HasPrefix(lines[i], "     ") {
-			actEnd = i
-			break
-		}
+	if actNextLine != 0 {
+		actEnd = actNextLine - 1
 	}
 	out := append([]string{}, lines[:actStart]...)
 	out = append(out, newActBody...)
@@ -408,4 +666,7 @@ func init() {
 	apiCmd.AddCommand(parseCmd)
 	parseCmd.PersistentFlags().StringVarP(&swaggerFile, "file", "f", common.SWAG_FILE, "Swagger JSON source: local file path or http(s) URL")
 	parseCmd.PersistentFlags().BoolVar(&applyToYaml, "apply", false, "Apply parsed actions into conf/api.yaml (default: print to stdout)")
+	parseCmd.PersistentFlags().BoolVar(&useLatest, "latest", false, "Use each service's latest swagger URL from api.yaml (services.<svc>.swagger.latest)")
+	parseCmd.PersistentFlags().StringVar(&releaseVer, "release", "", "Use a specific release tag's swagger (services.<svc>.swagger.release, {release} substituted)")
+	parseCmd.PersistentFlags().BoolVarP(&skipConfirm, "yes", "y", false, "Skip the confirmation prompt (for automation; requires source and target to be specified)")
 }
