@@ -95,10 +95,22 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-cicada/{release}/pkg/api/rest/docs/swagger.json
 
   cm-honeybee:
-    version: 0.5.0
+    version: latest(latest)
     baseurl: http://cm-honeybee:8081/honeybee
     auth:
-      type: none 
+      type: none
+    swagger:
+      latest: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/main/server/pkg/api/rest/docs/swagger.json
+      release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/server/pkg/api/rest/docs/swagger.json
+
+  cm-honeybee-agent:
+    version: latest(latest)
+    baseurl: http://cm-honeybee:8082/honeybee-agent
+    auth:
+      type: none
+    swagger:
+      latest: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/main/agent/pkg/api/rest/docs/swagger.json
+      release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/agent/pkg/api/rest/docs/swagger.json
 
   cm-grasshopper:
     version: latest(latest)
@@ -122,354 +134,138 @@ services:
 
 serviceActions:
   cb-spider:
-    Count-Vpc-By-Connection:
-      method: get
-      resourcePath: /countvpc/{ConnectionName}
-      description: "Get the total number of VPCs for a specific connection."
-    Get-Driver-Capability:
-      method: get
-      resourcePath: /driver/capability
-      description: "Retrieve capability information of the cloud driver."
-    List-Product-Family:
-      method: get
-      resourcePath: /productfamily/{RegionName}
-      description: "Retrieve a list of Product Families associated with a specific connection and region. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Price-Info-and-Cloud-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/RestAPI-Multi%E2%80%90Cloud-Price-Information-Guide)]"
-    Unregister-Disk:
-      method: delete
-      resourcePath: /regdisk/{Name}
-      description: "Unregister a Disk with the specified name."
-    Unregister-Region:
-      method: delete
-      resourcePath: /region/{RegionName}
-      description: "Unregister a specific Region."
-    Get-Region:
-      method: get
-      resourcePath: /region/{RegionName}
-      description: "Retrieve details of a specific Region."
-    List-All-Disk:
-      method: get
-      resourcePath: /alldisk
-      description: "Retrieve a comprehensive list of all Disks associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    Get-Region-Zone-Preconfig:
-      method: get
-      resourcePath: /preconfig/regionzone/{Name}
-      description: "Retrieve details of a specific pre-configured Region Zone based on driver and credential names. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
-    Unregister-Myimage:
-      method: delete
-      resourcePath: /regmyimage/{Name}
-      description: "Unregister a MyImage with the specified name."
-    Unregister-Vm:
-      method: delete
-      resourcePath: /regvm/{Name}
-      description: "Unregister a Virtual Machine (VM) with the specified name."
-    List-Vm:
-      method: get
-      resourcePath: /vm
-      description: "Retrieve a list of Virtual Machines (VMs) associated with a specific connection."
-    Start-Vm:
-      method: post
-      resourcePath: /vm
-      description: "Start a new Virtual Machine (VM) with specified configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-%EB%A9%80%ED%8B%B0%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C-vm-%EC%9D%B8%ED%94%84%EB%9D%BC-%EC%9E%90%EC%9B%90-%EC%A0%9C%EC%96%B4multi-cloud-vm-infra-resource-control)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
-    Get-Connection-Config:
-      method: get
-      resourcePath: /connectionconfig/{ConfigName}
-      description: "Retrieve details of a specific Connection Config."
-    Delete-Connection-Config:
-      method: delete
-      resourcePath: /connectionconfig/{ConfigName}
-      description: "Delete a specific Connection Config."
-    Count-Nlb-By-Connection:
-      method: get
-      resourcePath: /countnlb/{ConnectionName}
-      description: "Get the total number of Network Load Balancers (NLBs) for a specific connection."
-    Count-S3-By-Connection:
-      method: get
-      resourcePath: /counts3/{ConnectionName}
-      description: "Get the total number of S3 buckets for a specific connection."
-    Health-Check-Health:
-      method: get
-      resourcePath: /health
-      description: "Checks the health of CB-Spider service and its dependencies via /health endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
-    Health-Check-Healthcheck:
-      method: get
-      resourcePath: /healthcheck
-      description: "Checks the health of CB-Spider service and its dependencies via /healthcheck endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
-    List-Org-Region:
-      method: get
-      resourcePath: /orgregion
-      description: "Retrieve a list of Original Regions associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
-    Version-Info:
-      method: get
-      resourcePath: /version
-      description: "Retrieves the version information of CB-Spider."
-    List-Recent-Imagespec:
-      method: get
-      resourcePath: /vm/imagespecrecent
-      description: "Get list of recently used Image and Spec combinations for VM creation with statistics"
-    Delete-Recent-Imagespec:
-      method: delete
-      resourcePath: /vm/imagespecrecent
-      description: "Remove an Image and Spec combination from recent records"
-    Any-Call:
-      method: post
-      resourcePath: /anycall
-      description: "Execute a custom function (FID) with key-value parameters through AnyCall. 🕷️ [[Development Guide](https://github.com/cloud-barista/cb-spider/wiki/AnyCall-API-Extension-Guide)]"
-    Add-Nodegroup:
-      method: post
-      resourcePath: /cluster/{Name}/nodegroup
-      description: "Add a new Node Group to an existing Cluster."
-    Count-Vm-By-Connection:
-      method: get
-      resourcePath: /countvm/{ConnectionName}
-      description: "Get the total number of Virtual Machines (VMs) for a specific connection."
-    Delete-Csp-Myimage:
-      method: delete
-      resourcePath: /cspmyimage/{Id}
-      description: "Delete a specified CSP MyImage."
-    Proxy-Mcinsight-Vmspec-Filters:
-      method: get
-      resourcePath: /mcinsight/vm-spec/filters
-      description: "Proxy endpoint to retrieve VM Spec filters from MC-Insight API"
-    Health-Check-Ping:
-      method: get
-      resourcePath: /ping
-      description: "Checks the health of CB-Spider service and its dependencies via /ping endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
-    Add-Tag:
-      method: post
-      resourcePath: /tag
-      description: "Add a tag to a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
-    List-Tag:
-      method: get
-      resourcePath: /tag
-      description: "Retrieve a list of tags for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
-    Bulk-Import-Favorite-Imagespec:
-      method: post
-      resourcePath: /vm/imagespecfavorite/bulk
-      description: "Import multiple VM favorite records from JSON, skipping duplicates"
-    List-Keypair:
-      method: get
-      resourcePath: /keypair
-      description: "Retrieve a list of KeyPairs associated with a specific connection."
-    Create-Keypair:
-      method: post
-      resourcePath: /keypair
-      description: "Create a new KeyPair with the specified configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#5-vm-keypair-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
-    Get-S3-Presigned-Upload-Url:
-      method: get
-      resourcePath: /s3/presigned/upload/{BucketName}/{ObjectKey}
-      description: "Generates a presigned URL that can be used to upload an object to S3 without requiring AWS credentials. This is a CB-Spider special feature."
-    Set-Nodegroup-Autoscaling:
-      method: put
-      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/onautoscaling
-      description: "Enable or disable auto scaling for a Node Group in a Cluster."
-    Count-All-Myimage:
-      method: get
-      resourcePath: /countmyimage
-      description: "Get the total number of MyImages across all connections."
-    Get-Vmgroup-Healthinfo:
-      method: get
-      resourcePath: /nlb/{Name}/health
-      description: "Retrieve the health information of the VM group in a specified Network Load Balancer (NLB)."
-    Get-Vmprice-Info:
-      method: get
-      resourcePath: /priceinfo/vm/{RegionName}
-      description: "Retrieve VM Price Information for a specific connection and region. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Price-Info-Guide)]"
-    Unregister-Rdbms:
-      method: delete
-      resourcePath: /regrdbms/{Name}
-      description: "Unregister an RDBMS with the specified name."
-    Fetch-Resource-Usage:
-      method: get
-      resourcePath: /sysstats/usage
-      description: "Retrieve resource usage information such as CPU, memory, disk I/O, and network I/O.\nUse query parameter 'mode=text' to get the output in text format instead of JSON."
-    List-Favorite-Imagespec:
-      method: get
-      resourcePath: /vm/imagespecfavorite
-      description: "Get list of favorite Image and Spec combinations"
     Add-Favorite-Imagespec:
       method: post
       resourcePath: /vm/imagespecfavorite
       description: "Add an Image and Spec combination to favorites"
-    Delete-Favorite-Imagespec:
-      method: delete
-      resourcePath: /vm/imagespecfavorite
-      description: "Remove an Image and Spec combination from favorites"
-    List-Vm-Spec:
-      method: get
-      resourcePath: /vmspec
-      description: "Retrieve a list of VM specs associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-vm-spec-%EC%A0%95%EB%B3%B4-%EC%A0%9C%EA%B3%B5)]"
-    List-All-Securitygroup:
-      method: get
-      resourcePath: /allsecuritygroup
-      description: "Retrieve a comprehensive list of all Security Groups associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    Count-All-Subnet:
-      method: get
-      resourcePath: /countsubnet
-      description: "Get the total number of Subnets across all connections."
-    Register-Nlb:
+    Add-Nlb-Vm:
       method: post
-      resourcePath: /regnlb
-      description: "Register a new Network Load Balancer (NLB) with the specified name and CSP ID."
-    Register-Vpc:
+      resourcePath: /nlb/{Name}/vms
+      description: "Add a new set of VMs to an existing Network Load Balancer (NLB)."
+    Add-Nodegroup:
       method: post
-      resourcePath: /regvpc
-      description: "Register a new Virtual Private Cloud (VPC) with the specified name and CSP ID."
-    List-Vpc:
-      method: get
-      resourcePath: /vpc
-      description: "Retrieve a list of Virtual Private Clouds (VPCs) associated with a specific connection."
-    Create-Vpc:
+      resourcePath: /cluster/{Name}/nodegroup
+      description: "Add a new Node Group to an existing Cluster."
+    Add-Rule:
       method: post
-      resourcePath: /vpc
-      description: "Create a new Virtual Private Cloud (VPC) with specified subnet configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#3-vpcsubnet-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
-    List-Cloudos:
-      method: get
-      resourcePath: /cloudos
-      description: "Retrieve a list of supported Cloud OS."
-    Upload-Driver:
+      resourcePath: /securitygroup/{SGName}/rules
+      description: "Add new rules to a Security Group."
+    Add-Subnet:
       method: post
-      resourcePath: /driver/upload
-      description: "Upload a Cloud Driver library file."
-    List-Rdbms-Databases:
-      method: get
-      resourcePath: /rdbms/{Name}/databases
-      description: "List databases inside an RDBMS instance using the CSP-native API."
-    Create-Rdbms-Database:
+      resourcePath: /vpc/{VPCName}/subnet
+      description: "Add a new Subnet to an existing VPC."
+    Add-Tag:
       method: post
-      resourcePath: /rdbms/{Name}/databases
-      description: "Create a database inside an RDBMS instance using the CSP-native API."
-    Get-Vm-Spec:
+      resourcePath: /tag
+      description: "Add a tag to a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Any-Call:
+      method: post
+      resourcePath: /anycall
+      description: "Execute a custom function (FID) with key-value parameters through AnyCall. 🕷️ [[Development Guide](https://github.com/cloud-barista/cb-spider/wiki/AnyCall-API-Extension-Guide)]"
+    Attach-Disk:
+      method: put
+      resourcePath: /disk/{Name}/attach
+      description: "Attach an existing Disk to a VM."
+    Bulk-Import-Favorite-Imagespec:
+      method: post
+      resourcePath: /vm/imagespecfavorite/bulk
+      description: "Import multiple VM favorite records from JSON, skipping duplicates"
+    Bulk-Import-Recent-Imagespec:
+      method: post
+      resourcePath: /vm/imagespecrecent/bulk
+      description: "Import multiple VM recent records from JSON, skipping duplicates"
+    Change-Nodegroup-Scaling:
+      method: put
+      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/autoscalesize
+      description: "Change the scaling settings for a Node Group in a Cluster."
+    Check-Tcp-Port:
       method: get
-      resourcePath: /vmspec/{Name}
-      description: "Retrieve details of a specific VM spec. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-vm-spec-%EC%A0%95%EB%B3%B4-%EC%A0%9C%EA%B3%B5)]"
-    Get-Cluster-Token:
+      resourcePath: /check/tcp
+      description: "Verifies whether a given TCP port is open on the specified host."
+    Check-Udp-Port:
       method: get
-      resourcePath: /cluster/{Name}/token
-      description: "Get a temporary token for accessing EKS cluster (for kubectl exec auth)"
+      resourcePath: /check/udp
+      description: "Verifies whether a given UDP port is open on the specified host.\n※ Note: As UDP is connectionless, this check mainly performs a lookup and may not confirm if the server is working."
+    Control-Vm:
+      method: put
+      resourcePath: /controlvm/{Name}
+      description: "Control the state of a Virtual Machine (VM) such as suspend, resume, or reboot."
     Count-All-Cluster:
       method: get
       resourcePath: /countcluster
       description: "Get the total number of Clusters across all connections."
-    Unregister-Keypair:
-      method: delete
-      resourcePath: /regkeypair/{Name}
-      description: "Unregister a KeyPair with the specified name."
-    Get-Subnet:
+    Count-All-Connection:
       method: get
-      resourcePath: /vpc/{VPCName}/subnet/{SubnetName}
-      description: "Retrieve a specific Subnet from a VPC."
-    Remove-Subnet:
-      method: delete
-      resourcePath: /vpc/{VPCName}/subnet/{SubnetName}
-      description: "Remove an existing Subnet from a VPC."
-    List-All-Myimage:
-      method: get
-      resourcePath: /allmyimage
-      description: "Retrieve a comprehensive list of all MyImages associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    List-All-Vm-Info:
-      method: get
-      resourcePath: /allvminfo
-      description: "Retrieve a list of detailed information on all Virtual Machines (VMs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    Get-Credential:
-      method: get
-      resourcePath: /credential/{CredentialName}
-      description: "Retrieve details of a specific Credential."
-    Unregister-Credential:
-      method: delete
-      resourcePath: /credential/{CredentialName}
-      description: "Unregister a specific Credential."
-    Delete-Csp-Securitygroup:
-      method: delete
-      resourcePath: /cspsecuritygroup/{Id}
-      description: "Delete a specified CSP Security Group."
-    Get-Rdbms-Owner-Vpc:
-      method: get
-      resourcePath: /getrdbmsowner
-      description: "Retrieve the Owner VPC of a given RDBMS CSP ID."
-    Get-Nlb:
-      method: get
-      resourcePath: /nlb/{Name}
-      description: "Retrieve details of a specific Network Load Balancer (NLB)."
-    Delete-Nlb:
-      method: delete
-      resourcePath: /nlb/{Name}
-      description: "Delete a specified Network Load Balancer (NLB)."
-    Get-Rdbms-Metainfo:
-      method: get
-      resourcePath: /rdbmsmetainfo
-      description: "Retrieve CSP-specific RDBMS capability information (supported engines, features, storage options)."
-    Get-Securitygroup:
-      method: get
-      resourcePath: /securitygroup/{Name}
-      description: "Retrieve details of a specific Security Group."
-    Delete-Securitygroup:
-      method: delete
-      resourcePath: /securitygroup/{Name}
-      description: "Delete a specified Security Group."
-    List-All-Cluster-Info:
-      method: get
-      resourcePath: /allclusterinfo
-      description: "Retrieve a list of all Cluster information associated with a specific connection."
-    List-All-Nlb-Info:
-      method: get
-      resourcePath: /allnlbinfo
-      description: "Retrieve a comprehensive list of all Network Load Balancers (NLBs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    List-All-Vm:
-      method: get
-      resourcePath: /allvm
-      description: "Retrieve a comprehensive list of all Virtual Machines (VMs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    List-Cluster:
-      method: get
-      resourcePath: /cluster
-      description: "Retrieve a list of Clusters associated with a specific connection."
-    Create-Cluster:
-      method: post
-      resourcePath: /cluster
-      description: "Create a new Cluster with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Provider-Managed-Kubernetes-and-Driver-API)] <br> * NodeGroupList is optional, depends on CSP type: <br> &nbsp;- Type-I (e.g., Tencent, Alibaba): requires separate Node Group addition after Cluster creation. <br> &nbsp;- Type-II (e.g., Azure, NHN): mandates at least one Node Group during initial Cluster creation."
-    Terminate-Vm:
-      method: delete
-      resourcePath: /vm/{Name}
-      description: "Terminate a specified Virtual Machine (VM)."
-    Get-Vm:
-      method: get
-      resourcePath: /vm/{Name}
-      description: "Retrieve details of a specific Virtual Machine (VM)."
-    List-Image:
-      method: get
-      resourcePath: /vmimage
-      description: "Retrieve a list of Public Images associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/How-to-get-Image-List-with-REST-API)]"
+      resourcePath: /countconnectionconfig
+      description: "Get the total number of connections."
     Count-All-Disk:
       method: get
       resourcePath: /countdisk
       description: "Get the total number of Disks across all connections."
-    Delete-Csp-Nlb:
-      method: delete
-      resourcePath: /cspnlb/{Id}
-      description: "Delete a specified CSP Network Load Balancer (NLB)."
-    Get-Rdbms:
+    Count-All-Keypair:
       method: get
-      resourcePath: /rdbms/{Name}
-      description: "Retrieve details of a specific RDBMS instance."
-    Delete-Rdbms:
-      method: delete
-      resourcePath: /rdbms/{Name}
-      description: "Delete a specified RDBMS instance."
-    List-Region:
+      resourcePath: /countkeypair
+      description: "Get the total number of KeyPairs across all connections."
+    Count-All-Myimage:
       method: get
-      resourcePath: /region
-      description: "Retrieve a list of registered Regions."
-    Register-Region:
-      method: post
-      resourcePath: /region
-      description: "Register a new Region. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#3-cloud-regionzone-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
-    Register-Vm:
-      method: post
-      resourcePath: /regvm
-      description: "Register a new Virtual Machine (VM) with the specified name and CSP ID."
-    List-All-Cluster:
+      resourcePath: /countmyimage
+      description: "Get the total number of MyImages across all connections."
+    Count-All-Nlb:
       method: get
-      resourcePath: /allcluster
-      description: "Retrieve a comprehensive list of all Clusters associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+      resourcePath: /countnlb
+      description: "Get the total number of Network Load Balancers (NLBs) across all connections."
+    Count-All-Rdbms:
+      method: get
+      resourcePath: /countrdbms
+      description: "Get the total number of RDBMS instances across all connections."
+    Count-All-Securitygroup:
+      method: get
+      resourcePath: /countsecuritygroup
+      description: "Get the total number of Security Groups across all connections."
+    Count-All-Subnet:
+      method: get
+      resourcePath: /countsubnet
+      description: "Get the total number of Subnets across all connections."
+    Count-All-Vm:
+      method: get
+      resourcePath: /countvm
+      description: "Get the total number of Virtual Machines (VMs) across all connections."
+    Count-All-Vpc:
+      method: get
+      resourcePath: /countvpc
+      description: "Get the total number of VPCs across all connections."
+    Count-Cluster-By-Connection:
+      method: get
+      resourcePath: /countcluster/{ConnectionName}
+      description: "Get the total number of Clusters for a specific connection."
+    Count-Connection-By-Provider:
+      method: get
+      resourcePath: /countconnectionconfig/{ProviderName}
+      description: "Get the total number of connections for a specific provider."
+    Count-Disk-By-Connection:
+      method: get
+      resourcePath: /countdisk/{ConnectionName}
+      description: "Get the total number of Disks for a specific connection."
+    Count-Keypair-By-Connection:
+      method: get
+      resourcePath: /countkeypair/{ConnectionName}
+      description: "Get the total number of KeyPairs for a specific connection."
+    Count-Myimage-By-Connection:
+      method: get
+      resourcePath: /countmyimage/{ConnectionName}
+      description: "Get the total number of MyImages for a specific connection."
+    Count-Nlb-By-Connection:
+      method: get
+      resourcePath: /countnlb/{ConnectionName}
+      description: "Get the total number of Network Load Balancers (NLBs) for a specific connection."
+    Count-Rdbms-By-Connection:
+      method: get
+      resourcePath: /countrdbms/{ConnectionName}
+      description: "Get the total number of RDBMS instances for a specific connection."
+    Count-S3-By-Connection:
+      method: get
+      resourcePath: /counts3/{ConnectionName}
+      description: "Get the total number of S3 buckets for a specific connection."
     Count-Securitygroup-By-Connection:
       method: get
       resourcePath: /countsecuritygroup/{ConnectionName}
@@ -478,166 +274,150 @@ serviceActions:
       method: get
       resourcePath: /countsubnet/{ConnectionName}
       description: "Get the total number of Subnets for a specific connection."
-    Proxy-Mcinsight-Vmspec:
+    Count-Vm-By-Connection:
       method: get
-      resourcePath: /mcinsight/vm-spec
-      description: "Proxy endpoint to retrieve VM Spec list from MC-Insight API with filters"
-    Get-Region-Zone:
+      resourcePath: /countvm/{ConnectionName}
+      description: "Get the total number of Virtual Machines (VMs) for a specific connection."
+    Count-Vpc-By-Connection:
       method: get
-      resourcePath: /regionzone/{Name}
-      description: "Retrieve details of a specific Region Zone. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
-    List-All-Disk-Info:
-      method: get
-      resourcePath: /alldiskinfo
-      description: "Retrieve a list of all Disk information associated with all connections."
-    Count-Cluster-By-Connection:
-      method: get
-      resourcePath: /countcluster/{ConnectionName}
-      description: "Get the total number of Clusters for a specific connection."
-    Register-Myimage:
+      resourcePath: /countvpc/{ConnectionName}
+      description: "Get the total number of VPCs for a specific connection."
+    Create-Cluster:
       method: post
-      resourcePath: /regmyimage
-      description: "Register a new MyImage with the specified name and CSP ID."
-    Add-Subnet:
-      method: post
-      resourcePath: /vpc/{VPCName}/subnet
-      description: "Add a new Subnet to an existing VPC."
-    Remove-Nodegroup:
-      method: delete
-      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}
-      description: "Remove an existing Node Group from a Cluster."
-    List-All-Rdbms:
-      method: get
-      resourcePath: /allrdbms
-      description: "Retrieve a comprehensive list of all RDBMS instances associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    Count-All-Securitygroup:
-      method: get
-      resourcePath: /countsecuritygroup
-      description: "Get the total number of Security Groups across all connections."
-    Register-Keypair:
-      method: post
-      resourcePath: /regkeypair
-      description: "Register a new KeyPair with the specified name and CSP ID."
-    List-Org-Vm-Spec:
-      method: get
-      resourcePath: /vmorgspec
-      description: "Retrieve a list of Original VM Specs associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
-    Get-Vpc:
-      method: get
-      resourcePath: /vpc/{Name}
-      description: "Retrieve details of a specific Virtual Private Cloud (VPC)."
-    Delete-Vpc:
-      method: delete
-      resourcePath: /vpc/{Name}
-      description: "Delete a specified Virtual Private Cloud (VPC)."
-    Count-Myimage-By-Connection:
-      method: get
-      resourcePath: /countmyimage/{ConnectionName}
-      description: "Get the total number of MyImages for a specific connection."
-    Delete-Csp-Keypair:
-      method: delete
-      resourcePath: /cspkeypair/{Id}
-      description: "Delete a specified CSP KeyPair."
-    Get-Nlb-Owner-Vpc:
-      method: post
-      resourcePath: /getnlbowner
-      description: "Retrieve the owner VPC of a specified Network Load Balancer (NLB)."
-    Get-Vm-Using-Rs:
-      method: post
-      resourcePath: /getvmusingresources
-      description: "Retrieve details of a VM using resource ID."
-    Proxy-Mcinsight-Vmprice-Filters:
-      method: get
-      resourcePath: /mcinsight/price-info/filters
-      description: "Proxy endpoint to retrieve VM Price filters from MC-Insight API"
-    Register-Subnet:
-      method: post
-      resourcePath: /regsubnet
-      description: "Register a new Subnet within a specified VPC."
-    Get-S3-Presigned-Url:
-      method: get
-      resourcePath: /s3/presigned/download/{BucketName}/{ObjectKey}
-      description: "Generates a presigned URL that can be used to download an object from S3 without requiring AWS credentials. This is a CB-Spider special feature."
-    Delete-Csp-Vpc:
-      method: delete
-      resourcePath: /cspvpc/{Id}
-      description: "Delete a specified CSP Virtual Private Cloud (VPC)."
-    List-Nlb:
-      method: get
-      resourcePath: /nlb
-      description: "Retrieve a list of Network Load Balancers (NLBs) associated with a specific connection."
-    Create-Nlb:
-      method: post
-      resourcePath: /nlb
-      description: "Create a new Network Load Balancer (NLB) with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Network-Load-Balancer-and-Driver-API)]"
-    List-Region-Zone:
-      method: get
-      resourcePath: /regionzone
-      description: "Retrieve a list of Region Zones associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
-    List-All-Keypair-Info:
-      method: get
-      resourcePath: /allkeypairinfo
-      description: "Retrieve a list of KeyPair information associated with all connections."
-    List-All-Rdbms-Info:
-      method: get
-      resourcePath: /allrdbmsinfo
-      description: "Retrieve a list of all RDBMS information associated with all connections."
-    Control-Vm:
-      method: put
-      resourcePath: /controlvm/{Name}
-      description: "Control the state of a Virtual Machine (VM) such as suspend, resume, or reboot."
-    Count-Rdbms-By-Connection:
-      method: get
-      resourcePath: /countrdbms/{ConnectionName}
-      description: "Get the total number of RDBMS instances for a specific connection."
-    Proxy-Mcinsight-Vmimage:
-      method: get
-      resourcePath: /mcinsight/vm-image
-      description: "Proxy endpoint to retrieve VM Image list from MC-Insight API with filters"
-    List-Org-Zone:
-      method: get
-      resourcePath: /orgzone
-      description: "Retrieve a list of Original Zones associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
-    Health-Check-Readyz:
-      method: get
-      resourcePath: /readyz
-      description: "Checks the health of CB-Spider service and its dependencies via /readyz endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
-    Get-Tag:
-      method: get
-      resourcePath: /tag/{Key}
-      description: "Retrieve a specific tag for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
-    Remove-Tag:
-      method: delete
-      resourcePath: /tag/{Key}
-      description: "Remove a specific tag from a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
-    Get-Cloudos-Metainfo:
-      method: get
-      resourcePath: /cloudos/metainfo/{CloudOSName}
-      description: "Retrieve metadata information for a specific Cloud OS."
-    Get-Driver:
-      method: get
-      resourcePath: /driver/{DriverName}
-      description: "Retrieve details of a specific Cloud Driver."
-    Unregister-Driver:
-      method: delete
-      resourcePath: /driver/{DriverName}
-      description: "Unregister a specific Cloud Driver."
-    Register-Cluster:
-      method: post
-      resourcePath: /regcluster
-      description: "Register a new Cluster with the specified VPC and CSP ID."
-    List-All-Vpc:
-      method: get
-      resourcePath: /allvpc
-      description: "Retrieve a comprehensive list of all Virtual Private Clouds (VPCs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    List-Connection-Config:
-      method: get
-      resourcePath: /connectionconfig
-      description: "Retrieve a list of registered Connection Configs."
+      resourcePath: /cluster
+      description: "Create a new Cluster with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Provider-Managed-Kubernetes-and-Driver-API)] <br> * NodeGroupList is optional, depends on CSP type: <br> &nbsp;- Type-I (e.g., Tencent, Alibaba): requires separate Node Group addition after Cluster creation. <br> &nbsp;- Type-II (e.g., Azure, NHN): mandates at least one Node Group during initial Cluster creation."
     Create-Connection-Config:
       method: post
       resourcePath: /connectionconfig
       description: "Create a new Connection Config. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#4-cloud-connection-configuration-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
+    Create-Disk:
+      method: post
+      resourcePath: /disk
+      description: "Create a new Disk with the specified configuration. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Disk-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    Create-Filesystem:
+      method: post
+      resourcePath: /filesystem
+      description: "Create a new FileSystem with the specified configuration."
+    Create-Keypair:
+      method: post
+      resourcePath: /keypair
+      description: "Create a new KeyPair with the specified configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#5-vm-keypair-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
+    Create-Myimage:
+      method: post
+      resourcePath: /myimage
+      description: "Create a new MyImage snapshot from a specified VM. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/MyImage-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    Create-Nlb:
+      method: post
+      resourcePath: /nlb
+      description: "Create a new Network Load Balancer (NLB) with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Network-Load-Balancer-and-Driver-API)]"
+    Create-Rdbms:
+      method: post
+      resourcePath: /rdbms
+      description: "Create a new Relational Database (RDBMS) with the specified configuration."
+    Create-Rdbms-Database:
+      method: post
+      resourcePath: /rdbms/{Name}/databases
+      description: "Create a database inside an RDBMS instance using the CSP-native API."
+    Create-S3-Bucket:
+      method: put
+      resourcePath: /s3/{BucketName}
+      description: "Creates a new S3 bucket or sets bucket configuration based on query parameters.\n\n**Operations:**\n- No query params: Create a new bucket\n- ?versioning: Set versioning configuration (Enable/Suspend)\n- ?cors: Set CORS configuration\n\n**IMPORTANT: Choose only ONE body configuration based on query parameter:**\n- If using ?versioning: Use VersioningConfiguration body\n- If using ?cors: Use CORSConfiguration body\n- If no query params: No body required (bucket creation)\n\n**Versioning Status Values:**\n- Enabled: Enable versioning for the bucket\n- Suspended: Suspend versioning for the bucket\n\n**CORS Configuration Example:**\n- AllowedOrigin: [\"*\"] or [\"https://example.com\"]\n- AllowedMethod: [\"GET\", \"PUT\", \"POST\", \"DELETE\", \"HEAD\"]\n- AllowedHeader: [\"*\"] or [\"Content-Type\", \"Authorization\"]\n- ExposeHeader: [\"ETag\", \"x-amz-request-id\"]\n- MaxAgeSeconds: 3600 (cache preflight response for 1 hour)"
+    Create-Securitygroup:
+      method: post
+      resourcePath: /securitygroup
+      description: "Create a new Security Group with specified rules and tags. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Security-Group-Rules-and-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#4-securitygroup-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
+    Create-Vpc:
+      method: post
+      resourcePath: /vpc
+      description: "Create a new Virtual Private Cloud (VPC) with specified subnet configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#3-vpcsubnet-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
+    Delete-Cluster:
+      method: delete
+      resourcePath: /cluster/{Name}
+      description: "Delete a specified Cluster."
+    Delete-Connection-Config:
+      method: delete
+      resourcePath: /connectionconfig/{ConfigName}
+      description: "Delete a specific Connection Config."
+    Delete-Csp-Cluster:
+      method: delete
+      resourcePath: /cspcluster/{Id}
+      description: "Delete a specified CSP Cluster."
+    Delete-Csp-Disk:
+      method: delete
+      resourcePath: /cspdisk/{Id}
+      description: "Delete a specified CSP Disk."
+    Delete-Csp-Keypair:
+      method: delete
+      resourcePath: /cspkeypair/{Id}
+      description: "Delete a specified CSP KeyPair."
+    Delete-Csp-Myimage:
+      method: delete
+      resourcePath: /cspmyimage/{Id}
+      description: "Delete a specified CSP MyImage."
+    Delete-Csp-Nlb:
+      method: delete
+      resourcePath: /cspnlb/{Id}
+      description: "Delete a specified CSP Network Load Balancer (NLB)."
+    Delete-Csp-Rdbms:
+      method: delete
+      resourcePath: /csprdbms/{Id}
+      description: "Delete a specified CSP RDBMS."
+    Delete-Csp-Securitygroup:
+      method: delete
+      resourcePath: /cspsecuritygroup/{Id}
+      description: "Delete a specified CSP Security Group."
+    Delete-Csp-Vpc:
+      method: delete
+      resourcePath: /cspvpc/{Id}
+      description: "Delete a specified CSP Virtual Private Cloud (VPC)."
+    Delete-Disk:
+      method: delete
+      resourcePath: /disk/{Name}
+      description: "Delete a specified Disk."
+    Delete-Favorite-Imagespec:
+      method: delete
+      resourcePath: /vm/imagespecfavorite
+      description: "Remove an Image and Spec combination from favorites"
+    Delete-Keypair:
+      method: delete
+      resourcePath: /keypair/{Name}
+      description: "Delete a specified KeyPair."
+    Delete-Myimage:
+      method: delete
+      resourcePath: /myimage/{Name}
+      description: "Delete a specified MyImage."
+    Delete-Nlb:
+      method: delete
+      resourcePath: /nlb/{Name}
+      description: "Delete a specified Network Load Balancer (NLB)."
+    Delete-Rdbms:
+      method: delete
+      resourcePath: /rdbms/{Name}
+      description: "Delete a specified RDBMS instance."
+    Delete-Rdbms-Database:
+      method: delete
+      resourcePath: /rdbms/{Name}/databases/{DBName}
+      description: "Drop a database inside an RDBMS instance using the CSP-native API."
+    Delete-Recent-Imagespec:
+      method: delete
+      resourcePath: /vm/imagespecrecent
+      description: "Remove an Image and Spec combination from recent records"
+    Delete-S3-Bucket:
+      method: delete
+      resourcePath: /s3/{BucketName}
+      description: "Deletes an S3 bucket or specific bucket configuration based on query parameters.\n\n**Operations:**\n- No query params: Delete bucket (must be empty)\n- ?cors: Delete CORS configuration\n- ?empty: Force empty bucket (removes all objects)\n- ?force: Force delete bucket with all contents"
+    Delete-S3-Object:
+      method: delete
+      resourcePath: /s3/{BucketName}/{ObjectKey}
+      description: "Deletes an object or aborts a multipart upload based on query parameters.\n\n**Operations:**\n- No query params: Delete object (current version)\n- ?versionId={id}: Delete specific version\n- ?uploadId={id}: Abort multipart upload"
+    Delete-Securitygroup:
+      method: delete
+      resourcePath: /securitygroup/{Name}
+      description: "Delete a specified Security Group."
+    Delete-Vpc:
+      method: delete
+      resourcePath: /vpc/{Name}
+      description: "Delete a specified Virtual Private Cloud (VPC)."
     Destroy-All-Resource:
       method: delete
       resourcePath: /destroy
@@ -646,94 +426,338 @@ serviceActions:
       method: put
       resourcePath: /disk/{Name}/detach
       description: "Detach an existing Disk from a VM."
-    Create-Filesystem:
-      method: post
-      resourcePath: /filesystem
-      description: "Create a new FileSystem with the specified configuration."
-    Get-Keypair:
-      method: get
-      resourcePath: /keypair/{Name}
-      description: "Retrieve details of a specific KeyPair."
-    Delete-Keypair:
-      method: delete
-      resourcePath: /keypair/{Name}
-      description: "Delete a specified KeyPair."
-    Add-Nlb-Vm:
-      method: post
-      resourcePath: /nlb/{Name}/vms
-      description: "Add a new set of VMs to an existing Network Load Balancer (NLB)."
-    Remove-Nlb-Vm:
-      method: delete
-      resourcePath: /nlb/{Name}/vms
-      description: "Remove a set of VMs from an existing Network Load Balancer (NLB)."
-    List-Securitygroup:
-      method: get
-      resourcePath: /securitygroup
-      description: "Retrieve a list of Security Groups associated with a specific connection."
-    Create-Securitygroup:
-      method: post
-      resourcePath: /securitygroup
-      description: "Create a new Security Group with specified rules and tags. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Security-Group-Rules-and-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#4-securitygroup-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
-    Delete-Csp-Disk:
-      method: delete
-      resourcePath: /cspdisk/{Id}
-      description: "Delete a specified CSP Disk."
-    Change-Nodegroup-Scaling:
-      method: put
-      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/autoscalesize
-      description: "Change the scaling settings for a Node Group in a Cluster."
-    Count-All-Vm:
-      method: get
-      resourcePath: /countvm
-      description: "Get the total number of Virtual Machines (VMs) across all connections."
-    Delete-Rdbms-Database:
-      method: delete
-      resourcePath: /rdbms/{Name}/databases/{DBName}
-      description: "Drop a database inside an RDBMS instance using the CSP-native API."
-    Put-S3-Object-From-File:
-      method: put
-      resourcePath: /s3/{BucketName}/{ObjectKey}
-      description: "Uploads a file to S3 bucket or uploads a part for multipart upload based on query parameters.\n\n**Operations:**\n- No query params: Upload object (standard upload)\n- ?uploadId={id}&partNumber={num}: Upload a part for multipart upload\n\n**Part Upload Example (Step 2 of multipart upload):**\n- uploadId: Use UploadId from initiate response (Step 1)\n- partNumber: 1, 2, 3... (consecutive integers, minimum 1)\n- Body: Binary file data (in Swagger UI, use \"Choose File\" button)\n- Response: Check ETag header - save it for completion (Step 4)\n- Repeat for each part with different partNumber"
-    Handle-S3-Object-Post:
-      method: post
-      resourcePath: /s3/{BucketName}/{ObjectKey}
-      description: "Object-level POST operations. **Response type varies by query parameter:**\n\n| Query Parameter | Response Schema | Description |\n|---|---|---|\n| `?uploads` | `InitiateMultipartUploadResultJSON` | Initiate multipart upload (returns UploadId) |\n| `?uploadId={id}` | `CompleteMultipartUploadResultJSON` | Complete multipart upload |\n\n**Note**: The example value below shows the `?uploads` (initiate) response.\n\n**Multipart Upload Testing Guide (Swagger UI):**\n\n**Step 1: Initiate Multipart Upload**\n- Use POST /s3/{BucketName}/{ObjectKey}?uploads\n- Set ConnectionName, BucketName, ObjectKey (e.g., \"testfile.bin\")\n- Response will contain UploadId (save this!)\n\n**Step 2: Upload Parts**\n- Use PUT /s3/{BucketName}/{ObjectKey}?uploadId={saved_uploadId}&partNumber=1\n- In request body, upload file part (binary data)\n- Response header contains ETag (save this!)\n- Repeat for part 2, 3, etc. with partNumber=2, 3...\n\n**Step 3: List Parts (Optional)**\n- Use GET /s3/{BucketName}/{ObjectKey}?uploadId={saved_uploadId}&list-type=parts\n- Verify all uploaded parts\n\n**Step 4: Complete Upload**\n- Use POST /s3/{BucketName}/{ObjectKey}?uploadId={saved_uploadId}\n- IMPORTANT: Enter uploadId in query parameter field (not in the parameter table below)\n- Body (required): Provide parts list with PartNumber and ETag for each uploaded part\n- Note: ETag values must include double quotes, e.g., \"abc123\" (with surrounding double quotes)"
-    Delete-S3-Object:
-      method: delete
-      resourcePath: /s3/{BucketName}/{ObjectKey}
-      description: "Deletes an object or aborts a multipart upload based on query parameters.\n\n**Operations:**\n- No query params: Delete object (current version)\n- ?versionId={id}: Delete specific version\n- ?uploadId={id}: Abort multipart upload"
-    Get-S3-Object-Info:
-      method: head
-      resourcePath: /s3/{BucketName}/{ObjectKey}
-      description: "Returns metadata about an object without returning the object itself.\n\n**Important**: This is a HEAD request that only returns headers (metadata), not the file content.\nThe response includes Content-Type, Content-Length, Last-Modified, ETag, and version information.\nDo NOT use \"Download file\" button in Swagger UI - it will create an empty/invalid file.\nUse GET /s3/{BucketName}/{ObjectKey} to download the actual file."
     Download-S3-Object:
       method: get
       resourcePath: /s3/{BucketName}/{ObjectKey}
       description: "Downloads an object from S3 or lists parts of a multipart upload. **Response type varies by query parameter:**\n\n| Query Parameter | Response | Description |\n|---|---|---|\n| *(none)* | `application/octet-stream` (binary) | Download object content |\n| `?versionId={id}` | `application/octet-stream` (binary) | Download specific object version |\n| `?uploadId={id}&list-type=parts` | `ListPartsResultJSON` | List parts of in-progress multipart upload |\n\n**Note**: The example value below shows the `?uploadId&list-type=parts` (list parts JSON) response.\nFor binary downloads, the response body is the raw file content.\n\n**List Parts Example (verify uploaded parts):**\n- uploadId: Use UploadId from initiate response\n- list-type: Must be \"parts\"\n- Response shows all uploaded parts with PartNumber, ETag, Size\n- Optional: part-number-marker (pagination), max-parts (limit)"
-    Get-Image:
+    Fetch-Resource-Usage:
       method: get
-      resourcePath: /vmimage/{Name}
-      description: "Retrieve details of a specific Public Image. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/How-to-get-Image-List-with-REST-API)]"
-    Count-Connection-By-Provider:
+      resourcePath: /sysstats/usage
+      description: "Retrieve resource usage information such as CPU, memory, disk I/O, and network I/O.\nUse query parameter 'mode=text' to get the output in text format instead of JSON."
+    Fetch-System-Info:
       method: get
-      resourcePath: /countconnectionconfig/{ProviderName}
-      description: "Get the total number of connections for a specific provider."
-    Count-All-Keypair:
+      resourcePath: /sysstats/system
+      description: "Retrieve system information such as hostname, platform, CPU, memory, and disk.\nUse query parameter 'mode=text' to get the output in text format instead of JSON."
+    Get-Cloudos-Metainfo:
       method: get
-      resourcePath: /countkeypair
-      description: "Get the total number of KeyPairs across all connections."
-    Count-All-Nlb:
+      resourcePath: /cloudos/metainfo/{CloudOSName}
+      description: "Retrieve metadata information for a specific Cloud OS."
+    Get-Cluster:
       method: get
-      resourcePath: /countnlb
-      description: "Get the total number of Network Load Balancers (NLBs) across all connections."
+      resourcePath: /cluster/{Name}
+      description: "Retrieve details of a specific Cluster."
     Get-Cluster-Owner-Vpc:
       method: post
       resourcePath: /getclusterowner
       description: "Retrieve the owner VPC of a specified Cluster."
-    Proxy-Mcinsight-Vmprice:
+    Get-Cluster-Token:
       method: get
-      resourcePath: /mcinsight/price-info
-      description: "Proxy endpoint to retrieve VM Price information from MC-Insight API with filters"
+      resourcePath: /cluster/{Name}/token
+      description: "Get a temporary token for accessing EKS cluster (for kubectl exec auth)"
+    Get-Connection-Config:
+      method: get
+      resourcePath: /connectionconfig/{ConfigName}
+      description: "Retrieve details of a specific Connection Config."
+    Get-Credential:
+      method: get
+      resourcePath: /credential/{CredentialName}
+      description: "Retrieve details of a specific Credential."
+    Get-Csp-Vm:
+      method: get
+      resourcePath: /cspvm/{Id}
+      description: "Retrieve details of a specific CSP Virtual Machine (VM)."
+    Get-Disk:
+      method: get
+      resourcePath: /disk/{Name}
+      description: "Retrieve details of a specific Disk."
+    Get-Driver:
+      method: get
+      resourcePath: /driver/{DriverName}
+      description: "Retrieve details of a specific Cloud Driver."
+    Get-Driver-Capability:
+      method: get
+      resourcePath: /driver/capability
+      description: "Retrieve capability information of the cloud driver."
+    Get-Image:
+      method: get
+      resourcePath: /vmimage/{Name}
+      description: "Retrieve details of a specific Public Image. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/How-to-get-Image-List-with-REST-API)]"
+    Get-Keypair:
+      method: get
+      resourcePath: /keypair/{Name}
+      description: "Retrieve details of a specific KeyPair."
+    Get-Myimage:
+      method: get
+      resourcePath: /myimage/{Name}
+      description: "Retrieve details of a specific MyImage."
+    Get-Nlb:
+      method: get
+      resourcePath: /nlb/{Name}
+      description: "Retrieve details of a specific Network Load Balancer (NLB)."
+    Get-Nlb-Owner-Vpc:
+      method: post
+      resourcePath: /getnlbowner
+      description: "Retrieve the owner VPC of a specified Network Load Balancer (NLB)."
+    Get-Org-Vm-Spec:
+      method: get
+      resourcePath: /vmorgspec/{Name}
+      description: "Retrieve details of a specific Original VM Spec."
+    Get-Quota-Info:
+      method: get
+      resourcePath: /quotainfo
+      description: "Retrieve all quota limits and current usage for a given service type. No filtering is applied; all CSP-original quota items for the service type are returned. 🕷️ Supported CSPs: AWS, Azure, GCP, Alibaba."
+    Get-Rdbms:
+      method: get
+      resourcePath: /rdbms/{Name}
+      description: "Retrieve details of a specific RDBMS instance."
+    Get-Rdbms-Metainfo:
+      method: get
+      resourcePath: /rdbmsmetainfo
+      description: "Retrieve CSP-specific RDBMS capability information (supported engines, features, storage options)."
+    Get-Rdbms-Owner-Vpc:
+      method: get
+      resourcePath: /getrdbmsowner
+      description: "Retrieve the Owner VPC of a given RDBMS CSP ID."
+    Get-Region:
+      method: get
+      resourcePath: /region/{RegionName}
+      description: "Retrieve details of a specific Region."
+    Get-Region-Zone:
+      method: get
+      resourcePath: /regionzone/{Name}
+      description: "Retrieve details of a specific Region Zone. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
+    Get-Region-Zone-Preconfig:
+      method: get
+      resourcePath: /preconfig/regionzone/{Name}
+      description: "Retrieve details of a specific pre-configured Region Zone based on driver and credential names. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
+    Get-S3-Bucket-Get:
+      method: get
+      resourcePath: /s3/{BucketName}
+      description: "List objects in bucket or get bucket configuration. **Response type varies by query parameter:**\n\n| Query Parameter | Response Schema | Description |\n|---|---|---|\n| *(none)* | `ListBucketResultJSON` | List objects in bucket (default) |\n| `?location` | `{\"LocationConstraint\": \"ap-northeast-2\"}` | Bucket region/location |\n| `?versioning` | `VersioningConfiguration` | Versioning status: Enabled / Suspended / \"\" |\n| `?cors` | `CORSConfiguration` | CORS configuration rules |\n| `?versions` | `ListVersionsResultJSON` | Object version history |\n| `?uploads` | `ListMultipartUploadsResultJSON` | In-progress multipart uploads |\n\n**Note**: The example value below shows the default (no query params) `ListBucketResultJSON` response."
+    Get-S3-Bucket-Head:
+      method: head
+      resourcePath: /s3/{BucketName}
+      description: "Check if a bucket exists using HEAD request. Returns 200 if exists, 404 if not found."
+    Get-S3-Bucket-Usage:
+      method: get
+      resourcePath: /s3/{BucketName}/usage
+      description: "Returns the total size (in bytes) of all objects stored in an S3 bucket.\n\n**Response Fields:**\n- CurrentSize: Size of current (latest) objects in bytes\n- DeletedVersionsSize: Size of non-current versions in bytes\n- TotalSize: Total bucket size (CurrentSize + DeletedVersionsSize)"
+    Get-S3-Object-Info:
+      method: head
+      resourcePath: /s3/{BucketName}/{ObjectKey}
+      description: "Returns metadata about an object without returning the object itself.\n\n**Important**: This is a HEAD request that only returns headers (metadata), not the file content.\nThe response includes Content-Type, Content-Length, Last-Modified, ETag, and version information.\nDo NOT use \"Download file\" button in Swagger UI - it will create an empty/invalid file.\nUse GET /s3/{BucketName}/{ObjectKey} to download the actual file."
+    Get-S3-Presigned-Upload-Url:
+      method: get
+      resourcePath: /s3/presigned/upload/{BucketName}/{ObjectKey}
+      description: "Generates a presigned URL that can be used to upload an object to S3 without requiring AWS credentials. This is a CB-Spider special feature."
+    Get-S3-Presigned-Url:
+      method: get
+      resourcePath: /s3/presigned/download/{BucketName}/{ObjectKey}
+      description: "Generates a presigned URL that can be used to download an object from S3 without requiring AWS credentials. This is a CB-Spider special feature."
+    Get-Securitygroup:
+      method: get
+      resourcePath: /securitygroup/{Name}
+      description: "Retrieve details of a specific Security Group."
+    Get-Sg-Owner-Vpc:
+      method: post
+      resourcePath: /getsecuritygroupowner
+      description: "Retrieve the owner VPC of a specified Security Group."
+    Get-Subnet:
+      method: get
+      resourcePath: /vpc/{VPCName}/subnet/{SubnetName}
+      description: "Retrieve a specific Subnet from a VPC."
+    Get-Tag:
+      method: get
+      resourcePath: /tag/{Key}
+      description: "Retrieve a specific tag for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Get-Vm:
+      method: get
+      resourcePath: /vm/{Name}
+      description: "Retrieve details of a specific Virtual Machine (VM)."
+    Get-Vm-Spec:
+      method: get
+      resourcePath: /vmspec/{Name}
+      description: "Retrieve details of a specific VM spec. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-vm-spec-%EC%A0%95%EB%B3%B4-%EC%A0%9C%EA%B3%B5)]"
+    Get-Vm-Status:
+      method: get
+      resourcePath: /vmstatus/{Name}
+      description: "Retrieve the status of a specific Virtual Machine (VM)."
+    Get-Vm-Using-Rs:
+      method: post
+      resourcePath: /getvmusingresources
+      description: "Retrieve details of a VM using resource ID."
+    Get-Vmgroup-Healthinfo:
+      method: get
+      resourcePath: /nlb/{Name}/health
+      description: "Retrieve the health information of the VM group in a specified Network Load Balancer (NLB)."
+    Get-Vmprice-Info:
+      method: get
+      resourcePath: /priceinfo/vm/{RegionName}
+      description: "Retrieve VM Price Information for a specific connection and region. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Price-Info-Guide)]"
+    Get-Vpc:
+      method: get
+      resourcePath: /vpc/{Name}
+      description: "Retrieve details of a specific Virtual Private Cloud (VPC)."
+    Handle-S3-Object-Post:
+      method: post
+      resourcePath: /s3/{BucketName}/{ObjectKey}
+      description: "Object-level POST operations. **Response type varies by query parameter:**\n\n| Query Parameter | Response Schema | Description |\n|---|---|---|\n| `?uploads` | `InitiateMultipartUploadResultJSON` | Initiate multipart upload (returns UploadId) |\n| `?uploadId={id}` | `CompleteMultipartUploadResultJSON` | Complete multipart upload |\n\n**Note**: The example value below shows the `?uploads` (initiate) response.\n\n**Multipart Upload Testing Guide (Swagger UI):**\n\n**Step 1: Initiate Multipart Upload**\n- Use POST /s3/{BucketName}/{ObjectKey}?uploads\n- Set ConnectionName, BucketName, ObjectKey (e.g., \"testfile.bin\")\n- Response will contain UploadId (save this!)\n\n**Step 2: Upload Parts**\n- Use PUT /s3/{BucketName}/{ObjectKey}?uploadId={saved_uploadId}&partNumber=1\n- In request body, upload file part (binary data)\n- Response header contains ETag (save this!)\n- Repeat for part 2, 3, etc. with partNumber=2, 3...\n\n**Step 3: List Parts (Optional)**\n- Use GET /s3/{BucketName}/{ObjectKey}?uploadId={saved_uploadId}&list-type=parts\n- Verify all uploaded parts\n\n**Step 4: Complete Upload**\n- Use POST /s3/{BucketName}/{ObjectKey}?uploadId={saved_uploadId}\n- IMPORTANT: Enter uploadId in query parameter field (not in the parameter table below)\n- Body (required): Provide parts list with PartNumber and ETag for each uploaded part\n- Note: ETag values must include double quotes, e.g., \"abc123\" (with surrounding double quotes)"
+    Health-Check-Health:
+      method: get
+      resourcePath: /health
+      description: "Checks the health of CB-Spider service and its dependencies via /health endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Health-Check-Healthcheck:
+      method: get
+      resourcePath: /healthcheck
+      description: "Checks the health of CB-Spider service and its dependencies via /healthcheck endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Health-Check-Ping:
+      method: get
+      resourcePath: /ping
+      description: "Checks the health of CB-Spider service and its dependencies via /ping endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Health-Check-Readyz:
+      method: get
+      resourcePath: /readyz
+      description: "Checks the health of CB-Spider service and its dependencies via /readyz endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Increase-Disk-Size:
+      method: put
+      resourcePath: /disk/{Name}/size
+      description: "Increase the size of an existing disk."
+    List-All-Cluster:
+      method: get
+      resourcePath: /allcluster
+      description: "Retrieve a comprehensive list of all Clusters associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Cluster-Info:
+      method: get
+      resourcePath: /allclusterinfo
+      description: "Retrieve a list of all Cluster information associated with a specific connection."
+    List-All-Disk:
+      method: get
+      resourcePath: /alldisk
+      description: "Retrieve a comprehensive list of all Disks associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Disk-Info:
+      method: get
+      resourcePath: /alldiskinfo
+      description: "Retrieve a list of all Disk information associated with all connections."
+    List-All-Keypair:
+      method: get
+      resourcePath: /allkeypair
+      description: "Retrieve a comprehensive list of all KeyPairs associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Keypair-Info:
+      method: get
+      resourcePath: /allkeypairinfo
+      description: "Retrieve a list of KeyPair information associated with all connections."
+    List-All-Myimage:
+      method: get
+      resourcePath: /allmyimage
+      description: "Retrieve a comprehensive list of all MyImages associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Myimage-Info:
+      method: get
+      resourcePath: /allmyimageinfo
+      description: "Retrieve a comprehensive list of all MyImage information associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Nlb:
+      method: get
+      resourcePath: /allnlb
+      description: "Retrieve a comprehensive list of all Network Load Balancers (NLBs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Nlb-Info:
+      method: get
+      resourcePath: /allnlbinfo
+      description: "Retrieve a comprehensive list of all Network Load Balancers (NLBs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Rdbms:
+      method: get
+      resourcePath: /allrdbms
+      description: "Retrieve a comprehensive list of all RDBMS instances associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Rdbms-Info:
+      method: get
+      resourcePath: /allrdbmsinfo
+      description: "Retrieve a list of all RDBMS information associated with all connections."
+    List-All-Securitygroup:
+      method: get
+      resourcePath: /allsecuritygroup
+      description: "Retrieve a comprehensive list of all Security Groups associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Securitygroup-Info:
+      method: get
+      resourcePath: /allsecuritygroupinfo
+      description: "Retrieve a list of Security Group information associated with all connections."
+    List-All-Vm:
+      method: get
+      resourcePath: /allvm
+      description: "Retrieve a comprehensive list of all Virtual Machines (VMs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Vm-Info:
+      method: get
+      resourcePath: /allvminfo
+      description: "Retrieve a list of detailed information on all Virtual Machines (VMs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Vpc:
+      method: get
+      resourcePath: /allvpc
+      description: "Retrieve a comprehensive list of all Virtual Private Clouds (VPCs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Vpc-Info:
+      method: get
+      resourcePath: /allvpcinfo
+      description: "Retrieve a comprehensive list of all Virtual Private Clouds (VPCs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-Cloudos:
+      method: get
+      resourcePath: /cloudos
+      description: "Retrieve a list of supported Cloud OS."
+    List-Cluster:
+      method: get
+      resourcePath: /cluster
+      description: "Retrieve a list of Clusters associated with a specific connection."
+    List-Connection-Config:
+      method: get
+      resourcePath: /connectionconfig
+      description: "Retrieve a list of registered Connection Configs."
+    List-Credential:
+      method: get
+      resourcePath: /credential
+      description: "Retrieve a list of registered Credentials."
+    List-Disk:
+      method: get
+      resourcePath: /disk
+      description: "Retrieve a list of Disks associated with a specific connection."
+    List-Driver:
+      method: get
+      resourcePath: /driver
+      description: "Retrieve a list of registered Cloud Drivers."
+    List-Favorite-Imagespec:
+      method: get
+      resourcePath: /vm/imagespecfavorite
+      description: "Get list of favorite Image and Spec combinations"
+    List-Image:
+      method: get
+      resourcePath: /vmimage
+      description: "Retrieve a list of Public Images associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/How-to-get-Image-List-with-REST-API)]"
+    List-Keypair:
+      method: get
+      resourcePath: /keypair
+      description: "Retrieve a list of KeyPairs associated with a specific connection."
+    List-Myimage:
+      method: get
+      resourcePath: /myimage
+      description: "Retrieve a list of MyImages associated with a specific connection."
+    List-Nlb:
+      method: get
+      resourcePath: /nlb
+      description: "Retrieve a list of Network Load Balancers (NLBs) associated with a specific connection."
+    List-Org-Region:
+      method: get
+      resourcePath: /orgregion
+      description: "Retrieve a list of Original Regions associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
+    List-Org-Vm-Spec:
+      method: get
+      resourcePath: /vmorgspec
+      description: "Retrieve a list of Original VM Specs associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
+    List-Org-Zone:
+      method: get
+      resourcePath: /orgzone
+      description: "Retrieve a list of Original Zones associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
+    List-Preconfigured-Original-Org-Region:
+      method: get
+      resourcePath: /preconfig/orgregion
+      description: "Retrieve a list of pre-configured Original Regions based on driver and credential names. <br> The response structure may vary depending on the request DriverName and CredentialName."
+    List-Product-Family:
+      method: get
+      resourcePath: /productfamily/{RegionName}
+      description: "Retrieve a list of Product Families associated with a specific connection and region. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Price-Info-and-Cloud-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/RestAPI-Multi%E2%80%90Cloud-Price-Information-Guide)]"
     List-Quota-Service-Type:
       method: get
       resourcePath: /quotaservicetype
@@ -742,258 +766,246 @@ serviceActions:
       method: get
       resourcePath: /rdbms
       description: "Retrieve a list of RDBMS instances associated with a specific connection."
-    Create-Rdbms:
-      method: post
-      resourcePath: /rdbms
-      description: "Create a new Relational Database (RDBMS) with the specified configuration."
-    Register-Securitygroup:
-      method: post
-      resourcePath: /regsecuritygroup
-      description: "Register a new Security Group with the specified name and CSP ID."
-    List-All-Myimage-Info:
+    List-Rdbms-Databases:
       method: get
-      resourcePath: /allmyimageinfo
-      description: "Retrieve a comprehensive list of all MyImage information associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    List-Credential:
+      resourcePath: /rdbms/{Name}/databases
+      description: "List databases inside an RDBMS instance using the CSP-native API."
+    List-Recent-Imagespec:
       method: get
-      resourcePath: /credential
-      description: "Retrieve a list of registered Credentials."
-    Register-Credential:
-      method: post
-      resourcePath: /credential
-      description: "Register a new Credential. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-cloud-credential-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
-    Get-Disk:
+      resourcePath: /vm/imagespecrecent
+      description: "Get list of recently used Image and Spec combinations for VM creation with statistics"
+    List-Region:
       method: get
-      resourcePath: /disk/{Name}
-      description: "Retrieve details of a specific Disk."
-    Delete-Disk:
-      method: delete
-      resourcePath: /disk/{Name}
-      description: "Delete a specified Disk."
-    List-Preconfigured-Original-Org-Region:
+      resourcePath: /region
+      description: "Retrieve a list of registered Regions."
+    List-Region-Zone:
       method: get
-      resourcePath: /preconfig/orgregion
-      description: "Retrieve a list of pre-configured Original Regions based on driver and credential names. <br> The response structure may vary depending on the request DriverName and CredentialName."
-    Unregister-Cluster:
-      method: delete
-      resourcePath: /regcluster/{Name}
-      description: "Unregister a Cluster with the specified name."
-    List-S3-Buckets:
-      method: get
-      resourcePath: /s3
-      description: "Returns a list of all buckets owned by the authenticated sender of the request. To list buckets, you must have the ConnectionName parameter."
-    Get-S3-Bucket-Usage:
-      method: get
-      resourcePath: /s3/{BucketName}/usage
-      description: "Returns the total size (in bytes) of all objects stored in an S3 bucket.\n\n**Response Fields:**\n- CurrentSize: Size of current (latest) objects in bytes\n- DeletedVersionsSize: Size of non-current versions in bytes\n- TotalSize: Total bucket size (CurrentSize + DeletedVersionsSize)"
-    List-Vpc-Securitygroup:
-      method: get
-      resourcePath: /securitygroup/vpc/{VPCName}
-      description: "Retrieve a list of Security Groups associated with a specific VPC in a given cloud connection."
-    List-All-Keypair:
-      method: get
-      resourcePath: /allkeypair
-      description: "Retrieve a comprehensive list of all KeyPairs associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    List-All-Securitygroup-Info:
-      method: get
-      resourcePath: /allsecuritygroupinfo
-      description: "Retrieve a list of Security Group information associated with all connections."
-    Upgrade-Cluster:
-      method: put
-      resourcePath: /cluster/{Name}/upgrade
-      description: "Upgrade a Cluster to a specified version."
-    Count-All-Vpc:
-      method: get
-      resourcePath: /countvpc
-      description: "Get the total number of VPCs across all connections."
-    Proxy-Mcinsight-Vmimage-Filters:
-      method: get
-      resourcePath: /mcinsight/vm-image/filters
-      description: "Proxy endpoint to retrieve VM Image filters from MC-Insight API"
-    Get-Quota-Info:
-      method: get
-      resourcePath: /quotainfo
-      description: "Retrieve all quota limits and current usage for a given service type. No filtering is applied; all CSP-original quota items for the service type are returned. 🕷️ Supported CSPs: AWS, Azure, GCP, Alibaba."
-    Unregister-Securitygroup:
-      method: delete
-      resourcePath: /regsecuritygroup/{Name}
-      description: "Unregister a Security Group with the specified name."
-    Get-Csp-Vm:
-      method: get
-      resourcePath: /cspvm/{Id}
-      description: "Retrieve details of a specific CSP Virtual Machine (VM)."
-    Terminate-Csp-Vm:
-      method: delete
-      resourcePath: /cspvm/{Id}
-      description: "Terminate a specified CSP Virtual Machine (VM)."
-    Unregister-Nlb:
-      method: delete
-      resourcePath: /regnlb/{Name}
-      description: "Unregister a Network Load Balancer (NLB) with the specified name."
-    Add-Rule:
-      method: post
-      resourcePath: /securitygroup/{SGName}/rules
-      description: "Add new rules to a Security Group."
-    Remove-Rule:
-      method: delete
-      resourcePath: /securitygroup/{SGName}/rules
-      description: "Remove existing rules from a Security Group."
-    Fetch-System-Info:
-      method: get
-      resourcePath: /sysstats/system
-      description: "Retrieve system information such as hostname, platform, CPU, memory, and disk.\nUse query parameter 'mode=text' to get the output in text format instead of JSON."
-    List-All-Nlb:
-      method: get
-      resourcePath: /allnlb
-      description: "Retrieve a comprehensive list of all Network Load Balancers (NLBs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    Count-All-Connection:
-      method: get
-      resourcePath: /countconnectionconfig
-      description: "Get the total number of connections."
-    Count-Keypair-By-Connection:
-      method: get
-      resourcePath: /countkeypair/{ConnectionName}
-      description: "Get the total number of KeyPairs for a specific connection."
-    Delete-Csp-Cluster:
-      method: delete
-      resourcePath: /cspcluster/{Id}
-      description: "Delete a specified CSP Cluster."
-    Delete-Csp-Rdbms:
-      method: delete
-      resourcePath: /csprdbms/{Id}
-      description: "Delete a specified CSP RDBMS."
-    List-Myimage:
-      method: get
-      resourcePath: /myimage
-      description: "Retrieve a list of MyImages associated with a specific connection."
-    Create-Myimage:
-      method: post
-      resourcePath: /myimage
-      description: "Create a new MyImage snapshot from a specified VM. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/MyImage-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
-    Check-Udp-Port:
-      method: get
-      resourcePath: /check/udp
-      description: "Verifies whether a given UDP port is open on the specified host.\n※ Note: As UDP is connectionless, this check mainly performs a lookup and may not confirm if the server is working."
-    List-Disk:
-      method: get
-      resourcePath: /disk
-      description: "Retrieve a list of Disks associated with a specific connection."
-    Create-Disk:
-      method: post
-      resourcePath: /disk
-      description: "Create a new Disk with the specified configuration. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Disk-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
-    Register-Driver:
-      method: post
-      resourcePath: /driver
-      description: "Register a new Cloud Driver. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#1-cloud-driver-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
-    List-Driver:
-      method: get
-      resourcePath: /driver
-      description: "Retrieve a list of registered Cloud Drivers."
-    Get-Myimage:
-      method: get
-      resourcePath: /myimage/{Name}
-      description: "Retrieve details of a specific MyImage."
-    Delete-Myimage:
-      method: delete
-      resourcePath: /myimage/{Name}
-      description: "Delete a specified MyImage."
+      resourcePath: /regionzone
+      description: "Retrieve a list of Region Zones associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
     List-Region-Zone-Preconfig:
       method: get
       resourcePath: /preconfig/regionzone
       description: "Retrieve a list of pre-configured Region Zones based on driver and credential names. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
-    Get-Vm-Status:
+    List-S3-Buckets:
       method: get
-      resourcePath: /vmstatus/{Name}
-      description: "Retrieve the status of a specific Virtual Machine (VM)."
-    Check-Tcp-Port:
+      resourcePath: /s3
+      description: "Returns a list of all buckets owned by the authenticated sender of the request. To list buckets, you must have the ConnectionName parameter."
+    List-Securitygroup:
       method: get
-      resourcePath: /check/tcp
-      description: "Verifies whether a given TCP port is open on the specified host."
-    Create-S3-Bucket:
-      method: put
-      resourcePath: /s3/{BucketName}
-      description: "Creates a new S3 bucket or sets bucket configuration based on query parameters.\n\n**Operations:**\n- No query params: Create a new bucket\n- ?versioning: Set versioning configuration (Enable/Suspend)\n- ?cors: Set CORS configuration\n\n**IMPORTANT: Choose only ONE body configuration based on query parameter:**\n- If using ?versioning: Use VersioningConfiguration body\n- If using ?cors: Use CORSConfiguration body\n- If no query params: No body required (bucket creation)\n\n**Versioning Status Values:**\n- Enabled: Enable versioning for the bucket\n- Suspended: Suspend versioning for the bucket\n\n**CORS Configuration Example:**\n- AllowedOrigin: [\"*\"] or [\"https://example.com\"]\n- AllowedMethod: [\"GET\", \"PUT\", \"POST\", \"DELETE\", \"HEAD\"]\n- AllowedHeader: [\"*\"] or [\"Content-Type\", \"Authorization\"]\n- ExposeHeader: [\"ETag\", \"x-amz-request-id\"]\n- MaxAgeSeconds: 3600 (cache preflight response for 1 hour)"
-    Put-S3-Object-From-Form:
-      method: post
-      resourcePath: /s3/{BucketName}
-      description: "Uploads a file using HTML form (multipart/form-data) or deletes multiple objects based on query parameters.\n\n**Operations:**\n- No query params: Upload object via form (requires 'key' and 'file' fields, Content-Type: multipart/form-data)\n- ?delete: Delete multiple objects (requires JSON body, Content-Type: application/json)\n\n**JSON Body Example for Delete Multiple Objects:**\n```json\n{\n\"Delete\": {\n\"Objects\": [\n{\"Key\": \"file1.txt\"},\n{\"Key\": \"file2.txt\"},\n{\"Key\": \"folder/file3.txt\"}\n]\n}\n}\n```"
-    Delete-S3-Bucket:
-      method: delete
-      resourcePath: /s3/{BucketName}
-      description: "Deletes an S3 bucket or specific bucket configuration based on query parameters.\n\n**Operations:**\n- No query params: Delete bucket (must be empty)\n- ?cors: Delete CORS configuration\n- ?empty: Force empty bucket (removes all objects)\n- ?force: Force delete bucket with all contents"
-    Get-S3-Bucket-Head:
-      method: head
-      resourcePath: /s3/{BucketName}
-      description: "Check if a bucket exists using HEAD request. Returns 200 if exists, 404 if not found."
-    Get-S3-Bucket-Get:
+      resourcePath: /securitygroup
+      description: "Retrieve a list of Security Groups associated with a specific connection."
+    List-Tag:
       method: get
-      resourcePath: /s3/{BucketName}
-      description: "List objects in bucket or get bucket configuration. **Response type varies by query parameter:**\n\n| Query Parameter | Response Schema | Description |\n|---|---|---|\n| *(none)* | `ListBucketResultJSON` | List objects in bucket (default) |\n| `?location` | `{\"LocationConstraint\": \"ap-northeast-2\"}` | Bucket region/location |\n| `?versioning` | `VersioningConfiguration` | Versioning status: Enabled / Suspended / \"\" |\n| `?cors` | `CORSConfiguration` | CORS configuration rules |\n| `?versions` | `ListVersionsResultJSON` | Object version history |\n| `?uploads` | `ListMultipartUploadsResultJSON` | In-progress multipart uploads |\n\n**Note**: The example value below shows the default (no query params) `ListBucketResultJSON` response."
-    Get-Org-Vm-Spec:
+      resourcePath: /tag
+      description: "Retrieve a list of tags for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    List-Vm:
       method: get
-      resourcePath: /vmorgspec/{Name}
-      description: "Retrieve details of a specific Original VM Spec."
+      resourcePath: /vm
+      description: "Retrieve a list of Virtual Machines (VMs) associated with a specific connection."
+    List-Vm-Spec:
+      method: get
+      resourcePath: /vmspec
+      description: "Retrieve a list of VM specs associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-vm-spec-%EC%A0%95%EB%B3%B4-%EC%A0%9C%EA%B3%B5)]"
     List-Vm-Status:
       method: get
       resourcePath: /vmstatus
       description: "Retrieve a list of statuses for Virtual Machines (VMs) associated with a specific connection."
-    Remove-Csp-Subnet:
-      method: delete
-      resourcePath: /vpc/{VPCName}/cspsubnet/{Id}
-      description: "Remove an existing CSP Subnet from a VPC."
-    Count-Disk-By-Connection:
+    List-Vpc:
       method: get
-      resourcePath: /countdisk/{ConnectionName}
-      description: "Get the total number of Disks for a specific connection."
-    Register-Rdbms:
-      method: post
-      resourcePath: /regrdbms
-      description: "Register a new RDBMS with the specified name and CSP ID."
-    Unregister-Subnet:
-      method: delete
-      resourcePath: /regsubnet/{Name}
-      description: "Unregister a Subnet from a specified VPC."
-    Bulk-Import-Recent-Imagespec:
-      method: post
-      resourcePath: /vm/imagespecrecent/bulk
-      description: "Import multiple VM recent records from JSON, skipping duplicates"
-    List-All-Vpc-Info:
+      resourcePath: /vpc
+      description: "Retrieve a list of Virtual Private Clouds (VPCs) associated with a specific connection."
+    List-Vpc-Securitygroup:
       method: get
-      resourcePath: /allvpcinfo
-      description: "Retrieve a comprehensive list of all Virtual Private Clouds (VPCs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
-    Increase-Disk-Size:
+      resourcePath: /securitygroup/vpc/{VPCName}
+      description: "Retrieve a list of Security Groups associated with a specific VPC in a given cloud connection."
+    Proxy-Mcinsight-Vmimage:
+      method: get
+      resourcePath: /mcinsight/vm-image
+      description: "Proxy endpoint to retrieve VM Image list from MC-Insight API with filters"
+    Proxy-Mcinsight-Vmimage-Filters:
+      method: get
+      resourcePath: /mcinsight/vm-image/filters
+      description: "Proxy endpoint to retrieve VM Image filters from MC-Insight API"
+    Proxy-Mcinsight-Vmprice:
+      method: get
+      resourcePath: /mcinsight/price-info
+      description: "Proxy endpoint to retrieve VM Price information from MC-Insight API with filters"
+    Proxy-Mcinsight-Vmprice-Filters:
+      method: get
+      resourcePath: /mcinsight/price-info/filters
+      description: "Proxy endpoint to retrieve VM Price filters from MC-Insight API"
+    Proxy-Mcinsight-Vmspec:
+      method: get
+      resourcePath: /mcinsight/vm-spec
+      description: "Proxy endpoint to retrieve VM Spec list from MC-Insight API with filters"
+    Proxy-Mcinsight-Vmspec-Filters:
+      method: get
+      resourcePath: /mcinsight/vm-spec/filters
+      description: "Proxy endpoint to retrieve VM Spec filters from MC-Insight API"
+    Put-S3-Object-From-File:
       method: put
-      resourcePath: /disk/{Name}/size
-      description: "Increase the size of an existing disk."
-    Get-Sg-Owner-Vpc:
+      resourcePath: /s3/{BucketName}/{ObjectKey}
+      description: "Uploads a file to S3 bucket or uploads a part for multipart upload based on query parameters.\n\n**Operations:**\n- No query params: Upload object (standard upload)\n- ?uploadId={id}&partNumber={num}: Upload a part for multipart upload\n\n**Part Upload Example (Step 2 of multipart upload):**\n- uploadId: Use UploadId from initiate response (Step 1)\n- partNumber: 1, 2, 3... (consecutive integers, minimum 1)\n- Body: Binary file data (in Swagger UI, use \"Choose File\" button)\n- Response: Check ETag header - save it for completion (Step 4)\n- Repeat for each part with different partNumber"
+    Put-S3-Object-From-Form:
       method: post
-      resourcePath: /getsecuritygroupowner
-      description: "Retrieve the owner VPC of a specified Security Group."
+      resourcePath: /s3/{BucketName}
+      description: "Uploads a file using HTML form (multipart/form-data) or deletes multiple objects based on query parameters.\n\n**Operations:**\n- No query params: Upload object via form (requires 'key' and 'file' fields, Content-Type: multipart/form-data)\n- ?delete: Delete multiple objects (requires JSON body, Content-Type: application/json)\n\n**JSON Body Example for Delete Multiple Objects:**\n```json\n{\n\"Delete\": {\n\"Objects\": [\n{\"Key\": \"file1.txt\"},\n{\"Key\": \"file2.txt\"},\n{\"Key\": \"folder/file3.txt\"}\n]\n}\n}\n```"
+    Register-Cluster:
+      method: post
+      resourcePath: /regcluster
+      description: "Register a new Cluster with the specified VPC and CSP ID."
+    Register-Credential:
+      method: post
+      resourcePath: /credential
+      description: "Register a new Credential. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-cloud-credential-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
     Register-Disk:
       method: post
       resourcePath: /regdisk
       description: "Register a new Disk with the specified name, zone, and CSP ID."
+    Register-Driver:
+      method: post
+      resourcePath: /driver
+      description: "Register a new Cloud Driver. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#1-cloud-driver-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
+    Register-Keypair:
+      method: post
+      resourcePath: /regkeypair
+      description: "Register a new KeyPair with the specified name and CSP ID."
+    Register-Myimage:
+      method: post
+      resourcePath: /regmyimage
+      description: "Register a new MyImage with the specified name and CSP ID."
+    Register-Nlb:
+      method: post
+      resourcePath: /regnlb
+      description: "Register a new Network Load Balancer (NLB) with the specified name and CSP ID."
+    Register-Rdbms:
+      method: post
+      resourcePath: /regrdbms
+      description: "Register a new RDBMS with the specified name and CSP ID."
+    Register-Region:
+      method: post
+      resourcePath: /region
+      description: "Register a new Region. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#3-cloud-regionzone-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
+    Register-Securitygroup:
+      method: post
+      resourcePath: /regsecuritygroup
+      description: "Register a new Security Group with the specified name and CSP ID."
+    Register-Subnet:
+      method: post
+      resourcePath: /regsubnet
+      description: "Register a new Subnet within a specified VPC."
+    Register-Vm:
+      method: post
+      resourcePath: /regvm
+      description: "Register a new Virtual Machine (VM) with the specified name and CSP ID."
+    Register-Vpc:
+      method: post
+      resourcePath: /regvpc
+      description: "Register a new Virtual Private Cloud (VPC) with the specified name and CSP ID."
+    Remove-Csp-Subnet:
+      method: delete
+      resourcePath: /vpc/{VPCName}/cspsubnet/{Id}
+      description: "Remove an existing CSP Subnet from a VPC."
+    Remove-Nlb-Vm:
+      method: delete
+      resourcePath: /nlb/{Name}/vms
+      description: "Remove a set of VMs from an existing Network Load Balancer (NLB)."
+    Remove-Nodegroup:
+      method: delete
+      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}
+      description: "Remove an existing Node Group from a Cluster."
+    Remove-Rule:
+      method: delete
+      resourcePath: /securitygroup/{SGName}/rules
+      description: "Remove existing rules from a Security Group."
+    Remove-Subnet:
+      method: delete
+      resourcePath: /vpc/{VPCName}/subnet/{SubnetName}
+      description: "Remove an existing Subnet from a VPC."
+    Remove-Tag:
+      method: delete
+      resourcePath: /tag/{Key}
+      description: "Remove a specific tag from a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Set-Nodegroup-Autoscaling:
+      method: put
+      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/onautoscaling
+      description: "Enable or disable auto scaling for a Node Group in a Cluster."
+    Start-Vm:
+      method: post
+      resourcePath: /vm
+      description: "Start a new Virtual Machine (VM) with specified configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-%EB%A9%80%ED%8B%B0%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C-vm-%EC%9D%B8%ED%94%84%EB%9D%BC-%EC%9E%90%EC%9B%90-%EC%A0%9C%EC%96%B4multi-cloud-vm-infra-resource-control)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    Terminate-Csp-Vm:
+      method: delete
+      resourcePath: /cspvm/{Id}
+      description: "Terminate a specified CSP Virtual Machine (VM)."
+    Terminate-Vm:
+      method: delete
+      resourcePath: /vm/{Name}
+      description: "Terminate a specified Virtual Machine (VM)."
+    Unregister-Cluster:
+      method: delete
+      resourcePath: /regcluster/{Name}
+      description: "Unregister a Cluster with the specified name."
+    Unregister-Credential:
+      method: delete
+      resourcePath: /credential/{CredentialName}
+      description: "Unregister a specific Credential."
+    Unregister-Disk:
+      method: delete
+      resourcePath: /regdisk/{Name}
+      description: "Unregister a Disk with the specified name."
+    Unregister-Driver:
+      method: delete
+      resourcePath: /driver/{DriverName}
+      description: "Unregister a specific Cloud Driver."
+    Unregister-Keypair:
+      method: delete
+      resourcePath: /regkeypair/{Name}
+      description: "Unregister a KeyPair with the specified name."
+    Unregister-Myimage:
+      method: delete
+      resourcePath: /regmyimage/{Name}
+      description: "Unregister a MyImage with the specified name."
+    Unregister-Nlb:
+      method: delete
+      resourcePath: /regnlb/{Name}
+      description: "Unregister a Network Load Balancer (NLB) with the specified name."
+    Unregister-Rdbms:
+      method: delete
+      resourcePath: /regrdbms/{Name}
+      description: "Unregister an RDBMS with the specified name."
+    Unregister-Region:
+      method: delete
+      resourcePath: /region/{RegionName}
+      description: "Unregister a specific Region."
+    Unregister-Securitygroup:
+      method: delete
+      resourcePath: /regsecuritygroup/{Name}
+      description: "Unregister a Security Group with the specified name."
+    Unregister-Subnet:
+      method: delete
+      resourcePath: /regsubnet/{Name}
+      description: "Unregister a Subnet from a specified VPC."
+    Unregister-Vm:
+      method: delete
+      resourcePath: /regvm/{Name}
+      description: "Unregister a Virtual Machine (VM) with the specified name."
     Unregister-Vpc:
       method: delete
       resourcePath: /regvpc/{Name}
       description: "Unregister a VPC with the specified name."
-    Get-Cluster:
-      method: get
-      resourcePath: /cluster/{Name}
-      description: "Retrieve details of a specific Cluster."
-    Delete-Cluster:
-      method: delete
-      resourcePath: /cluster/{Name}
-      description: "Delete a specified Cluster."
-    Count-All-Rdbms:
-      method: get
-      resourcePath: /countrdbms
-      description: "Get the total number of RDBMS instances across all connections."
-    Attach-Disk:
+    Upgrade-Cluster:
       method: put
-      resourcePath: /disk/{Name}/attach
-      description: "Attach an existing Disk to a VM."
+      resourcePath: /cluster/{Name}/upgrade
+      description: "Upgrade a Cluster to a specified version."
+    Upload-Driver:
+      method: post
+      resourcePath: /driver/upload
+      description: "Upload a Cloud Driver library file."
+    Version-Info:
+      method: get
+      resourcePath: /version
+      description: "Retrieves the version information of CB-Spider."
   cb-tumblebug:
     AddNLBNodes:
       method: post
@@ -2324,42 +2336,18 @@ serviceActions:
       resourcePath: /updateImagesFromAsset
       description: "Update image information based on the cloudimage.csv asset file"
   cm-ant:
-    UninstallMonitoringAgent:
-      method: post
-      resourcePath: /api/v1/load/monitoring/agent/uninstall
-      description: "Uninstall monitoring agents from specified VMs or all VMs in an mci."
-    GetLoadTestResult:
-      method: get
-      resourcePath: /api/v1/load/tests/result
-      description: "Retrieve load test result based on provided parameters."
-    GetLastLoadTestResult:
-      method: get
-      resourcePath: /api/v1/load/tests/result/last
-      description: "Retrieve last load test result based on provided parameters."
-    GetLastLoadTestMetrics:
-      method: get
-      resourcePath: /api/v1/load/tests/result/metrics/last
-      description: "Retrieve last load test metrics based on provided parameters."
-    RunLoadTest:
-      method: post
-      resourcePath: /api/v1/load/tests/run
-      description: "Start a load test using the provided load test configuration."
     AntServerReadiness:
       method: get
       resourcePath: /readyz
       description: "Returns CM-Ant server readiness including DB and outbound\ndependency (cb-spider, cb-tumblebug) reachability and\nauthentication. Per STANDARD-READYZ pattern B, the response\nbody always carries per-dependency status; the HTTP status is\n200 when every dependency is reachable and authenticated, and\n503 otherwise. Results are cached briefly to limit outbound\ncall rate; see STANDARD-READYZ for details."
-    UpdateEstimateForecastCost:
+    CreateLoadTestScenarioCatalog:
       method: post
-      resourcePath: /api/v1/cost/estimate/forecast
-      description: "Update and retrieve forecasted cost estimates for a specified namespace and migration configuration ID over the past 14 days."
-    GetEstimateForecastCost:
-      method: get
-      resourcePath: /api/v1/cost/estimate/forecast
-      description: "Fetch estimated forecast cost data based on specified parameters, including a date range that must be within 6 months. Supports pagination and filtering by namespace IDs, migration configuration IDs, and resource types."
-    InstallLoadGenerator:
-      method: post
-      resourcePath: /api/v1/load/generators
-      description: "Install a load generator either locally or remotely."
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs
+      description: "Create a new load test scenario catalog template with the provided configuration."
+    DeleteLoadTestScenarioCatalog:
+      method: delete
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
+      description: "Delete a load test scenario catalog by ID."
     GetAllLoadGeneratorInstallInfo:
       method: get
       resourcePath: /api/v1/load/generators
@@ -2372,70 +2360,94 @@ serviceActions:
       method: get
       resourcePath: /api/v1/load/tests/state
       description: "Retrieve a list of all load test execution states with pagination support."
-    GetLastLoadTestExecutionState:
-      method: get
-      resourcePath: /api/v1/load/tests/state/last
-      description: "Retrieve a last load test execution state by given ids."
-    GetLoadTestExecutionState:
-      method: get
-      resourcePath: /api/v1/load/tests/state/{loadTestKey}
-      description: "Retrieve a load test execution state by load test key."
-    UpdateEstimateForecastCostRaw:
-      method: post
-      resourcePath: /api/v1/cost/estimate/forecast/raw
-      description: "Update and retrieve raw forecasted cost estimates for specified cost resources and additional AWS information over the past 14 days."
-    InstallMonitoringAgent:
-      method: post
-      resourcePath: /api/v1/load/monitoring/agent/install
-      description: "Install a monitoring agent on specific mci."
     GetAllLoadTestScenarioCatalogs:
       method: get
       resourcePath: /api/v1/load/templates/test-scenario-catalogs
       description: "Retrieve a list of all load test scenario catalogs with pagination support."
-    CreateLoadTestScenarioCatalog:
-      method: post
-      resourcePath: /api/v1/load/templates/test-scenario-catalogs
-      description: "Create a new load test scenario catalog template with the provided configuration."
-    GetLoadTestScenarioCatalog:
-      method: get
-      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
-      description: "Retrieve a specific load test scenario catalog by ID."
-    UpdateLoadTestScenarioCatalog:
-      method: put
-      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
-      description: "Update an existing load test scenario catalog with the provided configuration."
-    DeleteLoadTestScenarioCatalog:
-      method: delete
-      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
-      description: "Delete a load test scenario catalog by ID."
-    GetLoadTestExecutionInfo:
-      method: get
-      resourcePath: /api/v1/load/tests/infos/{loadTestKey}
-      description: "Retrieve the load test execution state information for a specific load test key."
-    GetLoadTestMetrics:
-      method: get
-      resourcePath: /api/v1/load/tests/result/metrics
-      description: "Retrieve load test metrics based on provided parameters."
-    StopLoadTest:
-      method: post
-      resourcePath: /api/v1/load/tests/stop
-      description: "Stop a running load test using the provided load test key."
-    GetEstimateCost:
-      method: get
-      resourcePath: /api/v1/cost/estimate
-      description: "Fetch estimated cost details based on provider, region, instance type, and resource specifications. Pagination support is provided through `Page` and `Size` parameters."
-    UpdateAndGetEstimateCost:
-      method: post
-      resourcePath: /api/v1/cost/estimate
-      description: "Update the estimate cost based on provided specifications and retrieve the updated cost estimation. Required fields for each specification include `ProviderName`, `RegionName`, and `InstanceType`. Specifications can also be provided in a formatted string using `+` delimiter."
-    UninstallLoadGenerator:
-      method: delete
-      resourcePath: /api/v1/load/generators/{loadGeneratorInstallInfoId}
-      description: "Uninstall a previously installed load generator."
     GetAllMonitoringAgentInfos:
       method: get
       resourcePath: /api/v1/load/monitoring/agent
       description: "Retrieve monitoring agent information based on specified criteria."
+    GetEstimateCost:
+      method: get
+      resourcePath: /api/v1/cost/estimate
+      description: "Fetch estimated cost details based on provider, region, instance type, and resource specifications. Pagination support is provided through `Page` and `Size` parameters."
+    GetEstimateForecastCost:
+      method: get
+      resourcePath: /api/v1/cost/estimate/forecast
+      description: "Fetch estimated forecast cost data based on specified parameters, including a date range that must be within 6 months. Supports pagination and filtering by namespace IDs, migration configuration IDs, and resource types."
+    GetLastLoadTestExecutionState:
+      method: get
+      resourcePath: /api/v1/load/tests/state/last
+      description: "Retrieve a last load test execution state by given ids."
+    GetLastLoadTestMetrics:
+      method: get
+      resourcePath: /api/v1/load/tests/result/metrics/last
+      description: "Retrieve last load test metrics based on provided parameters."
+    GetLastLoadTestResult:
+      method: get
+      resourcePath: /api/v1/load/tests/result/last
+      description: "Retrieve last load test result based on provided parameters."
+    GetLoadTestExecutionInfo:
+      method: get
+      resourcePath: /api/v1/load/tests/infos/{loadTestKey}
+      description: "Retrieve the load test execution state information for a specific load test key."
+    GetLoadTestExecutionState:
+      method: get
+      resourcePath: /api/v1/load/tests/state/{loadTestKey}
+      description: "Retrieve a load test execution state by load test key."
+    GetLoadTestMetrics:
+      method: get
+      resourcePath: /api/v1/load/tests/result/metrics
+      description: "Retrieve load test metrics based on provided parameters."
+    GetLoadTestResult:
+      method: get
+      resourcePath: /api/v1/load/tests/result
+      description: "Retrieve load test result based on provided parameters."
+    GetLoadTestScenarioCatalog:
+      method: get
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
+      description: "Retrieve a specific load test scenario catalog by ID."
+    InstallLoadGenerator:
+      method: post
+      resourcePath: /api/v1/load/generators
+      description: "Install a load generator either locally or remotely."
+    InstallMonitoringAgent:
+      method: post
+      resourcePath: /api/v1/load/monitoring/agent/install
+      description: "Install a monitoring agent on specific mci."
+    RunLoadTest:
+      method: post
+      resourcePath: /api/v1/load/tests/run
+      description: "Start a load test using the provided load test configuration."
+    StopLoadTest:
+      method: post
+      resourcePath: /api/v1/load/tests/stop
+      description: "Stop a running load test using the provided load test key."
+    UninstallLoadGenerator:
+      method: delete
+      resourcePath: /api/v1/load/generators/{loadGeneratorInstallInfoId}
+      description: "Uninstall a previously installed load generator."
+    UninstallMonitoringAgent:
+      method: post
+      resourcePath: /api/v1/load/monitoring/agent/uninstall
+      description: "Uninstall monitoring agents from specified VMs or all VMs in an mci."
+    UpdateAndGetEstimateCost:
+      method: post
+      resourcePath: /api/v1/cost/estimate
+      description: "Update the estimate cost based on provided specifications and retrieve the updated cost estimation. Required fields for each specification include `ProviderName`, `RegionName`, and `InstanceType`. Specifications can also be provided in a formatted string using `+` delimiter."
+    UpdateEstimateForecastCost:
+      method: post
+      resourcePath: /api/v1/cost/estimate/forecast
+      description: "Update and retrieve forecasted cost estimates for a specified namespace and migration configuration ID over the past 14 days."
+    UpdateEstimateForecastCostRaw:
+      method: post
+      resourcePath: /api/v1/cost/estimate/forecast/raw
+      description: "Update and retrieve raw forecasted cost estimates for specified cost resources and additional AWS information over the past 14 days."
+    UpdateLoadTestScenarioCatalog:
+      method: put
+      resourcePath: /api/v1/load/templates/test-scenario-catalogs/{id}
+      description: "Update an existing load test scenario catalog with the provided configuration."
   cm-beetle:
     AlignNames:
       method: post
@@ -2686,130 +2698,146 @@ serviceActions:
       resourcePath: /naming/validation
       description: "Validates that all internal references within a RecommendedInfra model\nare consistent and point to existing resources.\nNameSeed is NOT applied here; this validates the base names only.\n"
   cm-cicada:
-    Get-Workflow-Template-By-Name:
-      method: get
-      resourcePath: /workflow_template/name/{wfName}
-      description: "Get the workflow template by name."
-    Run-Script:
-      method: post
-      resourcePath: /run_script
-      description: "Run script on target with NS ID, MCI ID and VM ID."
-    Sleep-Time:
-      method: post
-      resourcePath: /sleep_time
-      description: "Runs sleep command on cicada and waits for configured time. Wait for 10 seconds if time value is not provided."
-    Update-Workflow:
-      method: put
-      resourcePath: /workflow/{wfId}
-      description: "Update the workflow content."
-    Delete-Workflow:
+    Cancel-Workflow-Schedule:
       method: delete
-      resourcePath: /workflow/{wfId}
-      description: "Delete the workflow."
-    Get-Workflow:
-      method: get
-      resourcePath: /workflow/{wfId}
-      description: "Get the workflow."
-    Get-Task-From-Task-Group:
-      method: get
-      resourcePath: /workflow/{wfId}/task_group/{tgId}/task/{taskId}
-      description: "Get the task from the task group."
-    Health-Check-Readyz:
-      method: get
-      resourcePath: /readyz
-      description: "Check Cicada is ready"
-    Delete-Task-Component:
-      method: delete
-      resourcePath: /task_component/{tcId}
-      description: "Delete the task component."
-    Get-Task-Component:
-      method: get
-      resourcePath: /task_component/{tcId}
-      description: "Get the task component."
-    Update-Task-Component:
-      method: put
-      resourcePath: /task_component/{tcId}
-      description: "Update the task component."
-    Get-Task-Group-Directly:
-      method: get
-      resourcePath: /task_group/{tgId}
-      description: "Get the task group directly."
-    List-Workflow:
-      method: get
-      resourcePath: /workflow
-      description: "Get a workflow list."
-    Create-Workflow:
-      method: post
-      resourcePath: /workflow
-      description: "Create a workflow."
-    Get-Workflow-Runs:
-      method: get
-      resourcePath: /workflow/{wfId}/runs
-      description: "Get the task Logs."
-    Get-Workflow-Template:
-      method: get
-      resourcePath: /workflow_template/{wftId}
-      description: "Get the workflow template."
-    List-Task-From-Task-Group:
-      method: get
-      resourcePath: /workflow/{wfId}/task_group/{tgId}/task
-      description: "Get a task list from the task group."
-    List-WorkflowVersion:
-      method: get
-      resourcePath: /workflow/{wfId}/version
-      description: "Get a workflowVersion list."
-    Get-WorkflowVersion:
-      method: get
-      resourcePath: /workflow/{wfId}/version/{verId}
-      description: "Get the WorkflowVersion."
+      resourcePath: /workflow/{wfId}/schedule
+      description: "Cancel the workflow's active schedule. The DAG metadata is rewritten so Airflow no longer triggers the workflow on the originally requested cadence. Returns 404 when no active schedule exists."
     Clear-Task-Instances:
       method: post
       resourcePath: /workflow/{wfId}/workflowRun/{wfRunId}/range
       description: "Clear the task Instance."
-    Get-Task-Logs-Download:
+    Clone-Workflow:
+      method: post
+      resourcePath: /workflow/{wfId}/clone
+      description: "Clone an existing workflow as a new workflow. The server copies task_groups / tasks from the source (looked up by wfId) and re-issues all IDs. The new workflow's name is auto-generated as \"<source name>_copy\" (with _copy_2, _copy_3 ... on collision). The first snapshot of the new workflow records source_type=\"clone\" and source_template_id=<source workflow id>."
+    Create-Connection:
+      method: post
+      resourcePath: /connection
+      description: "Create an Airflow connection."
+    Create-Task-Component:
+      method: post
+      resourcePath: /task_component
+      description: "Register the task component."
+    Create-Workflow:
+      method: post
+      resourcePath: /workflow
+      description: "Create a workflow."
+    Delete-Connection:
+      method: delete
+      resourcePath: /connection/{connId}
+      description: "Delete an Airflow connection."
+    Delete-Task-Component:
+      method: delete
+      resourcePath: /task_component/{tcId}
+      description: "Delete the task component."
+    Delete-Workflow:
+      method: delete
+      resourcePath: /workflow/{wfId}
+      description: "Delete the workflow."
+    Example-Get-Data:
       method: get
-      resourcePath: /workflow/{wfId}/workflowRun/{wfRunId}/task/{taskId}/taskTryNum/{taskTryNum}/logs/download
-      description: "Download the task logs as a file."
-    Get-Task-Directly:
+      resourcePath: /example/data
+      description: "Return a deterministic JSON payload used by the http_xcom workflow example."
+    Example-Post-Echo:
+      method: post
+      resourcePath: /example/echo
+      description: "Echo the raw request body back. Used by the http_xcom workflow example to verify body propagation."
+    Get-Connection:
       method: get
-      resourcePath: /task/{taskId}
-      description: "Get the task directly."
-    Get-Workflow-By-Name:
-      method: get
-      resourcePath: /workflow/name/{wfName}
-      description: "Get the workflow by name."
+      resourcePath: /connection/{connId}
+      description: "Get an Airflow connection."
     Get-Event-Logs:
       method: get
       resourcePath: /workflow/{wfId}/eventlogs
       description: "Get Eventlog."
+    Get-Import-Errors:
+      method: get
+      resourcePath: /importErrors
+      description: "List DAG import errors reported by Airflow."
     Get-Task:
       method: get
       resourcePath: /workflow/{wfId}/task/{taskId}
       description: "Get the task."
-    List-Workflow-Template:
+    Get-Task-Component:
       method: get
-      resourcePath: /workflow_template
-      description: "Get a list of workflow template."
-    Get-WorkflowStatus:
-      method: get
-      resourcePath: /workflow/{wfId}/status
-      description: "Get the WorkflowStatus."
-    Get-Task-Logs:
-      method: get
-      resourcePath: /workflow/{wfId}/workflowRun/{wfRunId}/task/{taskId}/taskTryNum/{taskTryNum}/logs
-      description: "Get the task Logs."
-    Get-Import-Errors:
-      method: get
-      resourcePath: /importErrors
-      description: "Get the importErrors."
+      resourcePath: /task_component/{tcId}
+      description: "Get the task component."
     Get-Task-Component-By-Name:
       method: get
       resourcePath: /task_component/name/{tcName}
       description: "Get the task component by name."
-    Run-Workflow:
-      method: post
-      resourcePath: /workflow/{wfId}/run
-      description: "Run the workflow."
+    Get-Task-Directly:
+      method: get
+      resourcePath: /task/{taskId}
+      description: "Get the task directly."
+    Get-Task-From-Task-Group:
+      method: get
+      resourcePath: /workflow/{wfId}/task_group/{tgId}/task/{taskId}
+      description: "Get the task from the task group."
+    Get-Task-Group:
+      method: get
+      resourcePath: /workflow/{wfId}/task_group/{tgId}
+      description: "Get the task group."
+    Get-Task-Group-Directly:
+      method: get
+      resourcePath: /task_group/{tgId}
+      description: "Get the task group directly."
+    Get-Task-Instances:
+      method: get
+      resourcePath: /workflow/{wfId}/workflowRun/{wfRunId}/taskInstances
+      description: "Get the task Logs."
+    Get-Task-Logs:
+      method: get
+      resourcePath: /workflow/{wfId}/workflowRun/{wfRunId}/task/{taskId}/taskTryNum/{taskTryNum}/logs
+      description: "Get the task Logs."
+    Get-Task-Logs-Download:
+      method: get
+      resourcePath: /workflow/{wfId}/workflowRun/{wfRunId}/task/{taskId}/taskTryNum/{taskTryNum}/logs/download
+      description: "Download the task logs as a file."
+    Get-Task-Type:
+      method: get
+      resourcePath: /task_type/{id}
+      description: "Get a specific task type definition (including schemas)."
+    Get-Workflow:
+      method: get
+      resourcePath: /workflow/{wfId}
+      description: "Get the workflow."
+    Get-Workflow-By-Name:
+      method: get
+      resourcePath: /workflow/name/{wfName}
+      description: "Get the workflow by name."
+    Get-Workflow-Runs:
+      method: get
+      resourcePath: /workflow/{wfId}/runs
+      description: "Get the task Logs."
+    Get-Workflow-Schedule:
+      method: get
+      resourcePath: /workflow/{wfId}/schedule
+      description: "Return the workflow's most recently created schedule row regardless of status. Inspect .status to interpret: \"active\" (will fire), \"executed\" (already ran), \"canceled\" (user canceled). Returns null when the workflow has no schedule history."
+    Get-Workflow-Template:
+      method: get
+      resourcePath: /workflow_template/{wftId}
+      description: "Get the workflow template."
+    Get-Workflow-Template-By-Name:
+      method: get
+      resourcePath: /workflow_template/name/{wfName}
+      description: "Get the workflow template by name."
+    Get-WorkflowStatus:
+      method: get
+      resourcePath: /workflow/{wfId}/status
+      description: "Get the WorkflowStatus."
+    Get-WorkflowVersion:
+      method: get
+      resourcePath: /workflow/{wfId}/version/{verId}
+      description: "Get the WorkflowVersion."
+    Health-Check-Readyz:
+      method: get
+      resourcePath: /readyz
+      description: "Check Cicada is ready"
+    List-Connection:
+      method: get
+      resourcePath: /connection
+      description: "List Airflow connections."
     List-Task:
       method: get
       resourcePath: /workflow/{wfId}/task
@@ -2818,80 +2846,91 @@ serviceActions:
       method: get
       resourcePath: /task_component
       description: "Get a list of task component."
-    Create-Task-Component:
-      method: post
-      resourcePath: /task_component
-      description: "Register the task component."
+    List-Task-From-Task-Group:
+      method: get
+      resourcePath: /workflow/{wfId}/task_group/{tgId}/task
+      description: "Get a task list from the task group."
     List-Task-Group:
       method: get
       resourcePath: /workflow/{wfId}/task_group
       description: "Get a task group list of the workflow."
-    Get-Task-Group:
+    List-Task-Type:
       method: get
-      resourcePath: /workflow/{wfId}/task_group/{tgId}
-      description: "Get the task group."
-    Get-Task-Instances:
+      resourcePath: /task_type
+      description: "List all available task types defined in the catalog."
+    List-Workflow:
       method: get
-      resourcePath: /workflow/{wfId}/workflowRun/{wfRunId}/taskInstances
-      description: "Get the task Logs."
+      resourcePath: /workflow
+      description: "Get a workflow list."
+    List-Workflow-Template:
+      method: get
+      resourcePath: /workflow_template
+      description: "Get a list of workflow template."
+    List-WorkflowVersion:
+      method: get
+      resourcePath: /workflow/{wfId}/version
+      description: "Get a workflowVersion list."
+    Rollback-Workflow:
+      method: post
+      resourcePath: /workflow/{wfId}/version/{versionNo}/rollback
+      description: "Restore the workflow's task graph and metadata from the snapshot identified by versionNo. Existing active tasks are soft-deleted and re-issued with fresh UUIDs from the target version's raw_data. The rollback itself is recorded as a new WorkflowVersion with action=\"rollback\" and source_template_id=<source version id>. workflow_schedules rows are left untouched."
+    Run-Script:
+      method: post
+      resourcePath: /run_script
+      description: "Run script on target with NS ID, Infra ID and Node ID."
+    Run-Workflow:
+      method: post
+      resourcePath: /workflow/{wfId}/run
+      description: "Run the workflow."
+    Schedule-Workflow:
+      method: post
+      resourcePath: /workflow/{wfId}/schedule
+      description: "Register a one-shot future execution. Airflow handles the actual triggering via DAG metadata (schedule=\"@once\" + start_date=run_at + catchup=false). Only one active schedule per workflow is allowed."
+    Sleep-Time:
+      method: post
+      resourcePath: /sleep_time
+      description: "Runs sleep command on cicada and waits for configured time. Wait for 10 seconds if time value is not provided."
+    Update-Connection:
+      method: put
+      resourcePath: /connection/{connId}
+      description: "Update an Airflow connection."
+    Update-Task-Component:
+      method: put
+      resourcePath: /task_component/{tcId}
+      description: "Update the task component."
+    Update-Workflow:
+      method: put
+      resourcePath: /workflow/{wfId}
+      description: "Update the workflow content."
   cm-damselfly:
-    version: 0.5.1
-    GetCloudModels:
-      method: get
-      resourcePath: /cloudmodel
-      description: "Get a list of cloud user models."
     CreateCloudModel:
       method: post
       resourcePath: /cloudmodel
       description: "Create a new cloud user model with the given information."
-    GetModelsVersion:
-      method: get
-      resourcePath: /model/version
-      description: "Get the versions of all models(schemata of on-premise/cloud/software migration models)"
-    GetModels:
-      method: get
-      resourcePath: /model/{isTargetModel}
-      description: "Get a list of all user models."
-    GetOnPremModel:
-      method: get
-      resourcePath: /onpremmodel/{id}
-      description: "Get a specific on-premise model."
-    UpdateOnPremModel:
-      method: put
-      resourcePath: /onpremmodel/{id}
-      description: "Update a on-premise model with the given information."
-    DeleteOnPremModel:
-      method: delete
-      resourcePath: /onpremmodel/{id}
-      description: "Delete a on-premise model with the given information."
-    GetSourceSoftwareModel:
-      method: get
-      resourcePath: /softwaremodel/source/{id}
-      description: "Get a specific source software user model."
-    UpdateSourceSoftwareModel:
-      method: put
-      resourcePath: /softwaremodel/source/{id}
-      description: "Update a source software user model with the given information."
-    DeleteSourceSoftwareModel:
-      method: delete
-      resourcePath: /softwaremodel/source/{id}
-      description: "Delete a source software user model with the given information."
-    GetTargetSoftwareModels:
-      method: get
-      resourcePath: /softwaremodel/target
-      description: "Get a list of target software user models."
+    CreateOnPremModel:
+      method: post
+      resourcePath: /onpremmodel
+      description: "Create a new on-premise model with the given information."
+    CreateSourceSoftwareModel:
+      method: post
+      resourcePath: /softwaremodel/source
+      description: "Create a new source software user model with the given information."
     CreateTargetSoftwareModel:
       method: post
       resourcePath: /softwaremodel/target
       description: "Create a new target software user model with the given information."
-    GetTargetSoftwareModel:
-      method: get
-      resourcePath: /softwaremodel/target/{id}
-      description: "Get a specific target software user model."
-    UpdateTargetSoftwareModel:
-      method: put
-      resourcePath: /softwaremodel/target/{id}
-      description: "Update a target software user model with the given information."
+    DeleteCloudModel:
+      method: delete
+      resourcePath: /cloudmodel/{id}
+      description: "Delete a cloud user model with the given information."
+    DeleteOnPremModel:
+      method: delete
+      resourcePath: /onpremmodel/{id}
+      description: "Delete a on-premise model with the given information."
+    DeleteSourceSoftwareModel:
+      method: delete
+      resourcePath: /softwaremodel/source/{id}
+      description: "Delete a source software user model with the given information."
     DeleteTargetSoftwareModel:
       method: delete
       resourcePath: /softwaremodel/target/{id}
@@ -2900,63 +2939,159 @@ serviceActions:
       method: get
       resourcePath: /cloudmodel/{id}
       description: "Get a specific cloud user model."
-    UpdateCloudModel:
-      method: put
-      resourcePath: /cloudmodel/{id}
-      description: "Update a cloud user model with the given information."
-    DeleteCloudModel:
-      method: delete
-      resourcePath: /cloudmodel/{id}
-      description: "Delete a cloud user model with the given information."
-    RestCheckHTTPVersion:
+    GetCloudModels:
       method: get
-      resourcePath: /httpVersion
-      description: "Checks and logs the HTTP version of the incoming request to the server console."
+      resourcePath: /cloudmodel
+      description: "Get a list of cloud user models."
+    GetModels:
+      method: get
+      resourcePath: /model/{isTargetModel}
+      description: "Get a list of all user models."
+    GetModelsVersion:
+      method: get
+      resourcePath: /model/version
+      description: "Get the versions of all models(schemata of on-premise/cloud/software migration models)"
+    GetOnPremModel:
+      method: get
+      resourcePath: /onpremmodel/{id}
+      description: "Get a specific on-premise model."
     GetOnPremModels:
       method: get
       resourcePath: /onpremmodel
       description: "Get a list of on-premise models."
-    CreateOnPremModel:
-      method: post
-      resourcePath: /onpremmodel
-      description: "Create a new on-premise model with the given information."
-    RestGetReadyz:
+    GetSourceSoftwareModel:
       method: get
-      resourcePath: /readyz
-      description: "Check Damselfly is ready"
+      resourcePath: /softwaremodel/source/{id}
+      description: "Get a specific source software user model."
     GetSourceSoftwareModels:
       method: get
       resourcePath: /softwaremodel/source
       description: "Get a list of source software user models."
-    CreateSourceSoftwareModel:
-      method: post
-      resourcePath: /softwaremodel/source
-      description: "Create a new source software user model with the given information."
-  cm-grasshopper:
-    Get-Software-Migration-Status:
+    GetTargetSoftwareModel:
       method: get
-      resourcePath: /software/migrate/status/{executionId}
-      description: "Get the software migration status."
+      resourcePath: /softwaremodel/target/{id}
+      description: "Get a specific target software user model."
+    GetTargetSoftwareModels:
+      method: get
+      resourcePath: /softwaremodel/target
+      description: "Get a list of target software user models."
+    RestCheckHTTPVersion:
+      method: get
+      resourcePath: /httpVersion
+      description: "Checks and logs the HTTP version of the incoming request to the server console."
+    RestGetReadyz:
+      method: get
+      resourcePath: /readyz
+      description: "Check Damselfly is ready"
+    UpdateCloudModel:
+      method: put
+      resourcePath: /cloudmodel/{id}
+      description: "Update a cloud user model with the given information."
+    UpdateOnPremModel:
+      method: put
+      resourcePath: /onpremmodel/{id}
+      description: "Update a on-premise model with the given information."
+    UpdateSourceSoftwareModel:
+      method: put
+      resourcePath: /softwaremodel/source/{id}
+      description: "Update a source software user model with the given information."
+    UpdateTargetSoftwareModel:
+      method: put
+      resourcePath: /softwaremodel/target/{id}
+      description: "Update a target software user model with the given information."
+  cm-grasshopper:
+    Create-Velero-Backup:
+      method: post
+      resourcePath: /velero/source/backups
+      description: "Create Velero backup on source cluster."
+    Create-Velero-Restore:
+      method: post
+      resourcePath: /velero/target/restores
+      description: "Create Velero restore on target cluster."
+    Delete-Velero-Backup:
+      method: post
+      resourcePath: /velero/source/backups/{name}/delete
+      description: "Delete Velero backup on source cluster."
+    Delete-Velero-Restore:
+      method: post
+      resourcePath: /velero/target/restores/{name}/delete
+      description: "Delete Velero restore on target cluster."
+    Get-Job-Log:
+      method: get
+      resourcePath: /job/log/{jobId}
+      description: "Get k8s migration job log by job ID."
+    Get-Job-Status:
+      method: get
+      resourcePath: /job/status/{jobId}
+      description: "Get k8s migration job status by job ID."
     Get-Migration-List:
       method: post
       resourcePath: /software/migration_list
       description: "Get software migration list."
-    Health-Check-Readyz:
-      method: get
-      resourcePath: /readyz
-      description: "Check Grasshopper is ready"
-    Migrate-Software:
-      method: post
-      resourcePath: /software/migrate
-      description: "Migrate pieces of software to target."
     Get-Software-Migration-Log:
       method: get
       resourcePath: /software/migrate/log/{executionId}
       description: "Get the software migration log."
+    Get-Software-Migration-Status:
+      method: get
+      resourcePath: /software/migrate/status/{executionId}
+      description: "Get the software migration status."
+    Get-Velero-Backup:
+      method: post
+      resourcePath: /velero/source/backups/{name}
+      description: "Get Velero backup detail on source cluster."
+    Get-Velero-Restore:
+      method: post
+      resourcePath: /velero/target/restores/{name}
+      description: "Get Velero restore detail on target cluster."
+    Health-Check-Readyz:
+      method: get
+      resourcePath: /readyz
+      description: "Check Grasshopper is ready"
+    List-Job-Status:
+      method: get
+      resourcePath: /job/status
+      description: "List k8s migration jobs."
     List-Software-Migration-Status:
       method: get
       resourcePath: /software/migrate/status
       description: "Get a list of software migration status."
+    List-Velero-Backups:
+      method: post
+      resourcePath: /velero/source/backups/list
+      description: "List Velero backups on source cluster."
+    List-Velero-Restores:
+      method: post
+      resourcePath: /velero/target/restores/list
+      description: "List Velero restores on target cluster."
+    Migrate-Software:
+      method: post
+      resourcePath: /software/migrate
+      description: "Migrate pieces of software to target."
+    Validate-Velero-Backup:
+      method: post
+      resourcePath: /velero/source/backups/{name}/validate
+      description: "Validate Velero backup status on source cluster."
+    Validate-Velero-Restore:
+      method: post
+      resourcePath: /velero/target/restores/{name}/validate
+      description: "Validate Velero restore status on target cluster."
+    Velero-Health:
+      method: post
+      resourcePath: /velero/{role}/health
+      description: "Check Velero availability on source or target cluster."
+    Velero-Install:
+      method: post
+      resourcePath: /velero/{role}/install
+      description: "Install or upgrade Velero on source or target cluster using an S3-compatible object store."
+    Velero-Migration-Execute:
+      method: post
+      resourcePath: /velero/migration/execute
+      description: "Run source backup and target restore as a single asynchronous Velero migration job."
+    Velero-Migration-Precheck:
+      method: post
+      resourcePath: /velero/migration/precheck
+      description: "Check source cluster, target cluster, and the S3 object store before executing Velero migration."
   cm-honeybee-agent:
     Get-Data-Info:
       method: get
@@ -2974,184 +3109,196 @@ serviceActions:
       method: get
       resourcePath: /kubernetes
       description: "Get kubernetes information."
-    Health-Check-Readyz:
-      method: get
-      resourcePath: /readyz
-      description: "Check Honeybee Agent is ready"
     Get-Software-Info:
       method: get
       resourcePath: /software
       description: "Get software information."
-  cm-honeybee:
-    Get-Helm-Info-Source-Group:
-      method: get
-      resourcePath: /source_group/{sgId}/helm
-      description: "Get the helm information for all connections in the source group."
-    Get-Connection-Info-Directly:
-      method: get
-      resourcePath: /connection_info/{connId}
-      description: "Get the connection information directly."
-    Import-Software:
-      method: post
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/software
-      description: "Import the software information."
-    Import-Helm-Source-Group:
-      method: post
-      resourcePath: /source_group/{sgId}/import/helm
-      description: "Import helm information for all connections in the source group."
-    Import-Infra-Source-Group:
-      method: post
-      resourcePath: /source_group/{sgId}/import/infra
-      description: "Import infra information for all connections in the source group."
-    Get-Benchmark-Info:
-      method: get
-      resourcePath: /bench/{connId}
-      description: "Get the benchmark information of the connection information."
-    Delete-Source-Group:
-      method: delete
-      resourcePath: /source_group/{sgId}
-      description: "Delete the source group."
-    Get-Source-Group:
-      method: get
-      resourcePath: /source_group/{sgId}
-      description: "Get the source group."
-    Update-Source-Group:
-      method: put
-      resourcePath: /source_group/{sgId}
-      description: "Update the source group."
-    Get-Data-Info:
-      method: get
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/data
-      description: "Get the data information of the connection information."
-    Import-Infra:
-      method: post
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/infra
-      description: "Import the infra information."
-    Refresh-Connection-Info-Status-Directly:
-      method: put
-      resourcePath: /connection_info/{connId}/refresh
-      description: "Refresh the connection info status directly."
-    Get-Infra-Info-Source-Group:
-      method: get
-      resourcePath: /source_group/{sgId}/infra
-      description: "Get the infra information for all connections in the source group."
-    Get-Kubernetes-Info-Source-Group:
-      method: get
-      resourcePath: /source_group/{sgId}/kubernetes
-      description: "Get the kubernetes information for all connections in the source group."
-    Get-Software-Info-Source-Group:
-      method: get
-      resourcePath: /source_group/{sgId}/software
-      description: "Get the software information for all connections in the source group."
-    Get-Helm-Info:
-      method: get
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/helm
-      description: "Get the helm information of the connection information."
-    Import-Helm:
-      method: post
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/helm
-      description: "Import the helm information."
-    Get-Infra-Info-Refined:
-      method: get
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/infra/refined
-      description: "Get the refined infra information of the connection information."
-    Import-Data-Source-Group:
-      method: post
-      resourcePath: /source_group/{sgId}/import/data
-      description: "Import data information for all connections in the source group."
-    Stop-Benchmark:
-      method: post
-      resourcePath: /bench/{connId}/stop
-      description: "Stop the benchmark"
     Health-Check-Readyz:
       method: get
       resourcePath: /readyz
-      description: "Check Honeybee is ready"
-    Get-Connection-Info:
-      method: get
-      resourcePath: /source_group/{sgId}/connection_info/{connId}
-      description: "Get the connection information."
-    Update-Connection-Info:
-      method: put
-      resourcePath: /source_group/{sgId}/connection_info/{connId}
-      description: "Update the connection information."
-    Delete-Connection-Info:
-      method: delete
-      resourcePath: /source_group/{sgId}/connection_info/{connId}
-      description: "Delete the connection information."
-    Import-Kubernetes:
-      method: post
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/kubernetes
-      description: "Import the kubernetes information."
-    Get-Infra-Info:
-      method: get
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/infra
-      description: "Get the infra information of the connection information."
-    Get-Software-Info:
-      method: get
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/software
-      description: "Get the software information of the connection information."
-    Import-Kubernetes-Source-Group:
-      method: post
-      resourcePath: /source_group/{sgId}/import/kubernetes
-      description: "Import kubernetes information for all connections in the source group."
-    Get-Software-Info-Source-Group-Refined:
-      method: get
-      resourcePath: /source_group/{sgId}/software/refined
-      description: "Get the refined software information for all connections in the source group."
-    Get-Data-Info-Source-Group:
-      method: get
-      resourcePath: /source_group/{sgId}/data
-      description: "Get the data information for all connections in the source group."
-    List-Connection-Info:
-      method: get
-      resourcePath: /source_group/{sgId}/connection_info
-      description: "Get a list of connection information."
+      description: "Check Honeybee Agent is ready"
+  cm-honeybee:
     Create-Connection-Info:
       method: post
       resourcePath: /source_group/{sgId}/connection_info
       description: "Create the connection information."
-    Import-Data:
-      method: post
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/data
-      description: "Import the data information."
-    Get-Kubernetes-Info:
+    Delete-Connection-Info:
+      method: delete
+      resourcePath: /source_group/{sgId}/connection_info/{connId}
+      description: "Delete the connection information."
+    Delete-Source-Group:
+      method: delete
+      resourcePath: /source_group/{sgId}
+      description: "Delete the source group."
+    Discover-Source-Group-Resources:
       method: get
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/kubernetes
-      description: "Get the kubernetes information of the connection information."
-    Refresh-Connection-Info-Status:
-      method: put
-      resourcePath: /source_group/{sgId}/connection_info/{connId}/refresh
-      description: "Refresh the connection info status."
+      resourcePath: /source_group/{sgId}/discover
+      description: "Lists VMs / K8s clusters / object-storage buckets reachable through the CSP connection bound to this SourceGroup. Used by the UI to populate ConnectionInfo selection."
+    Get-Benchmark-Info:
+      method: get
+      resourcePath: /bench/{connId}
+      description: "Get the benchmark information of the connection information."
+    Get-Connection-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}
+      description: "Get the connection information."
+    Get-Connection-Info-Directly:
+      method: get
+      resourcePath: /connection_info/{connId}
+      description: "Get the connection information directly."
+    Get-Csp:
+      method: get
+      resourcePath: /csp/{name}
+      description: "Return the credential keys, regions, and other metadata for the given CSP. Name is matched case-insensitively."
+    Get-Data-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/data
+      description: "Get the data information of the connection information."
+    Get-Data-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/data
+      description: "Get the data information for all connections in the source group."
+    Get-Helm-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/helm
+      description: "Get the helm information of the connection information."
+    Get-Helm-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/helm
+      description: "Get the helm information for all connections in the source group."
+    Get-Infra-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/infra
+      description: "Get the infra information of the connection information."
+    Get-Infra-Info-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/infra/refined
+      description: "Get the refined infra information of the connection information."
+    Get-Infra-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/infra
+      description: "Get the infra information for all connections in the source group."
     Get-Infra-Info-Source-Group-Refined:
       method: get
       resourcePath: /source_group/{sgId}/infra/refined
       description: "Get the refined infra information for all connections in the source group."
-    Run-Benchmark-Info:
-      method: post
-      resourcePath: /bench/{connId}/run
-      description: "Run the benchmark information of the connection information. If no Benchmark Agent is present on the connected server, it will be automatically installed, and the benchmark will be executed."
-    Refresh-Source-Group-Connection-Info-Status:
-      method: put
-      resourcePath: /source_group/{sgId}/refresh
-      description: "Refresh connection info status of the source group."
-    List-Source-Group:
+    Get-Kubernetes-Info:
       method: get
-      resourcePath: /source_group
-      description: "Get a list of source group."
-    Register-Source-Group:
-      method: post
-      resourcePath: /source_group
-      description: "Register the source group."
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/kubernetes
+      description: "Get the kubernetes information of the connection information."
+    Get-Kubernetes-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/kubernetes
+      description: "Get the kubernetes information for all connections in the source group."
+    Get-Software-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/software
+      description: "Get the software information of the connection information."
     Get-Software-Info-Refined:
       method: get
       resourcePath: /source_group/{sgId}/connection_info/{connId}/software/refined
       description: "Get the refined software information of the connection information."
+    Get-Software-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/software
+      description: "Get the software information for all connections in the source group."
+    Get-Software-Info-Source-Group-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/software/refined
+      description: "Get the refined software information for all connections in the source group."
+    Get-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}
+      description: "Get the source group."
+    Health-Check-Readyz:
+      method: get
+      resourcePath: /readyz
+      description: "Check Honeybee is ready"
+    Import-Data:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/data
+      description: "Import the data information."
+    Import-Data-Source-Group:
+      method: post
+      resourcePath: /source_group/{sgId}/import/data
+      description: "Import data information for all connections in the source group."
+    Import-Helm:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/helm
+      description: "Import the helm information."
+    Import-Helm-Source-Group:
+      method: post
+      resourcePath: /source_group/{sgId}/import/helm
+      description: "Import helm information for all connections in the source group."
+    Import-Infra:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/infra
+      description: "Import the infra information."
+    Import-Infra-Source-Group:
+      method: post
+      resourcePath: /source_group/{sgId}/import/infra
+      description: "Import infra information for all connections in the source group."
+    Import-Kubernetes:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/kubernetes
+      description: "Import the kubernetes information."
+    Import-Kubernetes-Source-Group:
+      method: post
+      resourcePath: /source_group/{sgId}/import/kubernetes
+      description: "Import kubernetes information for all connections in the source group."
+    Import-Software:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/software
+      description: "Import the software information."
     Import-Software-Source-Group:
       method: post
       resourcePath: /source_group/{sgId}/import/software
       description: "Import software information for all connections in the source group."
+    List-Connection-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info
+      description: "Get a list of connection information."
+    List-Csp:
+      method: get
+      resourcePath: /csp
+      description: "Return the list of CSPs supported by the connected cb-spider."
+    List-Source-Group:
+      method: get
+      resourcePath: /source_group
+      description: "Get a list of source group."
+    Refresh-Connection-Info-Status:
+      method: put
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/refresh
+      description: "Refresh the connection info status."
+    Refresh-Connection-Info-Status-Directly:
+      method: put
+      resourcePath: /connection_info/{connId}/refresh
+      description: "Refresh the connection info status directly."
+    Refresh-Source-Group-Connection-Info-Status:
+      method: put
+      resourcePath: /source_group/{sgId}/refresh
+      description: "Refresh connection info status of the source group."
+    Register-Source-Group:
+      method: post
+      resourcePath: /source_group
+      description: "Register the source group."
     Register-Target-To-Source-Group:
       method: post
       resourcePath: /source_group/{sgId}/target
       description: "Register target information to the source group."
+    Run-Benchmark-Info:
+      method: post
+      resourcePath: /bench/{connId}/run
+      description: "Run the benchmark information of the connection information. If no Benchmark Agent is present on the connected server, it will be automatically installed, and the benchmark will be executed."
+    Stop-Benchmark:
+      method: post
+      resourcePath: /bench/{connId}/stop
+      description: "Stop the benchmark"
+    Update-Connection-Info:
+      method: put
+      resourcePath: /source_group/{sgId}/connection_info/{connId}
+      description: "Update the connection information."
+    Update-Source-Group:
+      method: put
+      resourcePath: /source_group/{sgId}
+      description: "Update the source group."
