@@ -553,8 +553,23 @@ func verifyApiYaml(apiFile string) error {
 	if err != nil {
 		return err
 	}
+	// General YAML validity.
 	var v map[string]interface{}
-	return yaml.Unmarshal(data, &v)
+	if err := yaml.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	// serviceActions structure: each serviceActions.<svc>.<action> must be a
+	// mapping (method/resourcePath/description), not a scalar. A stray scalar —
+	// e.g. a version line misplaced under serviceActions — is valid YAML but
+	// breaks consumers that load api.yaml into typed structs (the console proxy),
+	// so reject it here instead of writing a structurally broken catalog.
+	var typed struct {
+		ServiceActions map[string]map[string]map[string]interface{} `yaml:"serviceActions"`
+	}
+	if err := yaml.Unmarshal(data, &typed); err != nil {
+		return fmt.Errorf("serviceActions structure invalid — an action entry is not a mapping (stray scalar under serviceActions): %w", err)
+	}
+	return nil
 }
 
 // updateServiceActionsBlock edits api.yaml text so the rest of the file (services,
