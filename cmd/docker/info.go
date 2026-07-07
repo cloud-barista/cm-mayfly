@@ -11,8 +11,18 @@ import (
 	"regexp"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
+	"github.com/cm-mayfly/cm-mayfly/internal/openbao"
 	"github.com/spf13/cobra"
 )
+
+// printOpenbaoInfo appends a compact OpenBao consistency section to `infra info`.
+// It reuses the shared preflight (read-only) so the same verdict shown by
+// `setup openbao status` is surfaced here.
+func printOpenbaoInfo() {
+	fmt.Println()
+	fmt.Println("[OpenBao consistency]")
+	fmt.Println(openbao.CompactStatus())
+}
 
 // infoAllFlag represents the --all flag for showing all containers including stopped ones
 var infoAllFlag bool
@@ -44,6 +54,9 @@ var infoCmd = &cobra.Command{
 			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s images %s", ProjectName, DockerFilePath, convertedServiceName)
 			//fmt.Println(cmdStr)
 			common.SysCall(cmdStr)
+
+			// OpenBao consistency summary (shared preflight, read-only).
+			printOpenbaoInfo()
 
 			// Add helpful hint about --human option
 			fmt.Println()
@@ -185,6 +198,9 @@ func showHumanReadableInfo() {
 
 	// Display table with service categorization
 	displayServiceTableWithDependencies(serviceInfos, ServiceName)
+
+	// OpenBao consistency summary (shared preflight, read-only).
+	printOpenbaoInfo()
 }
 
 // ContainerInfo represents container information
