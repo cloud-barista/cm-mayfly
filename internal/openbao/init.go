@@ -220,6 +220,10 @@ type initFileShape struct {
 	KeysBase64    []string `json:"keys_base64"`
 	UnsealKeysHex []string `json:"unseal_keys_hex"`
 	UnsealKeysB64 []string `json:"unseal_keys_b64"`
+	// RootToken is the initial root token from POST /v1/sys/init. It is only
+	// used by the preflight diagnostics to tell the user which value in
+	// openbao-init.json to restore into .env; the unseal path never needs it.
+	RootToken string `json:"root_token"`
 }
 
 func (s initFileShape) firstKey() string {

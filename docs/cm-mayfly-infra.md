@@ -659,6 +659,5 @@ $ sudo rm -rf ./conf/docker/data
 > ⚠️ **이 작업은 되돌릴 수 없으며 다른 Docker 애플리케이션에 영향을 줍니다!**
 
 ```bash
-$ cd conf/docker
 $ ./remove_all.sh
 ```

@@ -287,6 +287,5 @@ If you want to cleanup all Docker environments, run the following shell script.
 > Only use this script if you want to completely reset your Docker environment.
 
 ```
-$ cd conf/docker
 $ ./remove_all.sh
 ```

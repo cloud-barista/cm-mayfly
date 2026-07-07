@@ -106,11 +106,26 @@ Notes section flags common drift patterns and suggests the matching command
 		fmt.Printf("  .env VAULT_TOKEN: %s\n", s.EnvTokenMasked)
 		fmt.Printf("  cb-tumblebug    : VAULT_TOKEN %s\n", yesNo(s.TumblebugTokenSet, "set", "(empty)"))
 		fmt.Printf("  mc-terrarium    : VAULT_TOKEN %s\n", yesNo(s.TerrariumTokenSet, "set", "(empty)"))
+
+		// State-consistency preflight: surface the init.json / data
+		// volume / token-validity signals and the overall verdict. Read-only —
+		// never starts openbao.
+		pf := openbao.Preflight(false)
+		fmt.Printf("  init.json       : %s\n", yesNo(pf.InitJSON, "present", "(absent/invalid)"))
+		fmt.Printf("  data volume     : %s\n", yesNo(pf.DataDir, "present", "(empty)"))
+		if pf.Reachable && pf.Initialized && !pf.Sealed && pf.EnvToken {
+			fmt.Printf("  token validity  : %s\n", yesNo(pf.TokenValid, "valid", "INVALID (403)"))
+		}
+		fmt.Printf("  consistency     : %s\n", pf.Case)
+
 		if len(s.Notes) > 0 {
 			fmt.Println("\nNotes:")
 			for _, n := range s.Notes {
 				fmt.Println("  - " + n)
 			}
+		}
+		if !pf.OK && pf.Advice != "" {
+			fmt.Println("\n" + pf.Advice)
 		}
 	},
 }

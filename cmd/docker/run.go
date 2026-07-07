@@ -121,21 +121,38 @@ var runCmd = &cobra.Command{
 		// Without this step, cb-tumblebug / mc-terrarium would start with an
 		// empty VAULT_TOKEN frozen into their environment and a `docker
 		// compose restart` after a sidecar init wouldn't re-evaluate .env —
-		// that's the regression we hit on stage (BAR-1291). Skipped when
-		// targeting a specific service (only the full-stack default path
-		// needs it) and when .env already has VAULT_TOKEN (re-runs;
-		// sidecar handles unseal).
-		if ServiceName == "" && !openbao.HasVaultToken() {
-			fmt.Println()
-			fmt.Println("ℹ VAULT_TOKEN not found in .env — initializing OpenBao first")
-			fmt.Println("  (mirrors cb-tumblebug `make up` staged flow: openbao alone, then init, then the rest).")
-			if err := openbao.Init(true); err != nil {
-				fmt.Fprintf(os.Stderr, "\n❌ OpenBao initialization failed: %v\n", err)
-				fmt.Println("Aborting `infra run`. Once the cause is resolved, re-run this command")
-				fmt.Println("or run `./mayfly setup openbao init` manually.")
+		// that's the regression we hit on staging. Only the
+		// full-stack default path needs this; a targeted `-s` run is left
+		// untouched.
+		//
+		// A shared state-consistency preflight decides what to do:
+		// it may start openbao alone to get an authoritative reading. C1 fresh
+		// → auto-init; C2 consistent → skip; any inconsistency (stale token,
+		// wiped storage, invalid token, …) → print the specific remediation and
+		// stop BEFORE starting the rest, so the stack never deadlocks in the
+		// half-up "Created" state a broken OpenBao would otherwise leave behind.
+		if ServiceName == "" {
+			pf := openbao.Preflight(true) // run may start openbao alone to diagnose
+			switch {
+			case pf.Case == openbao.CaseFresh:
+				fmt.Println()
+				fmt.Println("ℹ VAULT_TOKEN not found in .env — initializing OpenBao first")
+				fmt.Println("  (mirrors cb-tumblebug `make up` staged flow: openbao alone, then init, then the rest).")
+				if err := openbao.Init(true); err != nil {
+					fmt.Fprintf(os.Stderr, "\n❌ OpenBao initialization failed: %v\n", err)
+					fmt.Println("Aborting `infra run`. Once the cause is resolved, re-run this command")
+					fmt.Println("or run `./mayfly setup openbao init` manually.")
+					return
+				}
+				fmt.Println()
+			case pf.OK:
+				// C2 consistent — proceed; the openbao-unseal sidecar keeps it unsealed.
+			default:
+				fmt.Println()
+				fmt.Println(pf.Advice)
+				fmt.Println("\nThe other services were NOT started. Resolve the above, then run `./mayfly infra run -d` again.")
 				return
 			}
-			fmt.Println()
 		}
 
 		// Always use detached mode to avoid dependency issues

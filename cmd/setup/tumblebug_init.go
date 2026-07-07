@@ -60,24 +60,21 @@ func runTumblebugInit() {
 
 	fmt.Println("✅ CB-Tumblebug is running.")
 
-	// OpenBao must already be initialized — multi-init.sh registers credentials
-	// against the secret store and silently fails (Phase 1 logs flood with
-	// "VAULT_TOKEN is not set") when the running cb-tumblebug container holds
-	// an empty token. The official cb-tumblebug make-up flow handles this by
-	// initializing OpenBao before bringing the rest of the stack up; cm-mayfly
-	// mirrors that via `setup openbao init` (manual) or `infra run`'s auto-init
-	// branch. Guard here so a stray `tumblebug-init` invocation fails loudly
-	// instead of producing a half-registered catalog.
-	if !openbao.HasVaultToken() {
-		fmt.Println("❌ OpenBao is not initialized (VAULT_TOKEN missing in .env).")
-		fmt.Println("Please initialize OpenBao first:")
-		fmt.Println("   ./mayfly setup openbao init")
+	// OpenBao must be initialized AND its .env token consistent — multi-init.sh
+	// registers credentials against the secret store and silently fails (Phase 1
+	// logs flood with "VAULT_TOKEN is not set") when the running cb-tumblebug
+	// container holds an empty/invalid token. cb-tumblebug is already running
+	// here, so OpenBao is reachable: the shared preflight gives an
+	// authoritative verdict and, for recoverable states like a lost/invalid
+	// token, tells the user exactly how to restore it — instead of the old
+	// dead-end "VAULT_TOKEN missing" error that couldn't tell those apart.
+	if pf := openbao.Preflight(false); !pf.OK {
+		fmt.Println("❌ OpenBao state is not consistent for tumblebug-init.")
 		fmt.Println()
-		fmt.Println("Or simply re-run `./mayfly infra run` — it will auto-init OpenBao")
-		fmt.Println("when VAULT_TOKEN is missing.")
+		fmt.Println(pf.Advice)
 		return
 	}
-	fmt.Println("✅ OpenBao VAULT_TOKEN is present in .env.")
+	fmt.Println("✅ OpenBao VAULT_TOKEN is present and consistent.")
 	fmt.Println("Checking Tumblebug execution version...")
 
 	// Get current running CB-Tumblebug version
