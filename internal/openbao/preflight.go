@@ -204,6 +204,26 @@ func Preflight(allowStartOpenbao bool) Result {
 	return r.decideReachable(shape, dPop)
 }
 
+// CompactStatus returns a short, multi-line OpenBao consistency summary suitable
+// for embedding in `infra info`. It is read-only (never starts openbao) and,
+// when the state is inconsistent, points at `setup openbao status` for the full
+// remediation rather than dumping the whole advice into the info output.
+func CompactStatus() string {
+	pf := Preflight(false)
+	tok := "(empty)"
+	if pf.EnvToken {
+		tok = maskToken(readEnvToken())
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "  API        : reachable=%v initialized=%v sealed=%v\n", pf.Reachable, pf.Initialized, pf.Sealed)
+	fmt.Fprintf(&b, "  .env token : %s\n", tok)
+	fmt.Fprintf(&b, "  consistency: %s", pf.Case)
+	if !pf.OK {
+		b.WriteString("\n  ⚠ inconsistent — run './mayfly setup openbao status' for details and remediation")
+	}
+	return b.String()
+}
+
 // decideReachable judges from the authoritative API signals (openbao is up).
 func (r Result) decideReachable(shape initFileShape, dPop bool) Result {
 	switch {
