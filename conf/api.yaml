@@ -60,7 +60,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/main/src/interface/rest/docs/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/{release}/src/interface/rest/docs/swagger.json
   cm-ant:
-    version: 0.5.2(0.6.0)
+    version: 0.5.3(0.6.0)
     baseurl: http://cm-ant:8880/ant
     auth:
       type: none
