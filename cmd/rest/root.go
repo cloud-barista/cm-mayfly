@@ -132,7 +132,7 @@ func SetHeaders() {
 func SetReqData() error {
 	if inputFileData != "" {
 		if isVerbose {
-			fmt.Printf("use [%s] data file\n" + inputFileData)
+			fmt.Printf("use [%s] data file\n", inputFileData)
 		}
 
 		// 파일에서 데이터 읽기
@@ -143,7 +143,7 @@ func SetReqData() error {
 		req.SetBody(data)
 	} else {
 		if isVerbose {
-			fmt.Printf("request data : %s\n" + sendData)
+			fmt.Printf("request data : %s\n", sendData)
 		}
 		req.SetBody(sendData)
 	}
