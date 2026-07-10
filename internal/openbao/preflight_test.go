@@ -2,10 +2,14 @@ package openbao
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // --- signal helpers ---------------------------------------------------------
@@ -140,29 +144,39 @@ func TestDecideDisk(t *testing.T) {
 func TestDecideReachable(t *testing.T) {
 	shape := initFileShape{Keys: []string{"k1"}, RootToken: "test-root-token-not-real"}
 	cases := []struct {
-		name        string
-		init, sealed, envTok, tokValid, initJSON bool
-		dPop        bool
-		want        Case
-		wantOK      bool
+		name                                                  string
+		init, sealed, active, envTok, tokValid, tokUnknown, initJSON bool
+		dPop                                                  bool
+		want                                                  Case
+		wantOK                                                bool
 	}{
-		{"consistent-C2", true, false, true, true, true, true, CaseConsistent, true},
-		{"lost-token-C5", true, false, false, false, true, true, CaseLostToken, false},
-		{"wrong-token-C7", true, false, true, false, true, true, CaseWrongToken, false},
-		{"stuck-sealed-C8", true, true, true, false, true, true, CaseStuckSealed, false},
-		{"corrupt-C6", false, false, true, false, true, true, CaseCorrupt, false},
-		{"orphaned-C3", false, false, true, false, false, false, CaseOrphanedToken, false},
-		{"fresh-C1", false, false, false, false, false, false, CaseFresh, true},
+		// active=true is the normal reachable+unsealed state; token cases below
+		// exercise the tri-state V signal.
+		{"consistent-C2", true, false, true, true, true, false, true, true, CaseConsistent, true},
+		{"lost-token-C5", true, false, true, false, false, false, true, true, CaseLostToken, false},
+		{"wrong-token-C7", true, false, true, true, false, false, true, true, CaseWrongToken, false},
+		{"stuck-sealed-C8", true, true, false, true, false, false, true, true, CaseStuckSealed, false},
+		{"corrupt-C6", false, false, false, true, false, false, true, true, CaseCorrupt, false},
+		{"orphaned-C3", false, false, false, true, false, false, false, false, CaseOrphanedToken, false},
+		{"fresh-C1", false, false, false, false, false, false, false, false, CaseFresh, true},
+		// follow-up: transient token → unknown → non-blocking OK (not C7).
+		{"token-unknown-nonblocking", true, false, true, true, false, true, true, true, CaseConsistent, true},
+		// follow-up: unsealed but API never became active → not-ready (not C7).
+		{"not-ready", true, false, false, true, false, false, true, true, CaseNotReady, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			r := Result{
-				Initialized: c.init, Sealed: c.sealed,
-				EnvToken: c.envTok, TokenValid: c.tokValid, InitJSON: c.initJSON,
+				Initialized: c.init, Sealed: c.sealed, Active: c.active,
+				EnvToken: c.envTok, TokenValid: c.tokValid, TokenUnknown: c.tokUnknown, InitJSON: c.initJSON,
 			}
 			got := r.decideReachable(shape, c.dPop)
 			if got.Case != c.want || got.OK != c.wantOK {
 				t.Errorf("Case=%v OK=%v, want %v %v", got.Case, got.OK, c.want, c.wantOK)
+			}
+			// The unknown case must proceed (OK) yet carry a note so the user is told.
+			if c.name == "token-unknown-nonblocking" && got.Note == "" {
+				t.Error("token-unknown verdict must carry an informational Note")
 			}
 		})
 	}
@@ -172,7 +186,7 @@ func TestDecideReachable(t *testing.T) {
 
 func TestAdviceForMasksAndPaths(t *testing.T) {
 	shape := initFileShape{Keys: []string{"k1"}, RootToken: "test-root-token-not-real"}
-	adv := adviceFor(CaseLostToken, shape)
+	adv := adviceFor(CaseLostToken, shape, true)
 	if !strings.Contains(adv, "test-roo") {
 		t.Errorf("C5 advice should show masked root_token, got: %s", adv)
 	}
@@ -182,7 +196,154 @@ func TestAdviceForMasksAndPaths(t *testing.T) {
 	if !strings.Contains(adv, jsonPathHint) || !strings.Contains(adv, envPathHint) {
 		t.Error("advice should name both the init.json and .env paths")
 	}
-	if adviceFor(CaseFresh, shape) != "" || adviceFor(CaseConsistent, shape) != "" {
+	if adviceFor(CaseFresh, shape, true) != "" || adviceFor(CaseConsistent, shape, true) != "" {
 		t.Error("OK cases should carry no advice")
 	}
+}
+
+// --- follow-up: reachability-aware advice + not-ready ------------------------
+
+func TestAdviceForReachabilityAndNotReady(t *testing.T) {
+	// CaseUnknown must not claim "not running" when openbao IS reachable.
+	up := adviceFor(CaseUnknown, initFileShape{}, true)
+	if strings.Contains(up, "not running") {
+		t.Errorf("reachable CaseUnknown advice must not say 'not running', got: %s", up)
+	}
+	down := adviceFor(CaseUnknown, initFileShape{}, false)
+	if !strings.Contains(down, "not running") {
+		t.Errorf("unreachable CaseUnknown advice should say 'not running', got: %s", down)
+	}
+	// CaseNotReady carries transition guidance and is distinct from wrong-token.
+	nr := adviceFor(CaseNotReady, initFileShape{}, true)
+	if nr == "" || !strings.Contains(nr, "active") {
+		t.Errorf("CaseNotReady advice should explain the not-active state, got: %s", nr)
+	}
+}
+
+// --- follow-up: readiness gate + tri-state token probe (httptest) -----------
+
+// TestWaitOpenbaoActiveWaitsForTransition drives the FR-01 gate: /v1/sys/health
+// answers 503 (still transitioning) for the first two polls, then 200 (active).
+// The gate must keep polling and return nil once it sees 200 — proving the
+// unseal→active transition window is absorbed as readiness, not leaked onward.
+func TestWaitOpenbaoActiveWaitsForTransition(t *testing.T) {
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/sys/health" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if atomic.AddInt32(&calls, 1) <= 2 {
+			w.WriteHeader(http.StatusServiceUnavailable) // 503 — sealed/transitioning
+			return
+		}
+		w.WriteHeader(http.StatusOK) // 200 — active
+	}))
+	defer srv.Close()
+
+	if err := waitOpenbaoActive(srv.URL, 10*time.Second); err != nil {
+		t.Fatalf("gate should pass once health returns 200, got: %v", err)
+	}
+	if got := atomic.LoadInt32(&calls); got < 3 {
+		t.Errorf("gate returned after %d polls, expected to wait through the 503 window (>=3)", got)
+	}
+}
+
+// TestWaitOpenbaoActiveTimesOut: a health endpoint stuck at 503 must make the
+// gate return an error within the bound (→ CaseNotReady, never a token verdict).
+func TestWaitOpenbaoActiveTimesOut(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+	if err := waitOpenbaoActive(srv.URL, 2*time.Second); err == nil {
+		t.Error("gate should time out when health never returns 200")
+	}
+}
+
+// TestProbeTokenAuthStatusMapping covers the FR-02 tri-state: 200→valid,
+// 401/403→invalid (definitive), 500/503/connection-error→unknown (never
+// invalid). Empty token is invalid without a network call.
+func TestProbeTokenAuthStatusMapping(t *testing.T) {
+	newSrv := func(code int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(code)
+		}))
+	}
+	cases := []struct {
+		name string
+		code int
+		want tokenAuthState
+	}{
+		{"200-valid", http.StatusOK, authValid},
+		{"401-invalid", http.StatusUnauthorized, authInvalid},
+		{"403-invalid", http.StatusForbidden, authInvalid},
+		{"500-unknown", http.StatusInternalServerError, authUnknown},
+		{"503-unknown", http.StatusServiceUnavailable, authUnknown},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv := newSrv(c.code)
+			defer srv.Close()
+			if got := probeTokenAuth(srv.URL, "some-token"); got != c.want {
+				t.Errorf("status %d → %v, want %v", c.code, got, c.want)
+			}
+		})
+	}
+
+	t.Run("empty-token-invalid", func(t *testing.T) {
+		if got := probeTokenAuth("http://localhost:1", ""); got != authInvalid {
+			t.Errorf("empty token → %v, want authInvalid", got)
+		}
+	})
+
+	t.Run("connection-error-unknown", func(t *testing.T) {
+		// Point at a closed server → connection refused → transient → unknown.
+		srv := newSrv(http.StatusOK)
+		addr := srv.URL
+		srv.Close()
+		if got := probeTokenAuth(addr, "some-token"); got != authUnknown {
+			t.Errorf("connection error → %v, want authUnknown (never invalid)", got)
+		}
+	})
+
+	t.Run("redirect-not-followed-token-not-leaked", func(t *testing.T) {
+		// A malicious/misconfigured endpoint answering 3xx must not cause the
+		// X-Vault-Token to be forwarded to the redirect target. The probe must
+		// refuse to follow (→ unknown), and the target must receive no request.
+		var leaked int32
+		target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Vault-Token") != "" {
+				atomic.AddInt32(&leaked, 1)
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer target.Close()
+		redirector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, target.URL+"/v1/auth/token/lookup-self", http.StatusFound)
+		}))
+		defer redirector.Close()
+
+		if got := probeTokenAuth(redirector.URL, "secret-root-token"); got != authUnknown {
+			t.Errorf("redirect → %v, want authUnknown (not followed)", got)
+		}
+		if atomic.LoadInt32(&leaked) != 0 {
+			t.Error("X-Vault-Token was forwarded to the redirect target — token leak")
+		}
+	})
+
+	t.Run("transient-then-valid", func(t *testing.T) {
+		var calls int32
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if atomic.AddInt32(&calls, 1) == 1 {
+				w.WriteHeader(http.StatusServiceUnavailable) // first probe transient
+				return
+			}
+			w.WriteHeader(http.StatusOK) // retry sees a valid token
+		}))
+		defer srv.Close()
+		if got := probeTokenAuth(srv.URL, "some-token"); got != authValid {
+			t.Errorf("503-then-200 → %v, want authValid after retry", got)
+		}
+	})
 }

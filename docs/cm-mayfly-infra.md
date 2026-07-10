@@ -554,35 +554,23 @@ $ ./mayfly infra logs -s cm-butterfly --tail 100 --since 2h
 
 ### 전체 시스템 제거
 
-아래 명령으로 실행된 모든 컨테이너가 종료 및 삭제되며 생성된 네트워크도 삭제됩니다.
+기본적으로 컨테이너만 종료·삭제하며, 이미지·볼륨·호스트 데이터는 보존합니다(`docker compose down`과 동일). 생성된 네트워크도 삭제됩니다.
 ```bash
 $ ./mayfly infra remove
 ```
 
-사용된 이미지도 함께 삭제합니다.
+이미지·명명(named) 볼륨·DB 호스트 데이터(`conf/docker/data/*` 중 openbao 제외)까지 함께 삭제합니다. OpenBao 자격증명(데이터·`.env` 토큰)은 보존됩니다.
 ```bash
-$ ./mayfly infra remove --images
-또는
-$ ./mayfly infra remove -i
+$ ./mayfly infra remove --clean-db
 ```
 
-생성된 볼륨도 함께 삭제합니다.   
-(주의) 볼륨이 삭제되면 저장된 데이터도 모두 삭제됩니다.
+`--clean-db`가 삭제하는 모든 것에 더해 OpenBao 호스트 데이터까지 삭제하고 `.env`의 `VAULT_TOKEN`을 비웁니다.   
+완전히 최초 상태로 재구축하고 싶을 때 사용하세요. 이후 재구동 시 OpenBao가 자동으로 재초기화됩니다.
 ```bash
-$ ./mayfly infra remove --volumes
-또는
-$ ./mayfly infra remove -v
+$ ./mayfly infra remove --clean-all
 ```
 
-컨테이너를 비롯하여 네트워크 및 이미지와 볼륨 등 모든 자원을 삭제합니다.   
-완전히 최초 상태로 재구축하고 싶거나 더 이상 필요 없을 때 사용하세요.
-```bash
-$ ./mayfly infra remove --images --volumes
-또는 
-$ ./mayfly infra remove -i -v
-또는
-$ ./mayfly infra remove --all
-```
+> 참고: 확인 프롬프트를 건너뛰려면 `-y`, 실제 실행 없이 수행될 명령만 미리 보려면 `--dry-run`을 사용합니다. `-s`(특정 서비스)는 `--clean-all`과 함께 사용할 수 없습니다.
 
 ### 특정 서비스 제거
 
@@ -599,24 +587,18 @@ $ ./mayfly infra remove -s "cb-tumblebug cb-spider"
 $ ./mayfly infra remove -s "cb-tumblebug,cb-spider"
 ```
 
-특정 서비스 제거 시 추가 옵션:
+특정 서비스 제거 시 데이터까지 함께 정리:
 ```bash
-# 특정 서비스 + 볼륨 제거
-$ ./mayfly infra remove -s cb-tumblebug --volumes
-
-# 특정 서비스 + 이미지 제거 (수동 안내)
-$ ./mayfly infra remove -s cb-tumblebug --images
+# 특정 서비스 + 해당 서비스의 이미지·볼륨·호스트 데이터(conf/docker/data/<서비스>)까지 제거
+$ ./mayfly infra remove -s cb-tumblebug --clean-db
 ```
 
 > [!NOTE]
-> **네트워크 이슈 해결**: 
-> - 특정 서비스 제거 시 네트워크가 보존되어 다른 서비스에 영향을 주지 않습니다
-> - 네트워크 관련 오류가 발생하는 경우 `--all` 옵션으로 전체 시스템을 정리하세요
-> - `mayfly infra remove --all` 명령은 고아 컨테이너와 네트워크까지 완전히 정리합니다
+> - 특정 서비스 제거 시 네트워크가 보존되어 다른 서비스에 영향을 주지 않습니다.
+> - `-s`(특정 서비스)는 `--clean-all`과 함께 사용할 수 없습니다(의도가 모호). OpenBao만 재초기화하려면 `mayfly infra remove -s openbao --clean-db`, 전체 환경 + OpenBao는 `mayfly infra remove --clean-all`을 사용하세요.
 
-**참고**: `./conf/docker/data` 폴더 하위에 각 서브 프레임워크(컨테이너) 이름의 폴더가 생성되며 Data나 Log를 비롯하여 보관이 필요한 경우에 사용됩니다.   
-`--volumes` 옵션은 Docker 볼륨만 삭제하며, 볼륨 마운트에 의해 로컬에 생성된 `./conf/docker/data` 폴더는 삭제되지 않습니다.   
-만약, 컨테이너에 의해 로컬에 저장된 데이터까지 완전히 삭제화하고 싶다면 `./conf/docker/data` 폴더 하위의 모든 폴더들을 수동으로 삭제해야 합니다.
+**참고**: `./conf/docker/data` 폴더 하위에 각 서브 프레임워크(컨테이너) 이름의 폴더가 생성되어 Data·Log 등을 보관합니다.   
+`--clean-db`/`--clean-all`은 이 호스트 데이터 폴더까지 정리하며(위 규칙대로 openbao 예외), 플래그 없이 `remove`만 실행하면 컨테이너만 삭제하고 `./conf/docker/data`는 보존합니다.
 
 
 

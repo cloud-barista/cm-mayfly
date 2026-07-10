@@ -157,7 +157,15 @@ If you do not want to see the output logs and want to run it in the background, 
 $ ./mayfly infra run -d
 ```
 
-OpenBao (the secret manager behind cb-tumblebug's credential store) is initialized and unsealed automatically during this step, and re-unsealed automatically after restarts. For how that works, how to recover if it ever stays sealed, and the dev/test-only security note, see [docs/openbao-unseal.md](docs/openbao-unseal.md).
+OpenBao (the secret manager behind cb-tumblebug's credential store) is initialized and unsealed automatically during this step, and re-unsealed automatically after restarts — including host reboots. You normally run no OpenBao command by hand. When you need to diagnose or recover:
+
+```
+$ ./mayfly setup openbao status   # diagnose: reachable / sealed / token validity / consistency verdict
+$ ./mayfly setup openbao unseal   # unseal manually (only needed if the auto-unseal sidecar is disabled)
+$ ./mayfly setup openbao init     # one-time init (infra run does this automatically on a clean install)
+```
+
+For the full picture — the staged dependency chain, how the root token flows into cb-tumblebug/mc-terrarium, the state-consistency preflight and its verdict cases, a verified behavior-by-situation matrix, recovery/FAQ, and the dev/test-only security note — see [docs/openbao-unseal.md](docs/openbao-unseal.md).
 
 
 ## 4. Checking the subsystem running status
@@ -180,12 +188,12 @@ Example output:
 ```
 [v]Status of Cloud-Migrator runtime images
 CONTAINER           REPOSITORY                     TAG                 IMAGE ID            SIZE
-cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.12.9              d4c2abdc0e21        118MB
+cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.12.22              d4c2abdc0e21        118MB
 ```
 
-Based on the cb-tumblebug version (e.g., v0.12.9), download the corresponding cb-tumblebug repository:
+Based on the cb-tumblebug version (e.g., v0.12.22), download the corresponding cb-tumblebug repository:
 ```
-$ git clone -b v0.12.9 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.12.9
+$ git clone -b v0.12.22 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.12.22
 ```
 
 Then follow the detailed guide at:
@@ -269,7 +277,18 @@ $ ./mayfly infra stop -s cm-cicada
 $ ./mayfly infra run -s cm-cicada
 ```
 
-If you want to cleanup all Docker environments, run the following shell script.
+To remove the Cloud-Migrator stack itself, use `infra remove`. By default it only stops and removes containers (images, volumes, and host data are kept):
+
+```
+$ ./mayfly infra remove                 # containers only (like 'docker compose down')
+$ ./mayfly infra remove --clean-db       # also images, named volumes, and DB host data (OpenBao kept)
+$ ./mayfly infra remove --clean-all      # everything above, plus OpenBao data + clears VAULT_TOKEN (full re-init next run)
+$ ./mayfly infra remove -s cb-tumblebug --clean-db   # target specific services (cannot combine -s with --clean-all)
+```
+
+Add `-y` to skip the confirmation prompt, or `--dry-run` to preview the commands without executing them.
+
+If you instead want to wipe **all** Docker resources on the host (including those not created by cm-mayfly), run the following shell script.
 
 > [!CAUTION]
 > **DANGER: This script will DELETE ALL Docker resources on your system!**
