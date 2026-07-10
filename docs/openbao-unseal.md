@@ -222,7 +222,7 @@ Always **diagnose first**: `mayfly setup openbao status`, then apply the matchin
 No, not in normal use. `infra run` initializes on a clean install and the sidecar re-unseals after every restart. You only run `setup openbao unseal` if the sidecar is disabled.
 
 **Q. `infra run` says "wrong token" but my token is fine — what happened?**
-That was the pre-BAR-1418 behavior: a `503` from the post-unseal transition window was misread as a bad token. The readiness gate now waits for `health 200` before checking the token, so a transient `503`/timeout no longer trips a false `wrong-token`. A `wrong-token` verdict now means a genuine `401/403`.
+Earlier versions had this behavior: a `503` from the post-unseal transition window was misread as a bad token. The readiness gate now waits for `health 200` before checking the token, so a transient `503`/timeout no longer trips a false `wrong-token`. A `wrong-token` verdict now means a genuine `401/403`.
 
 **Q. After `infra run`, `cm-ant` keeps restarting and `cm-cicada` / `airflow-server` stay `Created`. Is that a bug?**
 No — that is the documented ordering. `cm-ant` exits with `cb-tumblebug not initialized (Ready=true, Initialized=false)` and waits for `mayfly setup tumblebug-init` to register credentials (init.py). Run `tumblebug-init` and those services start.
