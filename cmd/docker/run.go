@@ -147,6 +147,12 @@ var runCmd = &cobra.Command{
 				fmt.Println()
 			case pf.OK:
 				// C2 consistent — proceed; the openbao-unseal sidecar keeps it unsealed.
+				// A populated Note means token validity could not be re-confirmed
+				// (transient API error): still safe to proceed, but tell the user.
+				if pf.Note != "" {
+					fmt.Println()
+					fmt.Println(pf.Note)
+				}
 			default:
 				fmt.Println()
 				fmt.Println(pf.Advice)
