@@ -35,6 +35,7 @@ const (
 	CaseCorrupt                   // C6: storage present but API reports not-initialized
 	CaseWrongToken                // C7: token present but authentication fails (403)
 	CaseStuckSealed               // C8: initialized but stays sealed (unseal key mismatch)
+	CaseNotReady                  // unsealed but the API never became active within the timeout — a transition/infra state, NOT a token problem
 	CaseUnknown                   // openbao down + disk signals ambiguous → cannot confirm
 )
 
@@ -57,6 +58,8 @@ func (c Case) String() string {
 		return "wrong-token"
 	case CaseStuckSealed:
 		return "stuck-sealed"
+	case CaseNotReady:
+		return "not-ready"
 	default:
 		return "unknown"
 	}
@@ -74,9 +77,22 @@ type Result struct {
 	InitJSON    bool // J
 	DataDir     bool // D
 	Initialized bool // A
-	TokenValid  bool // V
-	Sealed      bool
-	Advice      string
+	TokenValid  bool // V: confirmed valid (200 on lookup-self)
+	// TokenUnknown means token validity could NOT be confirmed — the probe hit a
+	// residual transient (5xx / timeout / connection error) after retry. It is
+	// deliberately distinct from "invalid": readiness (unseal+active) is
+	// guaranteed upstream, so an unconfirmed token is treated as non-blocking,
+	// never as CaseWrongToken.
+	TokenUnknown bool // V
+	// Active is the readiness signal: GET /v1/sys/health returned 200 (active).
+	// Only meaningful when Initialized && !Sealed. False here (with a reachable,
+	// unsealed openbao) means the API is still transitioning → CaseNotReady.
+	Active bool
+	Sealed bool
+	// Note is an informational, non-blocking message surfaced even when OK is
+	// true (e.g. "token validity could not be confirmed, proceeding").
+	Note   string
+	Advice string
 }
 
 // openbao host-side paths, resolved relative to the mayfly working directory —
@@ -117,25 +133,102 @@ func dataDirState() (populated, known bool) {
 	return len(entries) > 0, true
 }
 
-// tokenValid reports whether token authenticates against OpenBao (signal V).
-// GET /v1/auth/token/lookup-self returns 200 for a valid token and 403 for a
-// stale/wrong one — seal-status alone never validates the token.
-func tokenValid(addr, token string) bool {
+// tokenAuthState is the tri-state verdict of a token-validity probe. Because
+// readiness (unseal + active) is guaranteed upstream (see waitOpenbaoActive), a
+// non-200 here is either a genuine auth failure (authInvalid) or a residual
+// transient we could not resolve (authUnknown) — the two must never collapse to
+// the same "false" the old boolean returned, which mis-flagged a transition-
+// window 503 as a wrong token.
+type tokenAuthState int
+
+const (
+	authUnknown tokenAuthState = iota // transient (5xx / 429 / timeout / connection error) — do NOT treat as invalid
+	authValid                         // 200 — token authenticates
+	authInvalid                       // 401 / 403 (or empty token) — genuine auth failure
+)
+
+// probeTokenAuth reports whether token authenticates against OpenBao (signal V)
+// via GET /v1/auth/token/lookup-self. It returns a definitive valid/invalid on
+// a 200/401/403, and — as a second line of defence for any transient that slips
+// past the upstream readiness gate — retries briefly on 5xx/timeout/connection
+// errors before giving up as authUnknown (never authInvalid).
+func probeTokenAuth(addr, token string) tokenAuthState {
 	if token == "" {
-		return false
+		return authInvalid // no token can never authenticate
 	}
-	c := &http.Client{Timeout: 10 * time.Second}
+	const attempts = 3
+	for i := 0; i < attempts; i++ {
+		if state, done := probeTokenOnce(addr, token); done {
+			return state
+		}
+		if i < attempts-1 {
+			time.Sleep(1 * time.Second)
+		}
+	}
+	return authUnknown
+}
+
+// probeTokenOnce runs a single lookup-self probe. done is true only for a
+// definitive verdict (200 → valid, 401/403 → invalid); every other outcome
+// (5xx/429, timeout, connection error) returns done=false so the caller retries.
+func probeTokenOnce(addr, token string) (state tokenAuthState, done bool) {
+	// Never follow redirects: this request carries the root token in the
+	// X-Vault-Token header, which Go does NOT strip on a cross-host redirect
+	// (it only strips Authorization/Cookie). A compromised or misconfigured
+	// endpoint answering 3xx must not be able to forward the token elsewhere.
+	// ErrUseLastResponse returns the 3xx as-is (→ treated as a transient, not
+	// a leak). openbao's API never legitimately redirects these endpoints.
+	c := &http.Client{
+		Timeout:       10 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
 	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(addr, "/")+"/v1/auth/token/lookup-self", nil)
 	if err != nil {
-		return false
+		return authUnknown, true // malformed request won't fix on retry; not an auth failure either
 	}
 	req.Header.Set("X-Vault-Token", token)
 	resp, err := c.Do(req)
 	if err != nil {
-		return false
+		return authUnknown, false // connection error / timeout → transient, retry
 	}
 	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return authValid, true
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return authInvalid, true
+	default:
+		return authUnknown, false // 5xx / 429 / etc → transient, retry
+	}
+}
+
+// waitOpenbaoActive polls GET /v1/sys/health until it returns 200 (initialized,
+// unsealed, AND active) or the timeout elapses. This is the readiness gate that
+// must clear BEFORE probeTokenAuth: right after startOpenbaoAlone+UnsealWith,
+// OpenBao spends a short window loading its mount table / settling leadership
+// during which it still answers 503 (or 429 on a standby) — health 200, not
+// seal-status' sealed:false, is the correct "ready to serve" signal. Bounding
+// the wait keeps a genuinely stuck API from hanging the caller.
+func waitOpenbaoActive(addr string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	c := &http.Client{
+		Timeout:       5 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	url := strings.TrimRight(addr, "/") + "/v1/sys/health"
+	for {
+		if resp, err := c.Get(url); err == nil {
+			code := resp.StatusCode
+			resp.Body.Close()
+			if code == http.StatusOK {
+				return nil // active
+			}
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("openbao did not become active (health 200) within %s", timeout)
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 // startOpenbaoAlone brings up only the openbao service (depends_on flows
@@ -198,8 +291,32 @@ func Preflight(allowStartOpenbao bool) Result {
 			r.Sealed = st2.Sealed
 		}
 	}
-	if r.Initialized && !r.Sealed && r.EnvToken {
-		r.TokenValid = tokenValid(openbaoAddr, readEnvToken())
+	// FR-01 readiness gate: once initialized+unsealed, wait for the API to become
+	// active (health 200) BEFORE judging the token. openbao started/unsealed just
+	// above still answers 503 during its short mount-table/leadership transition;
+	// gating here absorbs that as infra readiness so it can never leak into
+	// tokenValid and be mistaken for a wrong token. If the stack is already up and
+	// active, the first health probe returns immediately (no added latency).
+	if r.Initialized && !r.Sealed {
+		// A cold start (run, which just brought openbao up) needs headroom for the
+		// mount-table/leadership transition; a read-only caller (status/info) that
+		// finds openbao already up should not hang 30s when it is up-but-not-active,
+		// so it uses a short bound and reports not-ready instead.
+		gateTimeout := 8 * time.Second
+		if allowStartOpenbao {
+			gateTimeout = 30 * time.Second
+		}
+		r.Active = waitOpenbaoActive(openbaoAddr, gateTimeout) == nil
+		if r.Active && r.EnvToken {
+			switch probeTokenAuth(openbaoAddr, readEnvToken()) {
+			case authValid:
+				r.TokenValid = true
+			case authInvalid:
+				// confirmed invalid — both flags stay false → CaseWrongToken
+			case authUnknown:
+				r.TokenUnknown = true // could not confirm → non-blocking
+			}
+		}
 	}
 	return r.decideReachable(shape, dPop)
 }
@@ -217,6 +334,9 @@ func CompactStatus() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "  API        : reachable=%v initialized=%v sealed=%v\n", pf.Reachable, pf.Initialized, pf.Sealed)
 	fmt.Fprintf(&b, "  .env token : %s\n", tok)
+	if pf.TokenUnknown {
+		fmt.Fprintf(&b, "  token      : validity unconfirmed (transient API error)\n")
+	}
 	fmt.Fprintf(&b, "  consistency: %s", pf.Case)
 	if !pf.OK {
 		b.WriteString("\n  ⚠ inconsistent — run './mayfly setup openbao status' for details and remediation")
@@ -238,16 +358,28 @@ func (r Result) decideReachable(shape initFileShape, dPop bool) Result {
 		}
 	case r.Sealed:
 		r.Case = CaseStuckSealed // initialized but couldn't be unsealed
+	case !r.Active:
+		// Unsealed but the API never became active within the readiness window —
+		// a transition/infra state, not a token problem. Must be judged before any
+		// token case so a transient can't be read as a wrong token.
+		r.Case = CaseNotReady
 	case !r.EnvToken && r.InitJSON:
 		r.Case = CaseLostToken // storage intact, only .env token lost
 	case r.EnvToken && r.TokenValid:
 		r.Case, r.OK = CaseConsistent, true
+	case r.EnvToken && r.TokenUnknown:
+		// Token validity could not be confirmed (residual transient). Readiness is
+		// already cleared upstream, so this is a healthy stack we simply couldn't
+		// re-verify — proceed, but surface a note rather than silently claiming OK.
+		r.Case, r.OK = CaseConsistent, true
+		r.Note = "ℹ OpenBao token validity could not be confirmed (transient API error); proceeding.\n" +
+			"  Re-check with: ./mayfly setup openbao status"
 	case r.EnvToken && !r.TokenValid:
-		r.Case = CaseWrongToken
+		r.Case = CaseWrongToken // confirmed 401/403 only reaches here
 	default:
 		r.Case = CaseUnknown
 	}
-	r.Advice = adviceFor(r.Case, shape)
+	r.Advice = adviceFor(r.Case, shape, true)
 	return r
 }
 
@@ -266,7 +398,7 @@ func (r Result) decideDisk(dPop, dKnown bool) Result {
 	default:
 		r.Case = CaseUnknown
 	}
-	r.Advice = adviceFor(r.Case, initFileShape{})
+	r.Advice = adviceFor(r.Case, initFileShape{}, false)
 	return r
 }
 
@@ -277,8 +409,10 @@ const (
 
 // adviceFor builds the masked, actionable remediation message for a case.
 // shape carries the init.json root_token so C5/C7 can show which masked value
-// to restore. Secrets are always masked (first 8 chars + ***).
-func adviceFor(c Case, shape initFileShape) string {
+// to restore. Secrets are always masked (first 8 chars + ***). reachable lets
+// the ambiguous CaseUnknown message distinguish "openbao is running but its
+// signals are unclear" from the disk-path "openbao is not running".
+func adviceFor(c Case, shape initFileShape, reachable bool) string {
 	rootTok := maskToken(shape.RootToken)
 	envTok := maskToken(readEnvToken())
 	switch c {
@@ -320,7 +454,14 @@ func adviceFor(c Case, shape initFileShape) string {
 			"⚠ OpenBao stays sealed — the unseal key in init.json may not match the data.\n"+
 				"  Check %s; if there is no matching backup, run ./mayfly infra remove --clean-all then re-init.",
 			jsonPathHint)
+	case CaseNotReady:
+		return "ℹ OpenBao is unsealed but its API has not become active yet (still loading / settling).\n" +
+			"  This is usually transient — wait a few seconds and re-run, or check: ./mayfly setup openbao status"
 	case CaseUnknown:
+		if reachable {
+			return "ℹ OpenBao is running but its state signals are ambiguous — consistency can't be confirmed.\n" +
+				"  Check: ./mayfly setup openbao status"
+		}
 		return "ℹ OpenBao is not running, so its state can't be confirmed.\n" +
 			"  Check: ./mayfly setup openbao status"
 	default:

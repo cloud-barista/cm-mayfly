@@ -113,8 +113,15 @@ Notes section flags common drift patterns and suggests the matching command
 		pf := openbao.Preflight(false)
 		fmt.Printf("  init.json       : %s\n", yesNo(pf.InitJSON, "present", "(absent/invalid)"))
 		fmt.Printf("  data volume     : %s\n", yesNo(pf.DataDir, "present", "(empty)"))
-		if pf.Reachable && pf.Initialized && !pf.Sealed && pf.EnvToken {
-			fmt.Printf("  token validity  : %s\n", yesNo(pf.TokenValid, "valid", "INVALID (403)"))
+		if pf.Reachable && pf.Initialized && !pf.Sealed && pf.Active && pf.EnvToken {
+			switch {
+			case pf.TokenValid:
+				fmt.Printf("  token validity  : valid\n")
+			case pf.TokenUnknown:
+				fmt.Printf("  token validity  : unknown (transient API error — could not confirm)\n")
+			default:
+				fmt.Printf("  token validity  : INVALID (401/403)\n")
+			}
 		}
 		fmt.Printf("  consistency     : %s\n", pf.Case)
 
