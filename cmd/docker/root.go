@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/cmd"
@@ -63,23 +64,69 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 	},
 }
 
-// requiredEnvKeys lists conf/docker/.env entries that must hold a non-empty
-// value before any `mayfly infra` subcommand may run docker compose. Each key
-// here corresponds to a subsystem that hard-fails or silently misbehaves on
-// startup when the value is blank (cb-spider 0.12.17+ aborts with log.Fatal when
-// REST auth is unset; the postgres/mysql images refuse to initialize without a
-// password; cm-beetle binds BEETLE_API_PASSWORD to its basic-auth credential and,
-// because the published image ships no config file, falls back to an empty
-// password when this value is blank).
-var requiredEnvKeys = []string{
+// Every key declared in conf/docker/.env.example must hold a non-empty value in
+// .env before any `mayfly infra` subcommand may run docker compose — EXCEPT the
+// keys in optionalEnvKeys below. The required set is derived from .env.example
+// (see requiredKeysFrom) rather than hardcoded, so a value a user accidentally
+// blanks or deletes is caught even for variables that ship with a default, and
+// newly added variables are required by default (opt out via optionalEnvKeys).
+//
+// Rationale: a container that reads a blank value and has no built-in default of
+// its own silently misbehaves (e.g. each postgres healthcheck `pg_isready -U
+// ${*_DB_USER}` fails when the user is blank, deadlocking every dependent
+// service; cb-spider 0.12.17+ aborts on blank REST auth). Values are also passed
+// between containers, so a downstream container cannot be assumed to have a safe
+// default for an upstream one — hence "require everything except the explicit
+// exceptions".
+//
+// optionalEnvKeys are the ONLY entries allowed to be blank:
+//   - SMTP_* : cm-cicada email notifications are optional; the stack runs without them.
+//   - VAULT_TOKEN : intentionally blank in the template; it is generated/written by
+//     the OpenBao init flow during `infra run` (a fresh clean install starts with it
+//     blank — requiring it would block the auto-init the install depends on).
+var optionalEnvKeys = map[string]bool{
+	"SMTP_HOST":      true,
+	"SMTP_PORT":      true,
+	"SMTP_USER":      true,
+	"SMTP_PASSWORD":  true,
+	"SMTP_MAIL_FROM": true,
+	"VAULT_TOKEN":    true,
+}
+
+// fallbackRequiredEnvKeys is used only when .env.example cannot be read (so the
+// required set can't be derived) — the critical keys whose blank value hard-fails
+// or deadlocks startup, so the guard never silently disappears.
+var fallbackRequiredEnvKeys = []string{
 	"SPIDER_USERNAME",
 	"SPIDER_PASSWORD",
+	"TUMBLEBUG_DB_USER",
 	"TUMBLEBUG_DB_PASSWORD",
+	"BUTTERFLY_DB_USER",
 	"BUTTERFLY_DB_PASSWORD",
+	"ANT_DB_USER",
 	"ANT_DB_PASSWORD",
+	"AIRFLOW_DB_USER",
 	"AIRFLOW_DB_PASSWORD",
 	"AIRFLOW_DB_ROOT_PASSWORD",
 	"BEETLE_API_PASSWORD",
+}
+
+// requiredKeysFrom returns the sorted list of keys that must be non-empty: every
+// key in .env.example minus optionalEnvKeys. If .env.example can't be parsed it
+// falls back to fallbackRequiredEnvKeys so the check is never lost entirely.
+func requiredKeysFrom(examplePath string) []string {
+	exampleVals, err := parseDotEnv(examplePath)
+	if err != nil || len(exampleVals) == 0 {
+		return fallbackRequiredEnvKeys
+	}
+	keys := make([]string, 0, len(exampleVals))
+	for k := range exampleVals {
+		if !optionalEnvKeys[k] {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // ensureDockerEnvFile verifies that the docker-compose environment file exists
@@ -104,9 +151,9 @@ func ensureDockerEnvFile() error {
 	return nil
 }
 
-// validateDockerEnvFile parses conf/docker/.env and reports any requiredEnvKeys
-// that are missing or set to an empty value. It assumes ensureDockerEnvFile has
-// already confirmed the file exists.
+// validateDockerEnvFile parses conf/docker/.env and reports any required key
+// (see requiredKeysFrom) that is missing or set to an empty value. It assumes
+// ensureDockerEnvFile has already confirmed the file exists.
 func validateDockerEnvFile() error {
 	dir := filepath.Dir(DockerFilePath)
 	envPath := filepath.Join(dir, ".env")
@@ -116,7 +163,7 @@ func validateDockerEnvFile() error {
 		return fmt.Errorf("failed to read %s: %w", envPath, err)
 	}
 	var missing []string
-	for _, key := range requiredEnvKeys {
+	for _, key := range requiredKeysFrom(examplePath) {
 		if strings.TrimSpace(values[key]) == "" {
 			missing = append(missing, key)
 		}
@@ -125,12 +172,14 @@ func validateDockerEnvFile() error {
 		return nil
 	}
 	return fmt.Errorf("required values are missing or blank in %s:\n  - %s\n\n"+
-		"These fields must be set before running this command:\n"+
-		"  * SPIDER_USERNAME / SPIDER_PASSWORD — cb-spider 0.12.17+ exits with log.Fatal when blank.\n"+
-		"  * *_DB_PASSWORD — the postgres / mysql images refuse to start without a password.\n"+
-		"  * BEETLE_API_PASSWORD — cm-beetle basic-auth password; left blank it becomes empty (the image has no default).\n\n"+
-		"See %s for guidance and edit %s accordingly.\n",
-		envPath, strings.Join(missing, "\n  - "), examplePath, envPath)
+		"Every variable in %s must be set, because a container that reads a blank "+
+		"value has no safe built-in default (e.g. cb-spider 0.12.17+ exits on blank "+
+		"REST auth; a postgres healthcheck `pg_isready -U ${*_DB_USER}` fails on a "+
+		"blank user and deadlocks every dependent service).\n"+
+		"Only the cm-cicada SMTP_* settings and VAULT_TOKEN (auto-generated on first "+
+		"run) may be left blank.\n"+
+		"Copy the defaults from %s and fill in the secret values, then re-run.\n",
+		envPath, strings.Join(missing, "\n  - "), examplePath, examplePath)
 }
 
 // parseDotEnv delegates to common.ParseDotEnv so the .env parser is shared with
