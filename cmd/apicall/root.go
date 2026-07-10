@@ -383,7 +383,7 @@ func SetAuth() {
 func SetReqData() error {
 	if inputFileData != "" {
 		if isVerbose {
-			fmt.Printf("use [%s] data file\n" + inputFileData)
+			fmt.Printf("use [%s] data file\n", inputFileData)
 		}
 
 		// read the data from the file
@@ -394,7 +394,7 @@ func SetReqData() error {
 		req.SetBody(data)
 	} else {
 		if isVerbose {
-			fmt.Printf("request data : %s\n" + sendData)
+			fmt.Printf("request data : %s\n", sendData)
 		}
 		req.SetBody(sendData)
 	}
