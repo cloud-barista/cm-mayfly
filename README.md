@@ -122,15 +122,19 @@ $ cp conf/docker/.env.example conf/docker/.env
 ```
 
 The non-secret defaults in `.env.example` match the previous built-in values, so
-you only need to set the blank secret entries (e.g. `*_PASSWORD`, `SMTP_USER`,
-`SMTP_PASSWORD`, `SMTP_MAIL_FROM`, `SPIDER_USERNAME`, `SPIDER_PASSWORD`).
+in practice you only need to set the blank secret entries (e.g. `*_PASSWORD`,
+`SPIDER_USERNAME`, `SPIDER_PASSWORD`).
 
-**Note**: cb-spider 0.12.17 enforces REST authentication and exits with
-`log.Fatal` if `SPIDER_USERNAME` or `SPIDER_PASSWORD` is empty, so both
-fields are required and must be filled in `conf/docker/.env` before running.
+**Every variable in `.env.example` is required** (must be non-empty) except the
+`SMTP_*` settings (email notifications are optional) and `VAULT_TOKEN` (generated
+automatically on first run). `mayfly`'s `infra` commands validate this **before**
+running docker compose: if `conf/docker/.env` is missing, or any required value
+is blank or deleted, they stop with a clear error naming the missing keys — this
+catches an accidentally-blanked value even for variables that ship with a default.
 
-If `conf/docker/.env` is missing, cm-mayfly's `infra` commands stop with a
-clear error before running docker compose.
+For the full list of variables, which container each one is used by, and how the
+required/optional policy works, see
+[docs/env-configuration.md](docs/env-configuration.md).
 
 ### 2.2. Other initial setup
 Some sub systems may require additional initial setup. If changes or settings are needed, modify the information in the `./conf/docker` folder.
