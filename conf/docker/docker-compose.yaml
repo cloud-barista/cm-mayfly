@@ -455,9 +455,13 @@ services:
         condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
-      #- ./conf/cm-butterfly/api/conf:/conf/
+      # The two config files below are loaded through different paths, so their
+      # mount targets differ. authsetting.yaml is read relative to the working
+      # directory (/conf/authsetting.yaml), while api.yaml is looked up next to
+      # the executable first (/app/conf/api.yaml). Since the image already ships
+      # /app/conf/api.yaml, a mount on /conf/api.yaml is silently ignored.
       - ./conf/cm-butterfly/api/conf/authsetting.yaml:/conf/authsetting.yaml
-      #- ./conf/cm-butterfly/api/conf/api.yaml:/conf/api.yaml
+      #- ./conf/cm-butterfly/api/conf/api.yaml:/app/conf/api.yaml
       #- ./data/cm-butterfly/log/api.log:/app/api.log
     environment:
       # API listen address (fixed inside the cm-butterfly-api container; not secrets)
