@@ -21,7 +21,11 @@ services:
             - MYSQL_PASSWORD=airflow_pass
             - MYSQL_DATABASE=airflow
         volumes:
-            - ./create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
+            # ./create_airflow_db.sql has been deleted. It ran `CREATE DATABASE airflow` without IF NOT EXISTS
+            # on top of the database the mysql entrypoint already creates from MYSQL_DATABASE, so initdb failed
+            # with ERROR 1007 on an empty data directory. MYSQL_DATABASE above covers both the database and the
+            # grant to MYSQL_USER. This file is an unused copy of the cm-cicada standalone compose, kept for reference.
+            # - ./create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
             - ./db_data:/var/lib/mysql
     airflow-server:
         container_name: airflow-server
