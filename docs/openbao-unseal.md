@@ -4,6 +4,8 @@ OpenBao is the secret manager that backs cb-tumblebug's encrypted credential sto
 
 > **⚠ The default auto-unseal is for development and testing only.** It keeps the unseal key in plaintext on disk. See [Security](#16-security--development--testing-only) before using it anywhere else.
 
+> **⚠ Requires cb-tumblebug 0.12.25 or newer.** From 0.12.25 cb-tumblebug registers CSP credentials into OpenBao itself, using the `VAULT_TOKEN` from its own container environment — which it reads **once, at startup**. `mayfly` therefore verifies that token through cb-tumblebug's `GET /credential/openbaoStatus` (signal **C** in [§6](#6-state-consistency-preflight)), an endpoint that does not exist before 0.12.25. **No compatibility fallback is kept**: silently skipping the check on an older server would hide exactly the failure the check exists to catch — a container holding a stale token, registering credentials into nowhere, while every other signal looks healthy. Running this version of `mayfly` against cb-tumblebug below 0.12.25 is not supported. See [§13](#13-relationship-with-cb-tumblebugs-openbao-init).
+
 - [1. Overview & mental model](#1-overview--mental-model)
 - [2. Architecture — the dependency chain](#2-architecture--the-dependency-chain)
 - [3. Token & key handling](#3-token--key-handling)
@@ -497,6 +499,7 @@ Before `infra run`, `tumblebug-init`, and `openbao status` act, a shared **prefl
 | **Sealed** | API reports `sealed` | `GET /v1/sys/seal-status` |
 | **Active** | API reached **`health 200`** (initialized + unsealed + **active**) | `GET /v1/sys/health` |
 | **V** | Token validity — **valid / invalid / unknown** | `GET /v1/auth/token/lookup-self` |
+| **C** | The token the **running cb-tumblebug holds** — **valid / invalid / unknown** | cb-tumblebug `GET /credential/openbaoStatus` (it runs `lookup-self` with its own container token) |
 
 **Readiness gate (the key ordering).** After bringing OpenBao up and unsealing it, the preflight waits for **`health 200` (active)** *before* it checks the token. Right after an unseal, OpenBao spends a short window (seconds) still answering `503` while it loads its mount table / settles leadership — see the measured ~14 s window in [§8](#9-behavior-by-situation-verified). Gating on `health 200` absorbs that window as **infrastructure readiness**, so a transition-window `503` can never be mistaken for a bad token. Only after readiness is confirmed does the token check run.
 
@@ -505,6 +508,16 @@ Before `infra run`, `tumblebug-init`, and `openbao status` act, a shared **prefl
 - **valid** — `200`.
 - **invalid** — `401` / `403` (a genuine wrong/stale token).
 - **unknown** — a residual transient (`5xx` / timeout / connection error) that persists after a short retry. Unknown is **non-blocking**: the stack proceeds with an informational note rather than being flagged as a wrong token.
+
+**Why the host signals are not enough (signal C).** T–V all look at the host: the `.env` file, the files on disk, and OpenBao's own API. None of them can see *inside* a running container. Since cb-tumblebug 0.12.25 the credential registration is done **by the cb-tumblebug server**, with the token it read from its environment **at startup** — so a container that was started before the current token keeps the old one, registration fails silently, and **every host signal still reports a healthy, consistent stack**. Signal **C** closes that gap by asking cb-tumblebug itself whether the token it holds is still accepted.
+
+C is tri-state too, and deliberately hard to push into *invalid*:
+
+- **valid** — cb-tumblebug reports `tokenValid: true`.
+- **invalid** — cb-tumblebug reports that OpenBao is reachable, initialized and unsealed, yet its token is missing or rejected. That isolates the container's token as the fault.
+- **unknown** — anything else: cb-tumblebug is not healthy yet, the request fails, or the answer blames **OpenBao itself** (unreachable / not initialized / sealed). The last one matters: a sealed OpenBao also yields `tokenValid: false`, but that is not a container-token fault — signals A and V already diagnose it as `stuck-sealed` or `corrupt`. Reporting it here as well would name one fault twice and send you after the wrong fix.
+
+A **readiness gate** applies to C as well: if the cb-tumblebug container is not running and healthy, C is not probed at all (→ unknown). Unknown never blocks.
 
 ### 6.2 Decision flow
 
@@ -534,14 +547,19 @@ flowchart TD
     TOKQ -->|"no, but init.json exists"| C5["<b>C5 lost-token</b><br/>→ restore root_token"]
     TOKQ -->|yes| VQ{"V: lookup-self"}
 
-    VQ -->|"200 valid"| C2["<b>C2 consistent</b> ✅"]
+    VQ -->|"200 valid"| CQ{"C: does the running<br/>cb-tumblebug's token<br/>still authenticate?"}
     VQ -->|"5xx / timeout<br/>(unknown)"| C2U["<b>C2 consistent</b> ✅<br/><i>with a note</i>"]
     VQ -->|"401 / 403"| C7["<b>C7 wrong-token</b>"]
+
+    CQ -->|"valid"| C2["<b>C2 consistent</b> ✅"]
+    CQ -->|"unknown<br/>(not healthy yet / transient /<br/>OpenBao's own fault)"| C2
+    CQ -->|"invalid<br/>(OpenBao fine, its token is not)"| C9["<b>container-stale-token</b><br/><i>recreate cb-tumblebug</i>"]
 
     C1 --> GO([proceed])
     C2 --> GO
     C2U --> GO
-    C3 --> STOP([stop + print remediation])
+    C9 --> STOP([stop + print remediation])
+    C3 --> STOP
     C5 --> STOP
     C6 --> STOP
     C7 --> STOP
@@ -562,6 +580,7 @@ flowchart TD
 | **C6 corrupt** | data on disk but API says not-initialized | stop; check mount / re-init if truly unusable |
 | **C7 wrong-token** | token present but authentication **confirmed** `401/403` | stop; guidance to restore the correct `root_token` |
 | **C8 stuck-sealed** | initialized but stays sealed after an unseal attempt | stop; unseal key likely does not match the data |
+| **container-stale-token** | every host signal is healthy, but the **running cb-tumblebug** holds a token OpenBao rejects (it was started before the current token) | stop; guidance to recreate the container — `docker compose up -d cb-tumblebug`, **no data loss** |
 | **not-ready** | unsealed but the API never reached `health 200` within the bound | stop; transient — wait a moment and retry |
 | **unknown** *(disk path)* | OpenBao down and disk signals ambiguous | non-fatal; points to `setup openbao status` |
 | **token-unknown** *(reachable)* | active, but token validity could not be confirmed (residual transient) | **proceed** with a note (not treated as wrong-token) |
@@ -752,6 +771,23 @@ ENV_FILE=<abs .env>  INIT_OUTPUT=<abs openbao-init.json>  ./init/openbao/openbao
 5. **The number of unseal key shares.** The script initializes with a single share (`secret_shares: 1, secret_threshold: 1`). If that changes, the single-key unseal path breaks — see [§14](#15-unseal-key-shares-shamir-threshold--the-current-limit).
 
 **When cb-tumblebug changes its OpenBao init logic, check the five points above** and adjust `internal/openbao` (`Init`, `initFileShape`, `UnsealWith`, the preflight signals) plus this document accordingly. Because we call their script rather than duplicating it, most upstream changes flow through automatically — the risk is in the **contract** (env-file key, JSON shape, staged compose, seal type, share count), not in the init steps themselves.
+
+### 13.1 What changed in cb-tumblebug 0.12.25 — and why it is a breaking change here
+
+Up to 0.12.22, CSP credentials were written into OpenBao by a **host script** (`openbao-register-creds.py`, called as Step 1 of `multi-init.sh`), which read `VAULT_TOKEN` straight from the `.env` on every run. From **0.12.25** that step is gone: the **cb-tumblebug server** registers the credentials itself, during the ordinary credential-registration call.
+
+| | Who writes credentials into OpenBao | Which token it uses | How fresh that token is |
+|---|---|---|---|
+| **≤ 0.12.22** | host script (`openbao-register-creds.py`) | reads the `.env` directly, every run | **always current** |
+| **≥ 0.12.25** | **the cb-tumblebug server** | the `VAULT_TOKEN` in its own container environment | **a snapshot taken at container start** |
+
+OpenBao **initialization and unsealing stay outside** cb-tumblebug — they remain `mayfly`'s job, exactly as described in this document. The call contract (`ENV_FILE` / `INIT_OUTPUT`, the init-output JSON shape) is unchanged, so `Init()` needed no change.
+
+What *did* change is **which token actually gets used**. cb-tumblebug reads `VAULT_TOKEN` once at startup. A container started before the current token therefore keeps an older one, and credential registration fails **silently** — while the `.env`, the init file, the storage directory and OpenBao's own API all still report a perfectly consistent stack. No host-side signal can see it.
+
+That is the gap signal **C** fills, using cb-tumblebug's `GET /credential/openbaoStatus` — the server runs `lookup-self` with its own token and tells us whether it is still accepted. The two views are **complementary, not redundant**: `mayfly` knows the disk state (and so can tell `lost-token` from `orphaned-token` from `stale-init.json`, and point at the exact file and field to fix), while cb-tumblebug is the only one that knows what its own process is holding.
+
+**Breaking change.** `GET /credential/openbaoStatus` does not exist before 0.12.25, and **no fallback is kept for older servers**. Degrading quietly there would restore precisely the blind spot this signal was added to remove: a stale container token that nothing reports. A pre-0.12.25 server is therefore treated as a **lineup problem**, not as a bad token — the probe returns *unknown* rather than falsely accusing the token — but the supported lineup is **cb-tumblebug 0.12.25 or newer**, and older ones are not supported.
 
 ---
 

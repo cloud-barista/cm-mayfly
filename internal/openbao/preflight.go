@@ -37,6 +37,12 @@ const (
 	CaseStuckSealed               // C8: initialized but stays sealed (unseal key mismatch)
 	CaseNotReady                  // unsealed but the API never became active within the timeout — a transition/infra state, NOT a token problem
 	CaseUnknown                   // openbao down + disk signals ambiguous → cannot confirm
+	// C9: every host signal is healthy, but the running cb-tumblebug holds a
+	// token OpenBao rejects. Since 0.12.25 the server registers credentials with
+	// the token from its own env, read once at startup — so a container started
+	// before the current token fails registration silently while the host still
+	// looks consistent.
+	CaseContainerStaleToken
 )
 
 // String returns a short label for status output / logs.
@@ -60,6 +66,8 @@ func (c Case) String() string {
 		return "stuck-sealed"
 	case CaseNotReady:
 		return "not-ready"
+	case CaseContainerStaleToken:
+		return "container-stale-token"
 	default:
 		return "unknown"
 	}
@@ -89,6 +97,14 @@ type Result struct {
 	// unsealed openbao) means the API is still transitioning → CaseNotReady.
 	Active bool
 	Sealed bool
+	// Signal C: does the token the RUNNING cb-tumblebug holds still authenticate?
+	// Answered by cb-tumblebug's own openbaoStatus (it runs lookup-self with its
+	// container-env token). Tri-state like V, but encoded so that the zero value
+	// is "unknown": neither flag set means we could not tell (server not healthy
+	// yet, transient error, or the response blamed OpenBao itself rather than the
+	// token), which is never blocking. Only ContainerTokenInvalid blocks.
+	ContainerTokenValid   bool // C
+	ContainerTokenInvalid bool // C
 	// Note is an informational, non-blocking message surfaced even when OK is
 	// true (e.g. "token validity could not be confirmed, proceeding").
 	Note   string
@@ -318,6 +334,7 @@ func Preflight(allowStartOpenbao bool) Result {
 			}
 		}
 	}
+	r = r.probeContainerSignal()
 	return r.decideReachable(shape, dPop)
 }
 
@@ -342,6 +359,22 @@ func CompactStatus() string {
 		b.WriteString("\n  ⚠ inconsistent — run './mayfly setup openbao status' for details and remediation")
 	}
 	return b.String()
+}
+
+// probeContainerSignal fills signal C. The readiness gate comes first: an
+// unhealthy or absent cb-tumblebug has not read VAULT_TOKEN yet, so asking it
+// would yield noise rather than a verdict.
+func (r Result) probeContainerSignal() Result {
+	if !tumblebugHealthy() {
+		return r // unknown
+	}
+	switch state, _ := probeContainerToken(tumblebugAddr, readEnvValue("TB_API_USERNAME"), readEnvValue("TB_API_PASSWORD")); state {
+	case containerTokenValid:
+		r.ContainerTokenValid = true
+	case containerTokenInvalid:
+		r.ContainerTokenInvalid = true
+	}
+	return r
 }
 
 // decideReachable judges from the authoritative API signals (openbao is up).
@@ -378,6 +411,13 @@ func (r Result) decideReachable(shape initFileShape, dPop bool) Result {
 		r.Case = CaseWrongToken // confirmed 401/403 only reaches here
 	default:
 		r.Case = CaseUnknown
+	}
+	// Signal C is only consulted once the host signals say everything is fine.
+	// In every other case the host already has the more precise diagnosis, and
+	// the container's token is merely wrong as a consequence — reporting one
+	// fault under two names would send the user after the wrong fix.
+	if r.Case == CaseConsistent && r.ContainerTokenInvalid {
+		r.Case, r.OK, r.Note = CaseContainerStaleToken, false, ""
 	}
 	r.Advice = adviceFor(r.Case, shape, true)
 	return r
@@ -454,6 +494,8 @@ func adviceFor(c Case, shape initFileShape, reachable bool) string {
 			"⚠ OpenBao stays sealed — the unseal key in init.json may not match the data.\n"+
 				"  Check %s; if there is no matching backup, run ./mayfly infra remove --clean-all then re-init.",
 			jsonPathHint)
+	case CaseContainerStaleToken:
+		return "⚠ " + containerTokenAdvice()
 	case CaseNotReady:
 		return "ℹ OpenBao is unsealed but its API has not become active yet (still loading / settling).\n" +
 			"  This is usually transient — wait a few seconds and re-run, or check: ./mayfly setup openbao status"

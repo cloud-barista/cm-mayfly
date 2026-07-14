@@ -347,3 +347,129 @@ func TestProbeTokenAuthStatusMapping(t *testing.T) {
 		}
 	})
 }
+
+// --- signal C: the token the running cb-tumblebug holds ---------------------
+
+// probeContainerToken must isolate the container's token as the culprit only
+// when OpenBao itself is ruled out. Every ambiguous answer stays unknown, which
+// is non-blocking — folding those into "invalid" is what would misreport a
+// server that is merely still starting, or a sealed OpenBao, as a bad token.
+func TestProbeContainerTokenStateMapping(t *testing.T) {
+	newSrv := func(code int, body string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(code)
+			_, _ = w.Write([]byte(body))
+		}))
+	}
+	const healthy = `{"reachable":true,"initialized":true,"sealed":false,"vaultTokenSet":true,"tokenValid":true,"available":true}`
+	const rejected = `{"reachable":true,"initialized":true,"sealed":false,"vaultTokenSet":true,"tokenValid":false,"message":"VAULT_TOKEN was rejected by OpenBao"}`
+	const noToken = `{"reachable":true,"initialized":true,"sealed":false,"vaultTokenSet":false,"tokenValid":false,"message":"VAULT_TOKEN is not set in the cb-tumblebug environment"}`
+	const sealed = `{"reachable":true,"initialized":true,"sealed":true,"vaultTokenSet":true,"tokenValid":false,"message":"OpenBao is sealed"}`
+	const uninit = `{"reachable":true,"initialized":false,"sealed":false,"vaultTokenSet":true,"tokenValid":false,"message":"OpenBao is not initialized"}`
+	const unreachable = `{"reachable":false,"vaultTokenSet":true,"tokenValid":false,"message":"cannot reach OpenBao"}`
+
+	cases := []struct {
+		name string
+		code int
+		body string
+		want containerTokenState
+	}{
+		{"token accepted", 200, healthy, containerTokenValid},
+		{"token rejected", 200, rejected, containerTokenInvalid},
+		{"container has no token", 200, noToken, containerTokenInvalid},
+		// OpenBao's own fault — signals A/V already diagnose these precisely.
+		{"openbao sealed", 200, sealed, containerTokenUnknown},
+		{"openbao not initialized", 200, uninit, containerTokenUnknown},
+		{"openbao unreachable", 200, unreachable, containerTokenUnknown},
+		// Pre-0.12.25 server: no such endpoint. Unknown, never invalid — an old
+		// lineup is a lineup problem, not a claim that the token is bad.
+		{"endpoint missing (pre-0.12.25)", 404, `{}`, containerTokenUnknown},
+		{"server error", 500, `{}`, containerTokenUnknown},
+		{"auth failure", 401, `{}`, containerTokenUnknown},
+		{"unparsable body", 200, `not-json`, containerTokenUnknown},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv := newSrv(c.code, c.body)
+			defer srv.Close()
+			got, _ := probeContainerToken(srv.URL, "user", "pass")
+			if got != c.want {
+				t.Errorf("state = %v, want %v", got, c.want)
+			}
+		})
+	}
+
+	t.Run("cb-tumblebug not listening", func(t *testing.T) {
+		srv := newSrv(200, healthy)
+		addr := srv.URL
+		srv.Close() // nothing is listening now
+		if got, _ := probeContainerToken(addr, "user", "pass"); got != containerTokenUnknown {
+			t.Errorf("state = %v, want containerTokenUnknown", got)
+		}
+	})
+}
+
+// A stale container token is only reported when every host signal is healthy.
+// In any other case the host already holds the more precise diagnosis and the
+// container's token is merely wrong as a consequence — reporting it twice would
+// send the user after the wrong fix.
+func TestDecideReachableContainerStaleToken(t *testing.T) {
+	shape := initFileShape{Keys: []string{"k1"}, RootToken: "test-root-token-not-real"}
+	healthyHost := Result{Initialized: true, Sealed: false, Active: true, EnvToken: true, TokenValid: true, InitJSON: true}
+
+	t.Run("consistent host + rejected container token → container-stale-token", func(t *testing.T) {
+		r := healthyHost
+		r.ContainerTokenInvalid = true
+		got := r.decideReachable(shape, true)
+		if got.Case != CaseContainerStaleToken || got.OK {
+			t.Fatalf("Case=%v OK=%v, want container-stale-token / not OK", got.Case, got.OK)
+		}
+		// The advice must use mayfly's own command. A bare "docker compose ... up -d
+		// cb-tumblebug" would run under a different compose project than the one
+		// mayfly starts the stack with, and fail on already-taken container names
+		// instead of recreating anything.
+		if !strings.Contains(got.Advice, "./mayfly infra run -d -s cb-tumblebug") {
+			t.Errorf("advice must tell the user to recreate the container with mayfly, got: %q", got.Advice)
+		}
+		if strings.Contains(got.Advice, "docker compose") {
+			t.Errorf("advice must not hand the user a raw compose command (wrong project name), got: %q", got.Advice)
+		}
+	})
+
+	t.Run("consistent host + healthy container token → consistent", func(t *testing.T) {
+		r := healthyHost
+		r.ContainerTokenValid = true
+		if got := r.decideReachable(shape, true); got.Case != CaseConsistent || !got.OK {
+			t.Errorf("Case=%v OK=%v, want consistent / OK", got.Case, got.OK)
+		}
+	})
+
+	t.Run("consistent host + unknown container signal → consistent (non-blocking)", func(t *testing.T) {
+		r := healthyHost // neither flag set = unknown
+		if got := r.decideReachable(shape, true); got.Case != CaseConsistent || !got.OK {
+			t.Errorf("Case=%v OK=%v, want consistent / OK", got.Case, got.OK)
+		}
+	})
+
+	t.Run("host fault wins over container signal", func(t *testing.T) {
+		for _, c := range []struct {
+			name string
+			r    Result
+			want Case
+		}{
+			{"wrong-token", Result{Initialized: true, Active: true, EnvToken: true, InitJSON: true}, CaseWrongToken},
+			{"stuck-sealed", Result{Initialized: true, Sealed: true, EnvToken: true, InitJSON: true}, CaseStuckSealed},
+			{"not-ready", Result{Initialized: true, Active: false, EnvToken: true, TokenValid: true, InitJSON: true}, CaseNotReady},
+			{"lost-token", Result{Initialized: true, Active: true, EnvToken: false, InitJSON: true}, CaseLostToken},
+		} {
+			t.Run(c.name, func(t *testing.T) {
+				r := c.r
+				r.ContainerTokenInvalid = true // the container is wrong too — as a consequence
+				if got := r.decideReachable(shape, true); got.Case != c.want {
+					t.Errorf("Case=%v, want %v (host diagnosis must win)", got.Case, c.want)
+				}
+			})
+		}
+	})
+}

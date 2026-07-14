@@ -39,7 +39,7 @@
 # =============================================================================
 services:
   cb-spider: #service name
-    version: 0.12.32(latest)
+    version: 0.12.35(latest)
     baseurl: http://cb-spider:1024/spider # baseurl is Scheme + Host + Base Path
     auth: # cb-spider 0.12.17+ requires REST auth; credentials are read from the env (see header).
       type: basic
@@ -50,7 +50,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cb-spider/{release}/api/swagger.json
 
   cb-tumblebug:
-    version: 0.12.22(latest)
+    version: 0.12.25(latest)
     baseurl: http://cb-tumblebug:1323/tumblebug
     auth:
       type: basic
@@ -60,7 +60,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/main/src/interface/rest/docs/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/{release}/src/interface/rest/docs/swagger.json
   cm-ant:
-    version: 0.5.3(0.6.0)
+    version: 0.5.4(0.6.0)
     baseurl: http://cm-ant:8880/ant
     auth:
       type: none
@@ -68,7 +68,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cm-ant/main/api/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cm-ant/{release}/api/swagger.json
   cm-beetle:
-    version: 0.5.4(latest)
+    version: 0.5.5(latest)
     baseurl: http://cm-beetle:8056/beetle
     auth:
       type: basic
@@ -95,7 +95,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-cicada/{release}/pkg/api/rest/docs/swagger.json
 
   cm-honeybee:
-    version: latest(latest)
+    version: 0.5.2(latest)
     baseurl: http://cm-honeybee:8081/honeybee
     auth:
       type: none
@@ -122,7 +122,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-grasshopper/{release}/pkg/api/rest/docs/swagger.json
 
   cm-damselfly:
-    version: 0.5.2(latest)
+    version: 0.5.3(latest)
     baseurl: http://cm-damselfly:8088/damselfly
     auth: # cm-damselfly checks these only when DAMSELFLY_API_AUTH_ENABLED=true; otherwise they are ignored.
       type: basic
@@ -138,6 +138,10 @@ serviceActions:
       method: post
       resourcePath: /vm/imagespecfavorite
       description: "Add an Image and Spec combination to favorites"
+    Add-Nic-Privateip:
+      method: post
+      resourcePath: /nic/{Name}/privateip
+      description: "Add a secondary private IP to a NIC. Leave PrivateIP empty for CSP auto-assignment."
     Add-Nlb-Vm:
       method: post
       resourcePath: /nlb/{Name}/vms
@@ -162,10 +166,18 @@ serviceActions:
       method: post
       resourcePath: /anycall
       description: "Execute a custom function (FID) with key-value parameters through AnyCall. 🕷️ [[Development Guide](https://github.com/cloud-barista/cb-spider/wiki/AnyCall-API-Extension-Guide)]"
+    Associate-Publicip:
+      method: put
+      resourcePath: /publicip/{Name}/associate
+      description: "Associate a Public IP address with a VM."
     Attach-Disk:
       method: put
       resourcePath: /disk/{Name}/attach
       description: "Attach an existing Disk to a VM."
+    Attach-Nic:
+      method: put
+      resourcePath: /nic/{Name}/attach
+      description: "Attach a NIC to a VM instance."
     Bulk-Import-Favorite-Imagespec:
       method: post
       resourcePath: /vm/imagespecfavorite/bulk
@@ -210,10 +222,18 @@ serviceActions:
       method: get
       resourcePath: /countmyimage
       description: "Get the total number of MyImages across all connections."
+    Count-All-Nics:
+      method: get
+      resourcePath: /countnic
+      description: "Get the total number of NICs registered across all connections."
     Count-All-Nlb:
       method: get
       resourcePath: /countnlb
       description: "Get the total number of Network Load Balancers (NLBs) across all connections."
+    Count-All-Publicips:
+      method: get
+      resourcePath: /countpublicip
+      description: "Get the total number of Public IPs registered across all connections."
     Count-All-Rdbms:
       method: get
       resourcePath: /countrdbms
@@ -254,10 +274,18 @@ serviceActions:
       method: get
       resourcePath: /countmyimage/{ConnectionName}
       description: "Get the total number of MyImages for a specific connection."
+    Count-Nic-By-Connection:
+      method: get
+      resourcePath: /countnic/{ConnectionName}
+      description: "Get the total number of NICs for a specific connection."
     Count-Nlb-By-Connection:
       method: get
       resourcePath: /countnlb/{ConnectionName}
       description: "Get the total number of Network Load Balancers (NLBs) for a specific connection."
+    Count-Publicip-By-Connection:
+      method: get
+      resourcePath: /countpublicip/{ConnectionName}
+      description: "Get the total number of Public IPs for a specific connection."
     Count-Rdbms-By-Connection:
       method: get
       resourcePath: /countrdbms/{ConnectionName}
@@ -306,10 +334,18 @@ serviceActions:
       method: post
       resourcePath: /myimage
       description: "Create a new MyImage snapshot from a specified VM. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/MyImage-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    Create-Nic:
+      method: post
+      resourcePath: /nic
+      description: "Create a new Network Interface Card (NIC)."
     Create-Nlb:
       method: post
       resourcePath: /nlb
       description: "Create a new Network Load Balancer (NLB) with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Network-Load-Balancer-and-Driver-API)]"
+    Create-Publicip:
+      method: post
+      resourcePath: /publicip
+      description: "Allocate a new Public IP address."
     Create-Rdbms:
       method: post
       resourcePath: /rdbms
@@ -386,10 +422,18 @@ serviceActions:
       method: delete
       resourcePath: /myimage/{Name}
       description: "Delete a specified MyImage."
+    Delete-Nic:
+      method: delete
+      resourcePath: /nic/{Name}
+      description: "Delete a NIC."
     Delete-Nlb:
       method: delete
       resourcePath: /nlb/{Name}
       description: "Delete a specified Network Load Balancer (NLB)."
+    Delete-Publicip:
+      method: delete
+      resourcePath: /publicip/{Name}
+      description: "Release (delete) a Public IP address."
     Delete-Rdbms:
       method: delete
       resourcePath: /rdbms/{Name}
@@ -414,6 +458,10 @@ serviceActions:
       method: delete
       resourcePath: /securitygroup/{Name}
       description: "Delete a specified Security Group."
+    Delete-Topology-Layout:
+      method: delete
+      resourcePath: /topology/layout
+      description: ""
     Delete-Vpc:
       method: delete
       resourcePath: /vpc/{Name}
@@ -426,6 +474,14 @@ serviceActions:
       method: put
       resourcePath: /disk/{Name}/detach
       description: "Detach an existing Disk from a VM."
+    Detach-Nic:
+      method: put
+      resourcePath: /nic/{Name}/detach
+      description: "Detach a NIC from its VM instance."
+    Disassociate-Publicip:
+      method: put
+      resourcePath: /publicip/{Name}/disassociate
+      description: "Remove the VM association from a Public IP address."
     Download-S3-Object:
       method: get
       resourcePath: /s3/{BucketName}/{ObjectKey}
@@ -490,6 +546,14 @@ serviceActions:
       method: get
       resourcePath: /myimage/{Name}
       description: "Retrieve details of a specific MyImage."
+    Get-Nic:
+      method: get
+      resourcePath: /nic/{Name}
+      description: "Retrieve details of a specific NIC."
+    Get-Nic-Osconfigscript:
+      method: get
+      resourcePath: /nic/{Name}/osconfigscript
+      description: "Return a bash script to be executed inside the VM OS after a secondary NIC is attached.\nAWS uses DHCP-based routing and returns an empty script.\nAzure, Alibaba, Tencent, IBM, and OpenStack require manual OS-level interface\nand routing table configuration; this endpoint returns the ready-to-run script."
     Get-Nlb:
       method: get
       resourcePath: /nlb/{Name}
@@ -502,6 +566,10 @@ serviceActions:
       method: get
       resourcePath: /vmorgspec/{Name}
       description: "Retrieve details of a specific Original VM Spec."
+    Get-Publicip:
+      method: get
+      resourcePath: /publicip/{Name}
+      description: "Retrieve details of a specific Public IP."
     Get-Quota-Info:
       method: get
       resourcePath: /quotainfo
@@ -570,6 +638,10 @@ serviceActions:
       method: get
       resourcePath: /tag/{Key}
       description: "Retrieve a specific tag for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Get-Topology-Layout:
+      method: get
+      resourcePath: /topology/layout/version
+      description: ""
     Get-Vm:
       method: get
       resourcePath: /vm/{Name}
@@ -734,6 +806,10 @@ serviceActions:
       method: get
       resourcePath: /myimage
       description: "Retrieve a list of MyImages associated with a specific connection."
+    List-Nic:
+      method: get
+      resourcePath: /nic
+      description: "Retrieve a list of Network Interface Cards."
     List-Nlb:
       method: get
       resourcePath: /nlb
@@ -758,6 +834,10 @@ serviceActions:
       method: get
       resourcePath: /productfamily/{RegionName}
       description: "Retrieve a list of Product Families associated with a specific connection and region. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Price-Info-and-Cloud-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/RestAPI-Multi%E2%80%90Cloud-Price-Information-Guide)]"
+    List-Publicip:
+      method: get
+      resourcePath: /publicip
+      description: "Retrieve a list of Public IP addresses."
     List-Quota-Service-Type:
       method: get
       resourcePath: /quotaservicetype
@@ -798,6 +878,10 @@ serviceActions:
       method: get
       resourcePath: /tag
       description: "Retrieve a list of tags for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    List-Topology-Layouts:
+      method: get
+      resourcePath: /topology/layout
+      description: ""
     List-Vm:
       method: get
       resourcePath: /vm
@@ -874,10 +958,18 @@ serviceActions:
       method: post
       resourcePath: /regmyimage
       description: "Register a new MyImage with the specified name and CSP ID."
+    Register-Nic:
+      method: post
+      resourcePath: /regnic
+      description: "Register an existing NIC with the specified name and CSP ID."
     Register-Nlb:
       method: post
       resourcePath: /regnlb
       description: "Register a new Network Load Balancer (NLB) with the specified name and CSP ID."
+    Register-Publicip:
+      method: post
+      resourcePath: /regpublicip
+      description: "Register a new Public IP with the specified name and CSP ID."
     Register-Rdbms:
       method: post
       resourcePath: /regrdbms
@@ -906,6 +998,10 @@ serviceActions:
       method: delete
       resourcePath: /vpc/{VPCName}/cspsubnet/{Id}
       description: "Remove an existing CSP Subnet from a VPC."
+    Remove-Nic-Privateip:
+      method: delete
+      resourcePath: /nic/{Name}/privateip/{IP}
+      description: "Remove a secondary private IP from a NIC."
     Remove-Nlb-Vm:
       method: delete
       resourcePath: /nlb/{Name}/vms
@@ -926,6 +1022,10 @@ serviceActions:
       method: delete
       resourcePath: /tag/{Key}
       description: "Remove a specific tag from a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Save-Topology-Layout:
+      method: post
+      resourcePath: /topology/layout
+      description: ""
     Set-Nodegroup-Autoscaling:
       method: put
       resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/onautoscaling
@@ -966,10 +1066,18 @@ serviceActions:
       method: delete
       resourcePath: /regmyimage/{Name}
       description: "Unregister a MyImage with the specified name."
+    Unregister-Nic:
+      method: delete
+      resourcePath: /regnic/{Name}
+      description: "Unregister a NIC with the specified name."
     Unregister-Nlb:
       method: delete
       resourcePath: /regnlb/{Name}
       description: "Unregister a Network Load Balancer (NLB) with the specified name."
+    Unregister-Publicip:
+      method: delete
+      resourcePath: /regpublicip/{Name}
+      description: "Unregister a Public IP with the specified name."
     Unregister-Rdbms:
       method: delete
       resourcePath: /regrdbms/{Name}
@@ -1719,6 +1827,10 @@ serviceActions:
       method: get
       resourcePath: /objects
       description: "List all objects for a given key"
+    GetOpenBaoStatus:
+      method: get
+      resourcePath: /credential/openbaoStatus
+      description: "Verifies that CB-Tumblebug can store and read CSP credentials in OpenBao: endpoint reachable, initialized, unsealed, and VAULT_TOKEN accepted. Use before credential registration to detect misconfiguration (e.g., missing VAULT_TOKEN/VAULT_ADDR) that would otherwise fail silently and break direct CSP API features."
     GetProviderList:
       method: get
       resourcePath: /provider
