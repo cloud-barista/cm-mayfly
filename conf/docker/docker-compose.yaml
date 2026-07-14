@@ -3,24 +3,24 @@
 
 # Default health check configuration
 x-default-health-check: &default-health-check
-  interval: 30s      # run the health check every 30s
-  timeout: 5s        # timeout for each health check command (5s)
-  retries: 3         # mark unhealthy after 3 consecutive failures
-  start_period: 10s  # ignore failures for the first 10s after the container starts
+  interval: 30s # run the health check every 30s
+  timeout: 5s # timeout for each health check command (5s)
+  retries: 3 # mark unhealthy after 3 consecutive failures
+  start_period: 10s # ignore failures for the first 10s after the container starts
 
 services:
-# The priority used by Compose to choose which env var value to use:
-# 1. Compose file
-# 2. Shell environment variables
-# 3. Environment file
-# 4. Dockerfile
-# 5. Variable is not defined
+  # The priority used by Compose to choose which env var value to use:
+  # 1. Compose file
+  # 2. Shell environment variables
+  # 3. Environment file
+  # 4. Dockerfile
+  # 5. Variable is not defined
 
   # CB-Spider
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.12.32
+    image: cloudbaristaorg/cb-spider:0.12.35
     pull_policy: always
     container_name: cb-spider
     restart: unless-stopped
@@ -45,9 +45,10 @@ services:
       - SPIDER_LOG_LEVEL=${SPIDER_LOG_LEVEL}
       - SPIDER_HISCALL_LOG_LEVEL=${SPIDER_HISCALL_LOG_LEVEL}
       - ID_TRANSFORM_MODE=OFF
-      - ADMINWEB=ON # ON or OFF Spider Admin Web Console
+      - ADMINWEB=OFF # ON or OFF Spider Admin Web Console
+      - SPIDER_BACKUP_ENABLED=false
     healthcheck: # for CB-Spider
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1024/spider/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1024/spider/readyz"]
       <<: *default-health-check
 
   # CB-Tumblebug
@@ -55,7 +56,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.12.22
+    image: cloudbaristaorg/cb-tumblebug:0.12.25
     container_name: cb-tumblebug
     restart: unless-stopped
     pull_policy: always
@@ -97,6 +98,8 @@ services:
       - TB_POSTGRES_DATABASE=${TUMBLEBUG_DB_NAME}
       - TB_POSTGRES_USER=${TUMBLEBUG_DB_USER}
       - TB_POSTGRES_PASSWORD=${TUMBLEBUG_DB_PASSWORD}
+      - TB_SPIDER_USERNAME=${SPIDER_USERNAME}
+      - TB_SPIDER_PASSWORD=${SPIDER_PASSWORD}
       - TB_TERRARIUM_API_USERNAME=${TERRARIUM_API_USERNAME}
       - TB_TERRARIUM_API_PASSWORD=${TERRARIUM_API_PASSWORD}
       # - TB_ALLOW_ORIGINS=*
@@ -105,7 +108,6 @@ services:
       - TB_API_USERNAME=${TB_API_USERNAME}
       - TB_API_PASSWORD=${TB_API_PASSWORD}
       # - TB_AUTOCONTROL_DURATION_MS=10000
-      # - TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
       # - TB_DEFAULT_NAMESPACE=default
       # - TB_DEFAULT_CREDENTIALHOLDER=admin
       # - TB_LOGFILE_PATH=/app/log/tumblebug.log
@@ -120,11 +122,11 @@ services:
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN=${VAULT_TOKEN}
     healthcheck:
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1323/tumblebug/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:1323/tumblebug/readyz"]
       <<: *default-health-check
 
   cb-tumblebug-etcd:
-    image: gcr.io/etcd-development/etcd:v3.5.21
+    image: gcr.io/etcd-development/etcd:v3.6.11
     container_name: cb-tumblebug-etcd
     restart: unless-stopped
     networks:
@@ -168,9 +170,8 @@ services:
       - simple
     healthcheck:
       #test: [ "CMD", "etcdctl", "endpoint", "health", "--endpoints=http://localhost:2379"]
-      test: [ "CMD", "/usr/local/bin/etcd", "--version"]
+      test: ["CMD", "/usr/local/bin/etcd", "--version"]
       <<: *default-health-check
-
 
   # mc-infra-manager PostgreSQL
   # This is used for storing CB-Tumblebug Spec and Image.
@@ -195,12 +196,11 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${TUMBLEBUG_DB_USER}"]
       <<: *default-health-check
 
-
   # cb-mapui
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.12.47
+    image: cloudbaristaorg/cb-mapui:0.12.50
     container_name: cb-mapui
     restart: unless-stopped
     pull_policy: always
@@ -214,7 +214,6 @@ services:
       #test: ["CMD", "nc", "-vz", "127.0.0.1", "1324"]
       test: ["CMD", "nc", "-vz", "cb-mapui", "1324"]
       <<: *default-health-check
-
 
   # mc-terrarium
   # OpenTofu-based resource provisioning (AWS site-to-site VPN, etc.)
@@ -249,9 +248,8 @@ services:
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN=${VAULT_TOKEN}
     healthcheck:
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:8055/terrarium/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://localhost:8055/terrarium/readyz"]
       <<: *default-health-check
-
 
   # openbao
   # OpenBao secrets manager (Vault fork) — stores CSP credentials
@@ -291,7 +289,6 @@ services:
       retries: 3
       start_period: 5s
 
-
   # openbao-unseal (sidecar)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # On restart OpenBao comes up in the sealed state, so this watcher sidecar
@@ -325,7 +322,7 @@ services:
   openbao-unseal:
     image: alpine:3.20
     container_name: openbao-unseal
-    restart: unless-stopped     # auto-unseal watcher — keeps OpenBao unsealed
+    restart: unless-stopped # auto-unseal watcher — keeps OpenBao unsealed
     networks:
       - default
     environment:
@@ -343,7 +340,11 @@ services:
       # Healthy once OpenBao reports unsealed. Dependents wait on this instead
       # of waiting for a one-shot to complete, so the watcher can keep running
       # and re-unseal after a restart.
-      test: ["CMD-SHELL", "/app/tool/mayfly rest get http://openbao:8200/v1/sys/seal-status -o /tmp/h.json >/dev/null 2>&1 && tr -d ' \n\t' < /tmp/h.json | grep -q '\"sealed\":false'"]
+      test:
+        [
+          "CMD-SHELL",
+          "/app/tool/mayfly rest get http://openbao:8200/v1/sys/seal-status -o /tmp/h.json >/dev/null 2>&1 && tr -d ' \n\t' < /tmp/h.json | grep -q '\"sealed\":false'",
+        ]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -372,7 +373,6 @@ services:
           sleep "$${INTERVAL}"
         done
 
-
   # cm-beetle
   # https://github.com/cloud-barista/cm-beetle/discussions/105
   # https://hub.docker.com/r/cloudbaristaorg/cm-beetle
@@ -381,7 +381,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.5.4
+    image: cloudbaristaorg/cm-beetle:0.5.5
     container_name: cm-beetle
     pull_policy: always
     platform: linux/amd64
@@ -419,10 +419,9 @@ services:
       # - BEETLE_TUMBLEBUG_API_USERNAME=default
       # - BEETLE_TUMBLEBUG_API_PASSWORD=default
     healthcheck: # for CM-Beetle
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz"]
       #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
       <<: *default-health-check
-
 
   # cm-butterfly (api)
   # If the configuration file location is different, uncomment the lines in the environment section as needed.
@@ -478,11 +477,9 @@ services:
       - POSTGRES_DB=${BUTTERFLY_DB_NAME}
       - DATABASE_URL=postgres://${BUTTERFLY_DB_USER}:${BUTTERFLY_DB_PASSWORD}@cm-butterfly-db:5432/${BUTTERFLY_DB_NAME}
     healthcheck: # for butterfly-api
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-api:4000/readyz"]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
       <<: *default-health-check
-
-
 
   # cm-butterfly (front)
   # https://github.com/cloud-barista/cm-butterfly
@@ -512,11 +509,9 @@ services:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
     healthcheck: # for butterfly-api
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front:80/" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front:80/"]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
       <<: *default-health-check
-
-
 
   # cm-butterfly-front-dev:
   #   # image: cloudbaristaorg/cm-butterfly-front:edge
@@ -546,7 +541,6 @@ services:
   #     #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
   #     <<: *default-health-check
 
-
   # cm-butterfly (db)
   # https://github.com/cloud-barista/cm-butterfly
   # https://github.com/cloud-barista/cm-butterfly/blob/main/api/.env.sample to .env
@@ -567,9 +561,8 @@ services:
     volumes:
       - ./data/cm-butterfly-db:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "${BUTTERFLY_DB_USER}", "-d", "${BUTTERFLY_DB_NAME}" ]
+      test: ["CMD", "pg_isready", "-U", "${BUTTERFLY_DB_USER}", "-d", "${BUTTERFLY_DB_NAME}"]
       <<: *default-health-check
-
 
   # @TODO - **Linked systems such as Airflow are required**
   # cm-honeybee
@@ -593,7 +586,7 @@ services:
       - ./tool/mayfly:/app/tool/mayfly
       - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
     healthcheck:
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz"]
       <<: *default-health-check
 
   # cm-damselfly
@@ -622,9 +615,8 @@ services:
       - /etc/ssl/certs:/etc/ssl/certs:ro
       #- ./conf/cm-damselfly/conf:/app/conf/
     healthcheck: # for CM-Damselfly
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-damselfly:8088/damselfly/readyz"]
       <<: *default-health-check
-
 
   # cm-cicada
   # https://github.com/cloud-barista/cm-cicada
@@ -672,9 +664,8 @@ services:
     entrypoint: ["/tool/entrypoint.sh"]
     command: ["/cm-cicada"]
     healthcheck:
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-cicada:8083/cicada/readyz"]
       <<: *default-health-check
-
 
   # airflow-redis
   # used by cm-cicada
@@ -706,24 +697,23 @@ services:
       - "3306:3306"
     # Block external access and allow access only from within the container
     # expose:
-    #   - "3306"        
+    #   - "3306"
     environment:
-        - MYSQL_ROOT_PASSWORD=${AIRFLOW_DB_ROOT_PASSWORD}
-        - MYSQL_USER=${AIRFLOW_DB_USER}
-        - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
-        - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
+      - MYSQL_ROOT_PASSWORD=${AIRFLOW_DB_ROOT_PASSWORD}
+      - MYSQL_USER=${AIRFLOW_DB_USER}
+      - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
+      - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
     volumes:
-        - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
-        - ./data/airflow-mysql:/var/lib/mysql
+      - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
+      - ./data/airflow-mysql:/var/lib/mysql
     healthcheck:
       # Use the centrally-managed .env credentials instead of hardcoded ones,
       # so the healthcheck stays in sync with whatever .env supplies to MYSQL_USER/PASSWORD.
-      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u $${MYSQL_USER} -p$${MYSQL_PASSWORD}" ]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u $${MYSQL_USER} -p$${MYSQL_PASSWORD}"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 10s
-
 
   # airflow-server
   # used by cm-cicada
@@ -736,66 +726,66 @@ services:
     image: cloudbaristaorg/airflow-server:edge
     restart: unless-stopped
     environment:
-        # SMTP settings (managed centrally in the host .env)
-        - AIRFLOW__SMTP__SMTP_HOST=${SMTP_HOST}
-        - AIRFLOW__SMTP__SMTP_USER=${SMTP_USER}
-        - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
-        - AIRFLOW__SMTP__SMTP_PORT=${SMTP_PORT}
-        - AIRFLOW__SMTP__SMTP_MAIL_FROM=${SMTP_MAIL_FROM}
-        # MySQL credentials (managed centrally in the host .env)
-        - MYSQL_USER=${AIRFLOW_DB_USER}
-        - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
-        - MYSQL_HOST=airflow-mysql
-        - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
-        # AIRFLOW__{CORE,DATABASE}__SQL_ALCHEMY_CONN explicitly override airflow.cfg, which
-        # otherwise keeps its built-in default of mysql://airflow:airflow_pass@airflow-mysql/airflow
-        # regardless of the MYSQL_* variables above. Without these airflow-server fails with
-        # "Access denied for user 'airflow'" whenever .env values differ from the hardcoded defaults
-        # — same shape as the cm-ant ANT_DATABASE_* gap above. Both CORE (deprecated alias still
-        # consulted in 2.x) and DATABASE keys are set so the override holds across version bumps.
-        - AIRFLOW__CORE__SQL_ALCHEMY_CONN=mysql+mysqldb://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
-        - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=mysql+mysqldb://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
+      # SMTP settings (managed centrally in the host .env)
+      - AIRFLOW__SMTP__SMTP_HOST=${SMTP_HOST}
+      - AIRFLOW__SMTP__SMTP_USER=${SMTP_USER}
+      - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
+      - AIRFLOW__SMTP__SMTP_PORT=${SMTP_PORT}
+      - AIRFLOW__SMTP__SMTP_MAIL_FROM=${SMTP_MAIL_FROM}
+      # MySQL credentials (managed centrally in the host .env)
+      - MYSQL_USER=${AIRFLOW_DB_USER}
+      - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
+      - MYSQL_HOST=airflow-mysql
+      - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
+      # AIRFLOW__{CORE,DATABASE}__SQL_ALCHEMY_CONN explicitly override airflow.cfg, which
+      # otherwise keeps its built-in default of mysql://airflow:airflow_pass@airflow-mysql/airflow
+      # regardless of the MYSQL_* variables above. Without these airflow-server fails with
+      # "Access denied for user 'airflow'" whenever .env values differ from the hardcoded defaults
+      # — same shape as the cm-ant ANT_DATABASE_* gap above. Both CORE (deprecated alias still
+      # consulted in 2.x) and DATABASE keys are set so the override holds across version bumps.
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=mysql+mysqldb://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=mysql+mysqldb://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
     ports:
-        - "5555:5555"
-        - "8080:8080"
+      - "5555:5555"
+      - "8080:8080"
     command: >
-        /bin/bash -c "
-            # Wait for MySQL(airflow-mysql) to be ready
-            # sleep 10
-            # move to check logic : entrypoint_airflow_depends_on.sh
+      /bin/bash -c "
+          # Wait for MySQL(airflow-mysql) to be ready
+          # sleep 10
+          # move to check logic : entrypoint_airflow_depends_on.sh
 
-            # Clean up pid
-            rm -f airflow-webserver.pid
+          # Clean up pid
+          rm -f airflow-webserver.pid
 
-            # Set up metadata database
-            airflow db upgrade
+          # Set up metadata database
+          airflow db upgrade
 
-            # Create default user
-            airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin
+          # Create default user
+          airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin
 
-            # Start airflow
-            airflow scheduler &
-            airflow celery worker &
-            airflow celery flower &
-            airflow webserver
+          # Start airflow
+          airflow scheduler &
+          airflow celery worker &
+          airflow celery flower &
+          airflow webserver
 
-            # Keep the server on no matter what
-            sleep infinity
-        "
+          # Keep the server on no matter what
+          sleep infinity
+      "
     depends_on:
       airflow-mysql:
         condition: service_healthy
       airflow-redis:
         condition: service_healthy
     volumes:
-        - ./tool/mayfly:/app/tool/mayfly
-        - ./conf/depends_on_order/entrypoint_cm_cicada_airflow.sh:/tool/entrypoint.sh
-        - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
-        - /var/run/docker.sock:/var/run/docker.sock
+      - ./tool/mayfly:/app/tool/mayfly
+      - ./conf/depends_on_order/entrypoint_cm_cicada_airflow.sh:/tool/entrypoint.sh
+      - ./conf/cm-cicada/_airflow/airflow-home:/usr/local/airflow
+      - /var/run/docker.sock:/var/run/docker.sock
     # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
     entrypoint: ["/tool/entrypoint.sh"]
     healthcheck:
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/health" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/health"]
       <<: *default-health-check
 
   # cm-grasshopper
@@ -838,7 +828,7 @@ services:
         fi
       "
     healthcheck:
-      test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz" ]
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-grasshopper:8084/grasshopper/readyz"]
       <<: *default-health-check
 
   # cm-grasshopper-rustfs
@@ -860,7 +850,7 @@ services:
     volumes:
       - ./data/cm-grasshopper/rustfs_data:/data
     healthcheck:
-      test: [ "CMD", "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:9000/" ]
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:9000/"]
       <<: *default-health-check
 
   # cm-ant
@@ -873,7 +863,7 @@ services:
     platform: linux/amd64
     pull_policy: always
     ports:
-        - 8880:8880
+      - 8880:8880
     networks:
       - spider_net
       - default
@@ -911,10 +901,9 @@ services:
       - ANT_DATABASE_PASSWORD=${ANT_DB_PASSWORD}
       - ANT_DATABASE_NAME=${ANT_DB_NAME}
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://cm-ant:8880/ant/readyz" ]
+      test: ["CMD", "curl", "-f", "http://cm-ant:8880/ant/readyz"]
       <<: *default-health-check
     restart: unless-stopped
-
 
   # ant-postgres
   # used by cm-ant
@@ -930,12 +919,11 @@ services:
     volumes:
       - ./data/ant-postgres:/var/lib/postgresql/data
     #networks:
-      # - cm-ant-db-network
+    # - cm-ant-db-network
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "${ANT_DB_USER}", "-d", "${ANT_DB_NAME}" ]
+      test: ["CMD", "pg_isready", "-U", "${ANT_DB_USER}", "-d", "${ANT_DB_NAME}"]
       <<: *default-health-check
     restart: unless-stopped
-
 
   # cm-mayfly:
   # #   image: cloudbaristaorg/cm-mayfly:v0.1.0
@@ -947,7 +935,6 @@ services:
   #   networks:
   #     - spider_net
   #     - default
-
 
 networks:
   spider_net: #Network for cb-spider isolation
