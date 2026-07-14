@@ -570,8 +570,8 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-honeybee
   # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
-    image: cloudbaristaorg/cm-honeybee:edge
-    # image: cloudbaristaorg/cm-honeybee:0.5.0
+    # image: cloudbaristaorg/cm-honeybee:edge
+    image: cloudbaristaorg/cm-honeybee:0.5.2
     container_name: cm-honeybee
     pull_policy: always
     platform: linux/amd64
@@ -594,7 +594,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-damselfly
   cm-damselfly:
     # image: cloudbaristaorg/cm-damselfly:edge
-    image: cloudbaristaorg/cm-damselfly:0.5.2
+    image: cloudbaristaorg/cm-damselfly:0.5.3
     container_name: cm-damselfly
     pull_policy: always
     platform: linux/amd64
@@ -859,7 +859,7 @@ services:
   cm-ant:
     container_name: cm-ant
     # image: cloudbaristaorg/cm-ant:edge
-    image: cloudbaristaorg/cm-ant:0.5.3
+    image: cloudbaristaorg/cm-ant:0.5.4
     platform: linux/amd64
     pull_policy: always
     ports:

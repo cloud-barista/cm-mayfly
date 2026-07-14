@@ -231,10 +231,9 @@ func showCredentialWarning(gitTag string) {
 //
 // Why not bufio.Reader.ReadString('\n')? bufio pre-fetches up to its buffer
 // size (4096 bytes by default) into a process-local buffer on each Read call.
-// When this command hands stdin off to a child shell (multi-init.sh,
-// openbao-register-creds.sh, init.py), the child only sees what's still
-// unread on the fd — anything bufio already pulled into our memory is
-// invisible to the child. Under piped input like
+// When this command hands stdin off to a child shell (multi-init.sh, init.py),
+// the child only sees what's still unread on the fd — anything bufio already
+// pulled into our memory is invisible to the child. Under piped input like
 //
 //	printf "y\n2\ndefault\n" | mayfly setup tumblebug-init
 //
@@ -550,13 +549,6 @@ func removeAndDownloadFresh(cbTumblebugDir, gitTag, targetDir, originalDir strin
 func initializeTumblebug(cbTumblebugDir, originalDir string) error {
 	fmt.Printf("Starting CB-Tumblebug initialization: %s\n", cbTumblebugDir)
 
-	// Resolve mayfly's docker .env to an absolute path. cb-tumblebug's
-	// openbao-register-creds.py inside multi-init.sh reads VAULT_TOKEN from
-	// this file. Build from originalDir (mayfly's initial cwd) — by this
-	// point cwd has been changed to targetDir, so filepath.Abs("./...")
-	// would resolve relative to the wrong root.
-	absEnvFile := filepath.Join(originalDir, "conf", "docker", ".env")
-
 	// Phase 0 (OpenBao init + container restart + init.json verify) is now
 	// owned by internal/openbao.Init() and triggered explicitly via
 	// `setup openbao init` or implicitly by `infra run` before any other
@@ -566,18 +558,19 @@ func initializeTumblebug(cbTumblebugDir, originalDir string) error {
 	// So this script only runs Phase 1: multi-init.sh (or init.sh on
 	// legacy 0.12.8 and below) to register credentials and fetch the
 	// multi-CSP catalog.
+	//
+	// Since cb-tumblebug 0.12.25 the server registers credentials to OpenBao
+	// itself (multi-init.sh's Step 1 host script is gone), so it reads the
+	// token from its own container env rather than from mayfly's .env. There
+	// is nothing here that consumes ENV_FILE anymore — openbao-init.sh still
+	// takes it, but internal/openbao.Init() passes it directly.
 	script := fmt.Sprintf(`#!/bin/bash
 set -e
-
-# Absolute path to mayfly's docker .env — consumed by openbao-register-creds.py
-# inside cb-tumblebug for VAULT_TOKEN read.
-export ENV_FILE="%s"
 
 # Change to cb-tumblebug directory
 cd "%s"
 
 echo "Current location: $(pwd)"
-echo "Using ENV_FILE: $ENV_FILE"
 
 # Resolve the encryption password. cb-tumblebug's init.py honours an explicit
 # --key-file argument first, then ~/.cloud-barista/.tmp_enc_key, then the
@@ -626,7 +619,7 @@ else
 fi
 
 echo "CB-Tumblebug initialization completed."
-`, absEnvFile, cbTumblebugDir)
+`, cbTumblebugDir)
 
 	// Write script to temporary file
 	tmpScript := filepath.Join(os.TempDir(), "tumblebug_init.sh")
