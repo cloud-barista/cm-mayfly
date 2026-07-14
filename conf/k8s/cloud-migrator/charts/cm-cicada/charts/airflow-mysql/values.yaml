@@ -43,24 +43,32 @@ readinessProbe:
   periodSeconds: 10
   timeoutSeconds: 3
 
+# These volumes/volumeMounts apply to the Deployment only. The init Job (templates/job.yaml) has its own
+# volumes and still mounts create_airflow_db.sql, which is correct there: the Job has no MYSQL_DATABASE,
+# so the script is what creates the database.
+#
+# The Deployment is different. It sets MYSQL_DATABASE=airflow (see `env` below), so the mysql entrypoint
+# already creates the database and grants it to MYSQL_USER. Mounting the init script on top of that ran
+# `CREATE DATABASE airflow` (no IF NOT EXISTS) a second time, and initdb died with ERROR 1007 whenever the
+# data directory was empty — which is every pod start here, since the PVC mount below is commented out.
 volumes:
   # - name: airflow-mysql-volume
   #   persistentVolumeClaim:
   #     claimName: airflow-mysql
-  - name: airflow-mysql-config
-    configMap:
-      name: airflow-mysql
-      items:
-        - key: create_airflow_db.sql
-          path: create_airflow_db.sql
+  # - name: airflow-mysql-config
+  #   configMap:
+  #     name: airflow-mysql
+  #     items:
+  #       - key: create_airflow_db.sql
+  #         path: create_airflow_db.sql
 
-volumeMounts: 
+volumeMounts:
   # - name: airflow-mysql-volume
   #   mountPath: /var/lib/mysql
-  - name: airflow-mysql-config
-    mountPath: /docker-entrypoint-initdb.d/create_airflow_db.sql
-    subPath: create_airflow_db.sql
-    readOnly: true
+  # - name: airflow-mysql-config
+  #   mountPath: /docker-entrypoint-initdb.d/create_airflow_db.sql
+  #   subPath: create_airflow_db.sql
+  #   readOnly: true
 
 persistence:
   enabled: false

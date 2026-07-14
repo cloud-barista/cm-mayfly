@@ -704,7 +704,13 @@ services:
       - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
       - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
     volumes:
-      - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
+      # The init script ./conf/cm-cicada/_airflow/create_airflow_db.sql was mounted here and has been deleted.
+      # It ran `CREATE DATABASE airflow` (no IF NOT EXISTS) after the mysql entrypoint had already created
+      # MYSQL_DATABASE, so on a clean data directory initdb failed with ERROR 1007 (database exists) and the
+      # container died, which in turn left airflow-server and cm-cicada unstarted. The entrypoint already creates
+      # MYSQL_DATABASE and grants it to MYSQL_USER, so nothing was lost by dropping the duplicate script and
+      # there is no file to keep in sync with cm-cicada anymore.
+      # - ./conf/cm-cicada/_airflow/create_airflow_db.sql:/docker-entrypoint-initdb.d/create_airflow_db.sql
       - ./data/airflow-mysql:/var/lib/mysql
     healthcheck:
       # Use the centrally-managed .env credentials instead of hardcoded ones,
