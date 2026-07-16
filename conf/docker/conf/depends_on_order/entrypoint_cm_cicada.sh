@@ -18,7 +18,8 @@ done
 echo "cm-grasshopper is readyz..."
 
 # Wait for airflow-server to be ready
-until /app/tool/mayfly rest get http://airflow-server:8080/health; do
+# Airflow 3 moved the health endpoint; /health now 404s and points at /api/v2/monitor/health.
+until /app/tool/mayfly rest get http://airflow-server:8080/api/v2/monitor/health; do
   echo "Waiting for airflow-server to be health..."
   sleep 2
 done
