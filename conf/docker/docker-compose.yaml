@@ -624,7 +624,7 @@ services:
   # **important** : The cm-beetle, cm-grasshopper, and airflow-server containers must be in a readyz state and running beforehand
   cm-cicada:
     # image: cloudbaristaorg/cm-cicada:edge
-    image: cloudbaristaorg/cm-cicada:0.5.1
+    image: cloudbaristaorg/cm-cicada:0.5.2
     container_name: cm-cicada
     pull_policy: always
     restart: unless-stopped
@@ -729,27 +729,31 @@ services:
     #     context: ./conf/cm-cicada/_airflow ## build Docker file location
     container_name: airflow-server
     # image: cloudbaristaorg/airflow-server:edge
-    image: cloudbaristaorg/airflow-server:0.5.1
+    image: cloudbaristaorg/airflow-server:0.5.2
     restart: unless-stopped
     environment:
       # SMTP settings (managed centrally in the host .env)
-      - AIRFLOW__SMTP__SMTP_HOST=${SMTP_HOST}
-      - AIRFLOW__SMTP__SMTP_USER=${SMTP_USER}
-      - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
-      - AIRFLOW__SMTP__SMTP_PORT=${SMTP_PORT}
-      - AIRFLOW__SMTP__SMTP_MAIL_FROM=${SMTP_MAIL_FROM}
+      # Airflow 3's EmailOperator comes from the smtp provider, and SmtpHook reads the
+      # smtp_default *connection* only — it never looks at the [smtp] config section. The
+      # AIRFLOW__SMTP__* variables used through 0.5.1 therefore have no effect any more.
+      # disable_ssl=true keeps the previous behaviour (smtp_ssl=False + starttls=True on 587);
+      # without it the hook tries implicit SSL against a STARTTLS port and fails.
+      - AIRFLOW_CONN_SMTP_DEFAULT={"conn_type":"smtp","host":"${SMTP_HOST}","login":"${SMTP_USER}","password":"${SMTP_PASSWORD}","port":"${SMTP_PORT}","extra":{"from_email":"${SMTP_MAIL_FROM}","disable_ssl":true}}
+      # monitor_dag reaches the Airflow REST API through this connection. Airflow 3 forbids
+      # task code from touching the metadata DB directly, so it has to go over /api/v2.
+      - AIRFLOW_CONN_AIRFLOW_API={"conn_type":"http","host":"localhost","port":8080,"schema":"http","login":"airflow","password":"airflow_pass"}
       # MySQL credentials (managed centrally in the host .env)
       - MYSQL_USER=${AIRFLOW_DB_USER}
       - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}
       - MYSQL_HOST=airflow-mysql
       - MYSQL_DATABASE=${AIRFLOW_DB_NAME}
-      # AIRFLOW__{CORE,DATABASE}__SQL_ALCHEMY_CONN explicitly override airflow.cfg, which
-      # otherwise keeps its built-in default of mysql://airflow:airflow_pass@airflow-mysql/airflow
-      # regardless of the MYSQL_* variables above. Without these airflow-server fails with
-      # "Access denied for user 'airflow'" whenever .env values differ from the hardcoded defaults
-      # — same shape as the cm-ant ANT_DATABASE_* gap above. Both CORE (deprecated alias still
-      # consulted in 2.x) and DATABASE keys are set so the override holds across version bumps.
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=mysql+mysqldb://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
+      # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN explicitly overrides airflow.cfg, which otherwise
+      # keeps its built-in default of mysql://airflow:airflow_pass@airflow-mysql/airflow
+      # regardless of the MYSQL_* variables above. Without it airflow-server fails with
+      # "Access denied for user 'airflow'" whenever .env values differ from the hardcoded
+      # defaults — same shape as the cm-ant ANT_DATABASE_* gap above.
+      # The AIRFLOW__CORE__ alias is gone: Airflow 3 removed [core] sql_alchemy_conn, so only
+      # the [database] key is consulted.
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=mysql+mysqldb://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
     ports:
       - "5555:5555"
@@ -761,19 +765,26 @@ services:
           # move to check logic : entrypoint_airflow_depends_on.sh
 
           # Clean up pid
-          rm -f airflow-webserver.pid
+          rm -f airflow-api-server.pid
 
-          # Set up metadata database
-          airflow db upgrade
+          # Set up metadata database (Airflow 3 renamed db upgrade to db migrate)
+          airflow db migrate
 
-          # Create default user
-          airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin
+          # FAB auth manager tables. Airflow 3 split FAB out into a provider, so its
+          # metadata DB migration runs separately.
+          airflow fab-db migrate
+
+          # Create default user (ignore if it already exists on restart)
+          airflow users create --username airflow --password airflow_pass --email ish@innogrid.com --firstname SuHyeon --lastname Im --role Admin || true
 
           # Start airflow
+          # Airflow 3 always runs the DAG parser as its own process; without dag-processor
+          # no DAG is ever parsed.
           airflow scheduler &
+          airflow dag-processor &
           airflow celery worker &
           airflow celery flower &
-          airflow webserver
+          airflow api-server
 
           # Keep the server on no matter what
           sleep infinity
@@ -791,7 +802,11 @@ services:
     # To ensure the order of dependencies, we are explicitly using the entrypoint(./conf/depends_on_order/~.sh)
     entrypoint: ["/tool/entrypoint.sh"]
     healthcheck:
-      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/health"]
+      # Airflow 3 moved this: /health now 404s and answers
+      # "Moved in Airflow 3. Please change config to check `/api/v2/monitor/health`".
+      # Leaving it would keep airflow-server unhealthy forever, so cm-cicada — which waits on
+      # service_healthy — would never start.
+      test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://airflow-server:8080/api/v2/monitor/health"]
       <<: *default-health-check
 
   # cm-grasshopper
