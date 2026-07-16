@@ -738,7 +738,7 @@ services:
       # AIRFLOW__SMTP__* variables used through 0.5.1 therefore have no effect any more.
       # disable_ssl=true keeps the previous behaviour (smtp_ssl=False + starttls=True on 587);
       # without it the hook tries implicit SSL against a STARTTLS port and fails.
-      - AIRFLOW_CONN_SMTP_DEFAULT={"conn_type":"smtp","host":"${SMTP_HOST}","login":"${SMTP_USER}","password":"${SMTP_PASSWORD}","port":${SMTP_PORT},"extra":{"from_email":"${SMTP_MAIL_FROM}","disable_ssl":true}}
+      - AIRFLOW_CONN_SMTP_DEFAULT={"conn_type":"smtp","host":"${SMTP_HOST}","login":"${SMTP_USER}","password":"${SMTP_PASSWORD}","port":"${SMTP_PORT}","extra":{"from_email":"${SMTP_MAIL_FROM}","disable_ssl":true}}
       # monitor_dag reaches the Airflow REST API through this connection. Airflow 3 forbids
       # task code from touching the metadata DB directly, so it has to go over /api/v2.
       - AIRFLOW_CONN_AIRFLOW_API={"conn_type":"http","host":"localhost","port":8080,"schema":"http","login":"airflow","password":"airflow_pass"}
