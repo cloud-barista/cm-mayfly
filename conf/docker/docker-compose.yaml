@@ -742,6 +742,14 @@ services:
       # monitor_dag reaches the Airflow REST API through this connection. Airflow 3 forbids
       # task code from touching the metadata DB directly, so it has to go over /api/v2.
       - AIRFLOW_CONN_AIRFLOW_API={"conn_type":"http","host":"localhost","port":8080,"schema":"http","login":"airflow","password":"airflow_pass"}
+      # JWT signing key for the Task Execution API, kept out of airflow.cfg because
+      # that file is committed. Airflow's own guidance is to pass it this way: "For
+      # security-sensitive deployments, pass this value via environment variable
+      # (AIRFLOW__API_AUTH__JWT_SECRET) rather than storing it in a configuration
+      # file". Every process in this container (scheduler, dag-processor, celery
+      # worker, api-server) inherits it, which is what keeps signing and validation
+      # on the same key. Managed centrally in the host .env.
+      - AIRFLOW__API_AUTH__JWT_SECRET=${AIRFLOW_JWT_SECRET}
       # MySQL credentials (managed centrally in the host .env)
       - MYSQL_USER=${AIRFLOW_DB_USER}
       - MYSQL_PASSWORD=${AIRFLOW_DB_PASSWORD}

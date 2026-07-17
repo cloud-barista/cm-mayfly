@@ -4,6 +4,8 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package docker
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -65,6 +67,11 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 		}
 		if !startsContainers[cmd.Name()] {
 			return nil
+		}
+		// Fill in the values we can generate ourselves before checking for blanks,
+		// so a user is never asked to invent one by hand.
+		if err := ensureGeneratedEnvValues(); err != nil {
+			return err
 		}
 		return validateDockerEnvFile()
 	},
@@ -182,6 +189,96 @@ func ensureDockerEnvFile() error {
 		return fmt.Errorf("failed to check environment file %s: %w", envPath, err)
 	}
 	return nil
+}
+
+// generatedEnvKeys are the required keys mayfly fills in itself when .env leaves
+// them blank, so the user never has to invent a value by hand.
+//
+// A key belongs here when it is a secret with no sensible default that only this
+// stack consumes — nothing outside issues it, and nothing outside has to agree on
+// it. AIRFLOW_JWT_SECRET is exactly that: Airflow signs the tokens its own
+// processes exchange with it, and any random string will do as long as every
+// process sees the same one.
+//
+// Note this is the opposite of optionalEnvKeys. These keys stay *required* — they
+// are just filled in before the check runs, so a blank line in .env is a value
+// waiting to be generated rather than an error.
+var generatedEnvKeys = []string{
+	"AIRFLOW_JWT_SECRET",
+}
+
+// ensureGeneratedEnvValues fills every blank generatedEnvKeys entry in .env with
+// a fresh random value and writes it back.
+//
+// It only ever fills a blank. An existing value is never touched: rotating the
+// key invalidates tokens that were already issued, so tasks sitting in the celery
+// queue would fail on a key the scheduler no longer signs with. Keeping the value
+// stable is the whole point — the key needs to be unguessable, not new.
+func ensureGeneratedEnvValues() error {
+	dir := filepath.Dir(DockerFilePath)
+	envPath := filepath.Join(dir, ".env")
+	values, err := parseDotEnv(envPath)
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", envPath, err)
+	}
+	for _, key := range generatedEnvKeys {
+		if strings.TrimSpace(values[key]) != "" {
+			continue
+		}
+		secret, err := randomSecret()
+		if err != nil {
+			return fmt.Errorf("failed to generate a value for %s: %w", key, err)
+		}
+		if err := setEnvKey(envPath, key, secret); err != nil {
+			return fmt.Errorf("failed to write %s to %s: %w", key, envPath, err)
+		}
+		fmt.Printf("Generated %s in %s (first run).\n", key, envPath)
+	}
+	return nil
+}
+
+// randomSecret returns 32 random bytes, base64 encoded — comfortably above the
+// 16 bytes Airflow generates for the same key when one is not configured.
+func randomSecret() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+// setEnvKey writes key=value into .env in place, replacing the existing line if
+// there is one and appending it otherwise (an .env carried over from an older
+// version simply has no line for a key added since). Every other line, including
+// comments, is preserved.
+func setEnvKey(path, key, value string) error {
+	// path is a fixed internal .env location (conf/docker/.env), not user input.
+	data, err := os.ReadFile(path) // #nosec G304
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(data), "\n")
+	replaced := false
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), key+"=") {
+			lines[i] = key + "=" + value
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		// Keep the trailing newline the file almost certainly ends with, rather
+		// than gluing the new entry onto the last line.
+		if n := len(lines); n > 0 && strings.TrimSpace(lines[n-1]) == "" {
+			lines[n-1] = key + "=" + value
+			lines = append(lines, "")
+		} else {
+			lines = append(lines, key+"="+value)
+		}
+	}
+	// .env holds secrets; keep it owner-only. The file already exists here, so
+	// this preserves its current mode rather than widening it.
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0600)
 }
 
 // validateDockerEnvFile parses conf/docker/.env and reports any required key
