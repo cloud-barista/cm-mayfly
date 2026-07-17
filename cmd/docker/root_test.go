@@ -151,6 +151,89 @@ SMTP_USER=
 	})
 }
 
+func TestEnsureGeneratedEnvValues(t *testing.T) {
+	readKey := func(t *testing.T, dir, key string) string {
+		t.Helper()
+		vals, err := parseDotEnv(filepath.Join(dir, ".env"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return vals[key]
+	}
+
+	t.Run("blank → generated and written back", func(t *testing.T) {
+		dir := withEnvFixture(t, exampleFixture, "AIRFLOW_JWT_SECRET=\n")
+		if err := ensureGeneratedEnvValues(); err != nil {
+			t.Fatalf("should generate, got: %v", err)
+		}
+		if got := readKey(t, dir, "AIRFLOW_JWT_SECRET"); got == "" {
+			t.Error("AIRFLOW_JWT_SECRET must be filled in when blank")
+		}
+	})
+
+	// An .env carried over from a version before this key existed has no line for
+	// it at all. That must generate too, not fail — otherwise upgrading users hit
+	// a required-value error for a key they never had.
+	t.Run("key absent entirely (older .env) → appended", func(t *testing.T) {
+		dir := withEnvFixture(t, exampleFixture, "SPIDER_USERNAME=u\n")
+		if err := ensureGeneratedEnvValues(); err != nil {
+			t.Fatalf("should generate, got: %v", err)
+		}
+		if got := readKey(t, dir, "AIRFLOW_JWT_SECRET"); got == "" {
+			t.Error("a key missing from an older .env must be appended, not skipped")
+		}
+		if got := readKey(t, dir, "SPIDER_USERNAME"); got != "u" {
+			t.Errorf("existing entries must survive, SPIDER_USERNAME = %q", got)
+		}
+	})
+
+	// Rotating the key invalidates tokens already handed to queued tasks, so an
+	// existing value must never be overwritten — not on the second run, not ever.
+	t.Run("existing value → never overwritten", func(t *testing.T) {
+		dir := withEnvFixture(t, exampleFixture, "AIRFLOW_JWT_SECRET=keep-me\n")
+		for i := 0; i < 2; i++ {
+			if err := ensureGeneratedEnvValues(); err != nil {
+				t.Fatalf("run %d: %v", i, err)
+			}
+		}
+		if got := readKey(t, dir, "AIRFLOW_JWT_SECRET"); got != "keep-me" {
+			t.Errorf("an existing key must be left alone, got %q", got)
+		}
+	})
+
+	t.Run("value is stable across runs", func(t *testing.T) {
+		dir := withEnvFixture(t, exampleFixture, "AIRFLOW_JWT_SECRET=\n")
+		if err := ensureGeneratedEnvValues(); err != nil {
+			t.Fatal(err)
+		}
+		first := readKey(t, dir, "AIRFLOW_JWT_SECRET")
+		if err := ensureGeneratedEnvValues(); err != nil {
+			t.Fatal(err)
+		}
+		if second := readKey(t, dir, "AIRFLOW_JWT_SECRET"); second != first {
+			t.Errorf("the key must stay put once generated: %q → %q", first, second)
+		}
+	})
+
+	t.Run("generated values differ between environments", func(t *testing.T) {
+		withEnvFixture(t, exampleFixture, "AIRFLOW_JWT_SECRET=\n")
+		if err := ensureGeneratedEnvValues(); err != nil {
+			t.Fatal(err)
+		}
+		a := readKey(t, filepath.Dir(DockerFilePath), "AIRFLOW_JWT_SECRET")
+
+		withEnvFixture(t, exampleFixture, "AIRFLOW_JWT_SECRET=\n")
+		if err := ensureGeneratedEnvValues(); err != nil {
+			t.Fatal(err)
+		}
+		b := readKey(t, filepath.Dir(DockerFilePath), "AIRFLOW_JWT_SECRET")
+
+		if a == b {
+			t.Error("each environment must get its own key, not a shared constant")
+		}
+	})
+}
+
 // The reported bug, end to end through the hook that actually gates the commands:
 // .env is missing a key that .env.example gained on a newer branch, so `remove`
 // refused to run and the user could not clean up and rebuild.
