@@ -5,13 +5,22 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
-// Only cm-cicada SMTP and the auto-generated VAULT_TOKEN may be blank; every
-// other .env.example variable must be required. Guard the exception registry so
-// a DB user (or any other key) can never quietly become optional again.
+// Only cm-cicada SMTP, the auto-generated VAULT_TOKEN and the compose-defaulted
+// OPENBAO_UNSEAL_POLL_INTERVAL may be blank; every other .env.example variable
+// must be required. Guard the exception registry so a DB user (or any other key)
+// can never quietly become optional again.
 func TestOptionalEnvKeys(t *testing.T) {
-	mustBeOptional := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_MAIL_FROM", "VAULT_TOKEN"}
+	mustBeOptional := []string{
+		"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_MAIL_FROM",
+		"VAULT_TOKEN",
+		// compose substitutes `${OPENBAO_UNSEAL_POLL_INTERVAL:-30}`, so a blank
+		// value never reaches the sidecar.
+		"OPENBAO_UNSEAL_POLL_INTERVAL",
+	}
 	for _, k := range mustBeOptional {
 		if !optionalEnvKeys[k] {
 			t.Errorf("%q must be optional (blank-allowed)", k)
@@ -21,6 +30,24 @@ func TestOptionalEnvKeys(t *testing.T) {
 	for _, k := range mustNotBeOptional {
 		if optionalEnvKeys[k] {
 			t.Errorf("%q must NOT be optional — it has to be a required value", k)
+		}
+	}
+}
+
+// Required-value validation guards startup only. Tearing an environment down or
+// looking at it must never be blocked by a missing key: a branch or lineup switch
+// adds keys to .env.example, and gating `remove` on them blocks the clean rebuild
+// that would have fixed the very problem.
+func TestStartsContainers(t *testing.T) {
+	for _, name := range []string{"run", "update"} {
+		if !startsContainers[name] {
+			t.Errorf("%q brings containers up — it must validate .env before starting", name)
+		}
+	}
+	// teardown (remove/stop) and read-only (info/logs) + image pull (install)
+	for _, name := range []string{"remove", "stop", "info", "logs", "install"} {
+		if startsContainers[name] {
+			t.Errorf("%q does not start containers — gating it on a complete .env blocks teardown/inspection", name)
 		}
 	}
 }
@@ -122,4 +149,47 @@ SMTP_USER=
 			t.Errorf("blank SMTP_USER / VAULT_TOKEN must be allowed, got: %v", err)
 		}
 	})
+}
+
+// The reported bug, end to end through the hook that actually gates the commands:
+// .env is missing a key that .env.example gained on a newer branch, so `remove`
+// refused to run and the user could not clean up and rebuild.
+func TestPersistentPreRunEScope(t *testing.T) {
+	// .env predating a branch that added SPIDER_LOG_LEVEL to .env.example.
+	staleEnv := `SPIDER_USERNAME=u
+SPIDER_PASSWORD=p
+TUMBLEBUG_DB_USER=tumblebug
+TUMBLEBUG_DB_PASSWORD=p
+VAULT_ADDR=http://openbao:8200
+VAULT_TOKEN=
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=
+`
+	run := func(t *testing.T, name string) error {
+		t.Helper()
+		withEnvFixture(t, exampleFixture, staleEnv)
+		sub := &cobra.Command{Use: name}
+		dockerCmd.AddCommand(sub)
+		t.Cleanup(func() { dockerCmd.RemoveCommand(sub) })
+		return dockerCmd.PersistentPreRunE(sub, nil)
+	}
+
+	// teardown and inspection must survive an incomplete .env — this is the bug.
+	for _, name := range []string{"remove", "stop", "info", "logs", "install"} {
+		t.Run(name+" → not blocked by a missing key", func(t *testing.T) {
+			if err := run(t, name); err != nil {
+				t.Errorf("%q must run with an incomplete .env, got: %v", name, err)
+			}
+		})
+	}
+
+	// starting the stack must still be blocked — the original guard stays intact.
+	for _, name := range []string{"run", "update"} {
+		t.Run(name+" → still blocked", func(t *testing.T) {
+			err := run(t, name)
+			if err == nil || !strings.Contains(err.Error(), "SPIDER_LOG_LEVEL") {
+				t.Errorf("%q must still refuse to start with a missing key, got: %v", name, err)
+			}
+		})
+	}
 }
