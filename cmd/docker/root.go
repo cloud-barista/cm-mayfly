@@ -51,6 +51,9 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 	// make sure the shared environment file exists. The compose file relies on
 	// it for ${VAR} interpolation, so running without it would fail with
 	// confusing "variable is not set" warnings.
+	//
+	// Whether every value in that file must also be filled in depends on the
+	// subcommand — see startsContainers.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// The bare `infra` command only prints help and does not invoke
 		// docker compose, so it does not require the .env file.
@@ -60,8 +63,30 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 		if err := ensureDockerEnvFile(); err != nil {
 			return err
 		}
+		if !startsContainers[cmd.Name()] {
+			return nil
+		}
 		return validateDockerEnvFile()
 	},
+}
+
+// startsContainers lists the infra subcommands that bring containers up
+// (`docker compose up`). Only those need every value in .env to be filled in,
+// because only they hand those values to a container.
+//
+// Every other subcommand tears down or reads: `remove` (down/rm/stop), `stop`,
+// `install` (pull), `info` (ps/images), `logs`. None of them pass a value into a
+// running process, so a missing key cannot hurt them.
+//
+// Why this distinction matters: requiring a complete .env to *delete* an
+// environment blocks the very thing the user is trying to do. Switching branch or
+// lineup adds new keys to .env.example, and until the user copies them across,
+// `infra remove --clean-all` would refuse to run — so the clean rebuild that
+// would have fixed everything is exactly what gets blocked, and the only way out
+// is raw docker. Startup validation belongs on startup.
+var startsContainers = map[string]bool{
+	"run":    true, // docker compose up
+	"update": true, // pull + up (restarts the stack)
 }
 
 // Every key declared in conf/docker/.env.example must hold a non-empty value in
@@ -84,13 +109,21 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 //   - VAULT_TOKEN : intentionally blank in the template; it is generated/written by
 //     the OpenBao init flow during `infra run` (a fresh clean install starts with it
 //     blank — requiring it would block the auto-init the install depends on).
+//   - OPENBAO_UNSEAL_POLL_INTERVAL : the compose file already substitutes a default
+//     for it (`${OPENBAO_UNSEAL_POLL_INTERVAL:-30}`), so a blank value never reaches
+//     the sidecar — 30 does. It is not a secret either.
+//
+// Before adding a key here, check both: does a blank value actually reach a
+// container, and is the key a secret? A key the compose file defaults with `:-`
+// answers "no" to the first and belongs here; a credential never does.
 var optionalEnvKeys = map[string]bool{
-	"SMTP_HOST":      true,
-	"SMTP_PORT":      true,
-	"SMTP_USER":      true,
-	"SMTP_PASSWORD":  true,
-	"SMTP_MAIL_FROM": true,
-	"VAULT_TOKEN":    true,
+	"SMTP_HOST":                    true,
+	"SMTP_PORT":                    true,
+	"SMTP_USER":                    true,
+	"SMTP_PASSWORD":                true,
+	"SMTP_MAIL_FROM":               true,
+	"VAULT_TOKEN":                  true,
+	"OPENBAO_UNSEAL_POLL_INTERVAL": true,
 }
 
 // fallbackRequiredEnvKeys is used only when .env.example cannot be read (so the
@@ -172,13 +205,16 @@ func validateDockerEnvFile() error {
 		return nil
 	}
 	return fmt.Errorf("required values are missing or blank in %s:\n  - %s\n\n"+
-		"Every variable in %s must be set, because a container that reads a blank "+
-		"value has no safe built-in default (e.g. cb-spider 0.12.17+ exits on blank "+
-		"REST auth; a postgres healthcheck `pg_isready -U ${*_DB_USER}` fails on a "+
-		"blank user and deadlocks every dependent service).\n"+
-		"Only the cm-cicada SMTP_* settings and VAULT_TOKEN (auto-generated on first "+
-		"run) may be left blank.\n"+
-		"Copy the defaults from %s and fill in the secret values, then re-run.\n",
+		"Starting the stack needs every variable in %s, because a container that reads "+
+		"a blank value has no safe built-in default (e.g. cb-spider 0.12.17+ exits on "+
+		"blank REST auth; a postgres healthcheck `pg_isready -U ${*_DB_USER}` fails on "+
+		"a blank user and deadlocks every dependent service).\n"+
+		"Only the cm-cicada SMTP_* settings, VAULT_TOKEN (auto-generated on first run) "+
+		"and OPENBAO_UNSEAL_POLL_INTERVAL (compose defaults it to 30) may be left blank.\n"+
+		"Copy the defaults from %s and fill in the secret values, then re-run.\n\n"+
+		"This check only guards the commands that start containers. If you are trying "+
+		"to tear the environment down or look at it, `infra remove`, `stop`, `info` and "+
+		"`logs` run without it.\n",
 		envPath, strings.Join(missing, "\n  - "), examplePath, examplePath)
 }
 
