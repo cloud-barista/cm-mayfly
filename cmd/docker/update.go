@@ -3,9 +3,7 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os/exec"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
@@ -34,27 +32,38 @@ type DockerHubTagDetailResponse struct {
 	LastUpdated string `json:"last_updated"`
 }
 
+// dockerHubRepositoryPath maps an image name to its path in the Docker Hub API.
+//
+// Official images are addressed as "library/<name>" there, even though they are
+// pulled as a bare name. Without the prefix the API answers 404 for every one
+// of them, which is why postgres, redis, mysql and etcd never showed a value in
+// the Latest column.
+func dockerHubRepositoryPath(imageName string) string {
+	if strings.Contains(imageName, "/") {
+		return imageName
+	}
+	return "library/" + imageName
+}
+
 // checkDockerHubTagUpdate checks if the specific tag on Docker Hub has been updated
 func checkDockerHubTagUpdate(imageName, tag string) (string, error) {
-	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/tags/%s/", imageName, tag)
+	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/tags/%s/",
+		dockerHubRepositoryPath(imageName), tag)
 
-	resp, err := http.Get(url)
+	// The shared client carries a request timeout. The bare http.Get this
+	// replaced used the default client, which has none, so a slow or
+	// unresponsive Docker Hub left `infra update` waiting with no way out.
+	resp, err := common.NewHTTPClient().R().Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch Docker Hub API: %v", err)
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %v", err)
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode())
 	}
 
 	var tagResponse DockerHubTagDetailResponse
-	if err := json.Unmarshal(body, &tagResponse); err != nil {
+	if err := json.Unmarshal(resp.Body(), &tagResponse); err != nil {
 		return "", fmt.Errorf("failed to parse JSON response: %v", err)
 	}
 
@@ -66,9 +75,7 @@ func checkDockerHubTagUpdate(imageName, tag string) (string, error) {
 func getCurrentLocalVersion(imageName, tag string, serviceName string) (string, error) {
 	// First, try to get the actual running container's image using docker compose ps
 	// This is more accurate than docker ps --filter because it uses the service name from docker-compose.yaml
-	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps --format json", ProjectName, DockerFilePath)
-	cmd := exec.Command("bash", "-c", cmdStr)
-	output, err := cmd.Output()
+	output, err := composeOutput("ps", "--format", "json")
 	if err == nil {
 		// Parse JSON output to find the container for this service
 		lines := strings.Split(string(output), "\n")
@@ -102,18 +109,42 @@ func getCurrentLocalVersion(imageName, tag string, serviceName string) (string, 
 	}
 
 	// Fallback: Check if the specific image exists locally
-	cmdStr = fmt.Sprintf("docker images --format '{{.Tag}}' %s:%s 2>/dev/null || echo 'not_installed'", imageName, tag)
-	output2 := common.SysCallWithOutput(cmdStr)
+	output2, err := common.RunCommandOutput("docker",
+		[]string{"images", "--format", "{{.Tag}}", fmt.Sprintf("%s:%s", imageName, tag)}, nil)
+	if err != nil {
+		// A failing `docker images` is not the same as an absent image: the
+		// command exits 0 with empty output for that (handled just below).
+		// Reporting "not_installed" here turned an unreachable daemon into a
+		// table claiming every image was missing, which then read as "there is
+		// an update for everything". Hand the failure back instead.
+		return "", fmt.Errorf("could not list local images for %s:%s: %w", imageName, tag, err)
+	}
 
-	if strings.TrimSpace(output2) == "not_installed" {
+	localTag := strings.TrimSpace(string(output2))
+	if localTag == "" {
+		// `docker images` prints nothing (and still exits 0) when the image is
+		// absent, so an empty result means it is not installed.
 		return "not_installed", nil
 	}
 
 	// Return the tag if image exists locally
-	return strings.TrimSpace(output2), nil
+	return localTag, nil
 }
 
-// checkVersionUpdates checks for version updates and displays comparison
+// checkVersionUpdates checks for version updates and displays comparison.
+//
+// Individual lookups stay best-effort — a service whose Docker Hub tag cannot be
+// read still gets a row, with "-" in the Latest column, because the Local vs
+// Compose comparison is what actually decides whether an update is needed and
+// that comes from the local daemon. An error is returned only when the local
+// lookup failed for every service examined: at that point nothing in the table
+// is grounded in the real state of the host, so the returned hasUpdates says
+// nothing, and the caller must not put a confirmation prompt in front of the
+// user based on it.
+//
+// This function used to return a literal nil on every path, which made the
+// caller's `if err != nil` fallback dead code and meant a completely unusable
+// docker daemon still produced a confident-looking "All services are up to date!".
 func checkVersionUpdates(services map[string]ServiceInfo) (bool, error) {
 	fmt.Println("🔍 Checking version updates...")
 	fmt.Println()
@@ -121,19 +152,28 @@ func checkVersionUpdates(services map[string]ServiceInfo) (bool, error) {
 	hasUpdates := false
 	updateInfo := make(map[string]map[string]string)
 
+	examined := 0
+	localFailures := 0
+	var firstLocalErr error
+
 	for serviceName, serviceInfo := range services {
-		// Extract image name and tag
-		parts := strings.Split(serviceInfo.Image, ":")
-		if len(parts) != 2 {
+		// Extract image name and tag. splitImageRef handles the cases a plain
+		// Split(":") gets wrong, such as a registry host that carries a port.
+		imageName, composeTag := splitImageRef(serviceInfo.Image)
+		if imageName == "" || composeTag == "" {
 			continue
 		}
-		imageName := parts[0]
-		composeTag := parts[1]
+
+		examined++
 
 		// Get current local version (pass serviceName to get actual running container's image)
 		currentVersion, err := getCurrentLocalVersion(imageName, composeTag, serviceName)
 		if err != nil {
 			currentVersion = "unknown"
+			localFailures++
+			if firstLocalErr == nil {
+				firstLocalErr = fmt.Errorf("%s: %w", serviceName, err)
+			}
 		}
 
 		// Check if the specific tag on Docker Hub has been updated
@@ -165,6 +205,13 @@ func checkVersionUpdates(services map[string]ServiceInfo) (bool, error) {
 		if currentVersion == "not_installed" || currentVersion != composeTag {
 			hasUpdates = true
 		}
+	}
+
+	// Every local lookup failed, so "Local" is "unknown" on every row and the
+	// hasUpdates it produced is an artefact of that, not a finding. Report it
+	// instead of letting the caller act on it.
+	if examined > 0 && localFailures == examined {
+		return false, fmt.Errorf("could not read the locally installed image version for any of the %d service(s); is the docker daemon reachable? (first failure — %w)", examined, firstLocalErr)
 	}
 
 	// Find the longest service name and version strings for proper table width
@@ -236,6 +283,14 @@ var updateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("\n[Update the Docker images of the subsystems that make up the Cloud-Migrator system.]")
 
+		// Resolve -s first so an unusable value stops the command before anything
+		// is pulled or restarted. An empty -s means "every service".
+		targets, err := resolveServices(ServiceName)
+		if err != nil {
+			fmt.Printf("⚠️ %v\n", err)
+			return
+		}
+
 		// Parse docker-compose.yaml to get actual image information
 		services, err := parseDockerComposeImages()
 		if err != nil {
@@ -243,18 +298,19 @@ var updateCmd = &cobra.Command{
 			fmt.Printf("🔄 Falling back to regular pull...\n")
 
 			// Fallback to regular pull without version check
-			convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull --ignore-pull-failures %s", ProjectName, DockerFilePath, convertedServiceName)
-			common.SysCall(cmdStr)
+			if err := runCompose(append([]string{"pull", "--ignore-pull-failures"}, targets...)...); err != nil {
+				fmt.Printf("❌ docker compose pull failed: %v\n", err)
+				return
+			}
 		} else {
-			// If specific service is requested, only check that service
-			if ServiceName != "" {
-				if serviceInfo, exists := services[ServiceName]; exists {
-					services = map[string]ServiceInfo{ServiceName: serviceInfo}
-				} else {
-					fmt.Printf("⚠️ Service %s not found in docker-compose.yaml\n", ServiceName)
-					return
+			// If specific services are requested, only check those. resolveServices
+			// has already confirmed every name exists.
+			if len(targets) > 0 {
+				selected := make(map[string]ServiceInfo, len(targets))
+				for _, name := range targets {
+					selected[name] = services[name]
 				}
+				services = selected
 			}
 
 			// Check for version updates
@@ -266,7 +322,7 @@ var updateCmd = &cobra.Command{
 				fmt.Println("✅ All services are up to date!")
 				fmt.Print("Do you want to proceed with pull and restart anyway? (y/N): ")
 				var response string
-				fmt.Scanln(&response)
+				_, _ = fmt.Scanln(&response)
 
 				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 					fmt.Println("❌ Update cancelled by user")
@@ -276,7 +332,7 @@ var updateCmd = &cobra.Command{
 				// Ask user for confirmation
 				fmt.Print("Do you want to proceed with the update? (y/N): ")
 				var response string
-				fmt.Scanln(&response)
+				_, _ = fmt.Scanln(&response)
 
 				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 					fmt.Println("❌ Update cancelled by user")
@@ -290,9 +346,10 @@ var updateCmd = &cobra.Command{
 			fmt.Println("\n[Install the latest Docker images of the Cloud-Migrator subsystems.]")
 			fmt.Println()
 
-			convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
-			cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull --ignore-pull-failures %s", ProjectName, DockerFilePath, convertedServiceName)
-			common.SysCall(cmdStr)
+			if err := runCompose(append([]string{"pull", "--ignore-pull-failures"}, targets...)...); err != nil {
+				fmt.Printf("❌ docker compose pull failed: %v\n", err)
+				return
+			}
 		}
 
 		//============================
@@ -301,18 +358,39 @@ var updateCmd = &cobra.Command{
 		fmt.Println("\n\n[Restart based on the installed latest Docker images.]")
 		fmt.Println()
 
-		detachModeOption := ""
-		if DetachMode {
-			detachModeOption = "-d"
+		// Always bring the stack up detached, mirroring `infra run`. Running
+		// attached ties the stack's lifetime to this terminal, so a Ctrl-C
+		// meant to stop watching output tears the containers back down.
+		if err := runCompose(append([]string{"up", "-d"}, targets...)...); err != nil {
+			fmt.Printf("❌ docker compose up failed: %v\n", err)
+			return
 		}
-		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s up %s %s", ProjectName, DockerFilePath, detachModeOption, convertedServiceName)
 
-		common.SysCall(cmdStr)
-
+		// Follow the logs unless the caller asked to stay detached.
+		if !UpdateDetachMode {
+			fmt.Println("\n[Showing container logs - Press Ctrl+C to stop viewing logs]")
+			fmt.Println()
+			if err := runCompose(append([]string{"logs", "-f"}, targets...)...); err != nil {
+				fmt.Printf("❌ docker compose logs failed: %v\n", err)
+			}
+		} else {
+			fmt.Println("\n📋 Log Commands:")
+			fmt.Println("  ./mayfly infra logs                    # View all service logs")
+			fmt.Println("  ./mayfly infra logs -s <service-name>  # View specific service logs")
+			fmt.Println("  ./mayfly infra info                    # Check system status")
+			fmt.Println()
+		}
 	},
 }
 
+// UpdateDetachMode keeps `infra update` from following logs after the stack is
+// up. It is registered on updateCmd because `-d` used to be declared only on
+// runCmd: `infra update -d` was rejected as an unknown flag while this code
+// still read the run command's variable, which was therefore always false.
+var UpdateDetachMode bool
+
 func init() {
 	dockerCmd.AddCommand(updateCmd)
+
+	updateCmd.Flags().BoolVarP(&UpdateDetachMode, "detach", "d", false, "Detached mode: Run containers in the background without showing logs")
 }

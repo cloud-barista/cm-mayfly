@@ -3,7 +3,6 @@ package docker
 import (
 	"fmt"
 
-	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
 
@@ -19,19 +18,16 @@ var stopCmd = &cobra.Command{
 		fmt.Println("\n[Stop Cloud-Migrator]")
 		fmt.Println()
 
-		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", ProjectName, DockerFilePath, convertedServiceName)
-		// // If there are additional arguments, treat them as services or additional commands and add them to the existing command with an additional
-		// if len(args) > 0 {
-		// 	cmdStr += args[0]
+		services, err := resolveServices(ServiceName)
+		if err != nil {
+			fmt.Printf("❌ %v\n", err)
+			return
+		}
 
-		// 	// Explicitly passing the service name as a filter (--service) option or argument would be fine.
-		// 	// serviceName := args[0]
-		// 	// cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s stop %s", ProjectName, DockerFilePath, serviceName)
-		// }
-
-		//fmt.Println(cmdStr)
-		common.SysCall(cmdStr)
+		if err := runCompose(append([]string{"stop"}, services...)...); err != nil {
+			fmt.Printf("❌ docker compose stop failed: %v\n", err)
+			return
+		}
 
 		SysCallDockerComposePsWithAll(stopAllFlag)
 	},

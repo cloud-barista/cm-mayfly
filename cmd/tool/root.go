@@ -16,7 +16,7 @@ var toolCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
 		//fmt.Println(cmd.Help())
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 

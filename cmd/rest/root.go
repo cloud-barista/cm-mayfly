@@ -72,7 +72,7 @@ var restCmd = &cobra.Command{
 		//fmt.Println(cmd.UsageString())
 		//fmt.Println("============ REST 메인 호출됨!!!!  ")
 		//fmt.Println(cmd.Help())
-		cmd.Help() // root.go에서는 도움말만 출력 함.
+		_ = cmd.Help() // root.go에서는 도움말만 출력 함.
 	},
 
 	// PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -84,7 +84,10 @@ func SetBasicAuth() {
 	if username != "" && password != "" {
 		if isVerbose {
 			fmt.Println("username : " + username)
-			fmt.Println("password : " + password)
+			// -v output ends up in scrollback, CI logs and redirected files, so
+			// the credential is reduced to a prefix: still enough to tell which
+			// password was picked up, not enough to reuse.
+			fmt.Println("password : " + common.MaskSecret(password))
 		}
 		client.SetBasicAuth(username, password)
 	}
@@ -100,7 +103,7 @@ func SetAuthToken() {
 
 	if authToken != "" {
 		if isVerbose {
-			fmt.Printf("sets the auth token of the `Authorization` header : [%s]\n", authToken)
+			fmt.Printf("sets the auth token of the `Authorization` header : [%s]\n", common.MaskSecret(authToken))
 		}
 		client.SetAuthToken(authToken)
 	}
@@ -136,7 +139,9 @@ func SetReqData() error {
 		}
 
 		// 파일에서 데이터 읽기
-		data, err := ioutil.ReadFile(inputFileData)
+		// Reading the file the operator names with the request-data flag is
+		// the feature itself; there is no directory this path should be confined to.
+		data, err := ioutil.ReadFile(inputFileData) // #nosec G304 -- operator-supplied request body file is the documented purpose of this flag
 		if err != nil {
 			return err
 		}
@@ -170,15 +175,47 @@ func ProcessResultInfo(resp *resty.Response) {
 	}
 }
 
+// exitCodeFor maps an HTTP status code to a process exit code.
+// Every 2xx is a success (201 Created and 204 No Content included), so it
+// returns 0. Anything else returns the first digit of the status code, which is
+// what docker-compose healthchecks have been relying on (3, 4 or 5).
+func exitCodeFor(statusCode int) int {
+	if statusCode >= 200 && statusCode <= 299 {
+		return 0
+	}
+	return statusCode / 100
+}
+
 // Handles OS exit code for docker-compose's healthy checks.
 func ProcessOsExitcode(resp *resty.Response) {
 	// Checking response status codes
-	if resp.StatusCode() != 200 {
+	if exitCode := exitCodeFor(resp.StatusCode()); exitCode != 0 {
 		if isVerbose {
-			fmt.Fprintf(os.Stderr, "Received non-200 response: %d\n", resp.StatusCode())
+			fmt.Fprintf(os.Stderr, "Received non-2xx response: %d\n", resp.StatusCode())
 		}
-		exitCode := resp.StatusCode() / 100 // First digit (2xx, 3xx, 4xx, 5xx)
-		os.Exit(exitCode)                   // One of 0, 3, 4, or 5
+		os.Exit(exitCode) // One of 1, 3, 4, or 5
+	}
+}
+
+// doRequest sends the request, prints the response and returns the exit code
+// the process should end with. It never exits by itself so it stays testable.
+func doRequest(url string, send func(string) (*resty.Response, error)) int {
+	resp, err := send(url)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return 1
+	}
+
+	// 응답 출력
+	ProcessResultInfo(resp)
+	return exitCodeFor(resp.StatusCode()) // for docker compose healthy check
+}
+
+// runRequest is the shared entry point of every rest verb so that a transport
+// error or a failing status code ends the process with a non-zero exit code.
+func runRequest(url string, send func(string) (*resty.Response, error)) {
+	if exitCode := doRequest(url, send); exitCode != 0 {
+		os.Exit(exitCode)
 	}
 }
 

@@ -94,7 +94,7 @@ var apiCmd = &cobra.Command{
 		// Do not print help when a tool subcommand is entered.
 		if len(args) == 0 && cmd.Flags().NFlag() == 0 && cmd.HasSubCommands() {
 			//fmt.Println(cmd.Help())
-			cmd.Help()
+			_ = cmd.Help()
 			return
 		}
 
@@ -157,8 +157,10 @@ var apiCmd = &cobra.Command{
 			fmt.Println("Base URL:", serviceInfo.BaseURL)
 			fmt.Println("Auth Type:", serviceInfo.Auth.Type)
 			fmt.Println("Username:", serviceInfo.Auth.Username)
-			fmt.Println("Password:", serviceInfo.Auth.Password)
-			fmt.Println("Token:", serviceInfo.Auth.Token)
+			// Masked for the same reason as everywhere else -v prints a
+			// credential: the line outlives the debugging session.
+			fmt.Println("Password:", common.MaskSecret(serviceInfo.Auth.Password))
+			fmt.Println("Token:", common.MaskSecret(serviceInfo.Auth.Token))
 			fmt.Println("ResourcePath:", serviceInfo.ResourcePath)
 			fmt.Println("Method:", serviceInfo.Method)
 		}
@@ -298,6 +300,24 @@ func parseRequestInfo() error {
 	return nil
 }
 
+// isSafePathParamValue reports whether a path parameter value can be substituted
+// into the URI as it is. The value must not change which endpoint is called: a
+// ".." segment walks up the path (for example "nsId:../../v1/ns") and a "?" or a
+// "#" turns the remaining path into a query string or a fragment. A "/" on its
+// own is allowed because some resource ids, such as an object storage key,
+// legitimately contain one.
+func isSafePathParamValue(value string) bool {
+	if strings.ContainsAny(value, "?#") {
+		return false
+	}
+	for _, segment := range strings.Split(value, "/") {
+		if segment == ".." {
+			return false
+		}
+	}
+	return true
+}
+
 // Handle the variable path.
 func parsePathParam() error {
 	if isVerbose {
@@ -321,6 +341,9 @@ func parsePathParam() error {
 				//key := strings.ToLower(keyValue[0])
 				key := keyValue[0]
 				value := keyValue[1]
+				if !isSafePathParamValue(value) {
+					return errors.New("the path parameter value for [" + key + "] cannot be used in a URI path\nA path parameter must not contain a '..' segment, a '?' or a '#', because those change the endpoint being called")
+				}
 				pathParams[key] = value
 			}
 		}
@@ -350,7 +373,7 @@ func SetBasicAuth() {
 		if isVerbose {
 			fmt.Println("setting basic auth")
 			fmt.Println("username : " + serviceInfo.Auth.Username)
-			fmt.Println("password : " + serviceInfo.Auth.Password)
+			fmt.Println("password : " + common.MaskSecret(serviceInfo.Auth.Password))
 		}
 		client.SetBasicAuth(serviceInfo.Auth.Username, serviceInfo.Auth.Password)
 	}
@@ -387,7 +410,9 @@ func SetReqData() error {
 		}
 
 		// read the data from the file
-		data, err := ioutil.ReadFile(inputFileData)
+		// Reading the file the operator names with the request-data flag is
+		// the feature itself; there is no directory this path should be confined to.
+		data, err := ioutil.ReadFile(inputFileData) // #nosec G304 -- operator-supplied request body file is the documented purpose of this flag
 		if err != nil {
 			return err
 		}
@@ -434,7 +459,10 @@ func callRest() error {
 
 	url := serviceInfo.BaseURL + serviceInfo.ResourcePath
 
-	switch strings.ToLower(serviceInfo.Method) {
+	// The method comes from api.yaml, so it can be missing, misspelled or padded
+	// with spaces. Trim it and reject anything unsupported instead of leaving
+	// resp nil, which used to panic in ProcessResultInfo below.
+	switch strings.ToLower(strings.TrimSpace(serviceInfo.Method)) {
 	case "get":
 		resp, err = req.Get(url)
 	case "post":
@@ -445,6 +473,8 @@ func callRest() error {
 		resp, err = req.Delete(url)
 	case "patch":
 		resp, err = req.Patch(url)
+	default:
+		return fmt.Errorf("unsupported HTTP method %q for the action you are trying to call\nSupported methods are: GET, POST, PUT, DELETE, PATCH\nPlease check the method value of the action in the api.yaml configuration file", serviceInfo.Method)
 	}
 
 	if err != nil {

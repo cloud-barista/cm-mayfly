@@ -16,11 +16,13 @@ import (
 // syntax, this routine only needs to surface values. Shared by `mayfly infra`
 // (.env validation) and `mayfly api`/`rest` (auth env resolution).
 func ParseDotEnv(path string) (map[string]string, error) {
-	f, err := os.Open(path)
+	// The caller names the .env file to read (a compose env file path); reading
+	// an operator-chosen file is the purpose of this routine, not a traversal.
+	f, err := os.Open(path) // #nosec G304 -- path is the .env file the operator asked to parse
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only handle: nothing to flush
 	values := map[string]string{}
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
