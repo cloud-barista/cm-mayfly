@@ -23,7 +23,7 @@ func setCleanFlags(t *testing.T, db, all bool) {
 func TestDryRunPlanAnnouncesEnvTokenClear(t *testing.T) {
 	setCleanFlags(t, false, true)
 
-	plan := dryRunPlan([][]string{{"down", "--volumes", "--rmi", "all", "--remove-orphans"}}, []string{"conf/docker/data/openbao"})
+	plan := dryRunPlan([][]string{{"down", "--volumes", "--rmi", "all", "--remove-orphans"}}, nil, []string{"conf/docker/data/openbao"})
 
 	absEnv, _ := filepath.Abs(envFilePath())
 	if !strings.Contains(plan, "clear VAULT_TOKEN in "+absEnv) {
@@ -53,7 +53,7 @@ func TestDryRunPlanOmitsEnvTokenClearWhenNotCleanAll(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			setCleanFlags(t, tc.db, tc.all)
-			plan := dryRunPlan([][]string{{"down", "--remove-orphans"}}, nil)
+			plan := dryRunPlan([][]string{{"down", "--remove-orphans"}}, nil, nil)
 			got := strings.Contains(plan, "clear VAULT_TOKEN")
 			if got != tc.expect {
 				t.Errorf("VAULT_TOKEN line present = %v, want %v.\nplan:\n%s", got, tc.expect, plan)
@@ -68,7 +68,7 @@ func TestDryRunPlanListsEveryHostTargetAbsolute(t *testing.T) {
 	setCleanFlags(t, true, false)
 
 	targets := []string{"conf/docker/data/cb-spider", "conf/docker/data/cb-tumblebug"}
-	plan := dryRunPlan(nil, targets)
+	plan := dryRunPlan(nil, nil, targets)
 
 	for _, tgt := range targets {
 		abs, _ := filepath.Abs(tgt)
