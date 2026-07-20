@@ -507,7 +507,15 @@ services:
         condition: service_healthy
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
-      - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+      # The nginx config now ships inside the cm-butterfly front image, so this bundle no
+      # longer carries a copy. The copy here had gone stale and was overriding the image with
+      # an older file, which silently undid a change made in cm-butterfly.
+      #
+      # Nothing in that file is environment-specific — it is the backend address, the SPA
+      # fallback and the /api/ path, plus timeouts taken from what cm-beetle and cb-tumblebug
+      # allow. To override it anyway, take front/nginx.conf from cm-butterfly, put it at
+      # conf/docker/conf/cm-butterfly/front/nginx.conf, and uncomment the line below.
+      # - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
     healthcheck: # for butterfly-api
       test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front:80/"]
       #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
@@ -535,7 +543,7 @@ services:
   #       condition: service_healthy
   #   volumes:
   #     - ./tool/mayfly:/app/tool/mayfly
-  #     - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+  #     # - ./conf/cm-butterfly/front/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro  # see note above
   #   healthcheck: # for butterfly-api
   #     test: [ "CMD", "/app/tool/mayfly", "rest", "get", "http://cm-butterfly-front-dev:80/" ]
   #     #test: [ "CMD", "curl", "-f", "http://localhost:4000/readyz" ]
