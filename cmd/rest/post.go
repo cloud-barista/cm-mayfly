@@ -4,8 +4,6 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package rest
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -26,19 +24,12 @@ var restPostCmd = &cobra.Command{
 		//fmt.Println("rest post called")
 		if len(args) < 1 { // 아규먼트가 없으면 도움말 출력
 			//fmt.Println(cmd.Help())
-			cmd.Help()
+			_ = cmd.Help()
 			return
 		}
 
 		url := args[0]
-		resp, err := req.Post(url)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		// 응답 출력
-		ProcessResultInfo(resp)
+		runRequest(url, req.Post)
 	},
 }
 

@@ -112,8 +112,12 @@ func runTumblebugInit() {
 	err = downloadAndInitTumblebug(version, originalDir)
 	if err != nil {
 		fmt.Printf("Error during Tumblebug initialization: %v\n", err)
-		// Return to original directory even on error
-		os.Chdir(originalDir)
+		// Return to original directory even on error. The initialization error
+		// above is the one worth reporting, so a failure to change back is
+		// noted but does not replace it.
+		if cderr := os.Chdir(originalDir); cderr != nil {
+			fmt.Printf("Warning: Could not return to original directory: %v\n", cderr)
+		}
 		return
 	}
 
@@ -128,12 +132,21 @@ func runTumblebugInit() {
 	fmt.Println("\nCB-Tumblebug initialization completed.")
 }
 
+// composePsJSON runs `docker compose ps --format json` for the cloud-migrator
+// project and returns its stdout. The project name used to be prefixed onto a
+// `/bin/sh -c` string; it is passed through the child environment instead, so
+// the compose file path never reaches a shell that could reinterpret it.
+func composePsJSON() ([]byte, error) {
+	return common.RunCommandOutput(
+		"docker",
+		[]string{"compose", "-f", common.DefaultDockerComposeConfig, "ps", "--format", "json"},
+		[]string{"COMPOSE_PROJECT_NAME=" + common.ComposeProjectName},
+	)
+}
+
 // isTumblebugRunning checks if CB-Tumblebug container is running
 func isTumblebugRunning() bool {
-	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps --format json", common.ComposeProjectName, common.DefaultDockerComposeConfig)
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
-
-	output, err := cmd.Output()
+	output, err := composePsJSON()
 	if err != nil {
 		return false
 	}
@@ -151,10 +164,7 @@ func isTumblebugRunning() bool {
 
 // isTumblebugHealthy checks if CB-Tumblebug container is healthy
 func isTumblebugHealthy() bool {
-	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps --format json", common.ComposeProjectName, common.DefaultDockerComposeConfig)
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
-
-	output, err := cmd.Output()
+	output, err := composePsJSON()
 	if err != nil {
 		return false
 	}
@@ -170,39 +180,22 @@ func isTumblebugHealthy() bool {
 	return false
 }
 
-// getExistingTumblebugVersion gets the version of existing cb-tumblebug directory
+// getExistingTumblebugVersion gets the version of existing cb-tumblebug directory.
+//
+// It reports the release tag HEAD sits on, or the bare commit hash when HEAD is
+// not on a tag — the caller shows either to the user and compares it against the
+// wanted tag. The detection itself lives in common.GitCheckoutVersion so that
+// this flow and the unattended OpenBao initialization path read a checkout the
+// same way (notably the --tags rule, which cb-tumblebug's lightweight release
+// tags depend on).
 func getExistingTumblebugVersion(cbTumblebugDir string) (string, error) {
-	// Check if it's a git repository
-	gitDir := filepath.Join(cbTumblebugDir, ".git")
-	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-		return "", fmt.Errorf("not a git repository")
-	}
-
-	// Get current HEAD commit hash
-	cmdStr := fmt.Sprintf("cd %s && git rev-parse HEAD", cbTumblebugDir)
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
-
-	output, err := cmd.Output()
+	tag, commit, err := common.GitCheckoutVersion(cbTumblebugDir)
 	if err != nil {
 		return "", err
 	}
-
-	currentCommit := strings.TrimSpace(string(output))
-	if currentCommit == "" {
-		return "", fmt.Errorf("unable to get current commit")
+	if tag == "" {
+		return commit, nil
 	}
-
-	// Get the tag that the current HEAD is pointing to (exact match)
-	cmdStr = fmt.Sprintf("cd %s && git describe --exact-match HEAD 2>/dev/null", cbTumblebugDir)
-	cmd = exec.Command("/bin/sh", "-c", cmdStr)
-
-	output, err = cmd.Output()
-	if err != nil {
-		// If no exact tag match, return the commit hash to indicate it's not on a tag
-		return currentCommit, nil
-	}
-
-	tag := strings.TrimSpace(string(output))
 	return tag, nil
 }
 
@@ -296,10 +289,7 @@ func getCurrentTumblebugVersion() (string, error) {
 
 // getVersionFromDockerCompose gets version from running docker compose ps
 func getVersionFromDockerCompose() (string, error) {
-	cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps --format json", common.ComposeProjectName, common.DefaultDockerComposeConfig)
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
-
-	output, err := cmd.Output()
+	output, err := composePsJSON()
 	if err != nil {
 		return "", err
 	}
@@ -349,20 +339,23 @@ func downloadAndInitTumblebug(version, originalDir string) error {
 	// Convert version to GitHub tag format (add 'v' prefix)
 	gitTag := "v" + version
 
-	// Create target directory
-	targetDir := filepath.Join(os.Getenv("HOME"), "go", "src", "github.com", "cloud-barista")
-	cbTumblebugDir := filepath.Join(targetDir, "cb-tumblebug")
+	// Create target directory. Both paths are built from $HOME plus fixed
+	// segments — no flag or argument contributes to them — and Clean resolves
+	// the result before it reaches any file operation.
+	targetDir := filepath.Clean(filepath.Join(os.Getenv("HOME"), "go", "src", "github.com", "cloud-barista"))
+	cbTumblebugDir := filepath.Clean(filepath.Join(targetDir, "cb-tumblebug"))
 
 	fmt.Printf("Downloading CB-Tumblebug %s version from GitHub...\n", gitTag)
 	fmt.Printf("Target directory: %s\n", cbTumblebugDir)
 
 	// Check if directory already exists
-	if _, err := os.Stat(cbTumblebugDir); err == nil {
+	if _, err := os.Stat(cbTumblebugDir); err == nil { // #nosec G703 -- $HOME plus fixed segments, cleaned above
 		return handleExistingDirectory(cbTumblebugDir, gitTag, targetDir, originalDir)
 	}
 
-	// Create directory structure
-	err := os.MkdirAll(targetDir, 0755)
+	// Create directory structure. 0750 rather than 0755: only the operator who
+	// runs mayfly reads this checkout.
+	err := os.MkdirAll(targetDir, 0750) // #nosec G703 -- $HOME plus fixed segments, cleaned above
 	if err != nil {
 		return fmt.Errorf("failed to create target directory: %v", err)
 	}
@@ -374,10 +367,10 @@ func downloadAndInitTumblebug(version, originalDir string) error {
 	}
 
 	// Clone the repository with specific tag
-	cloneCmd := fmt.Sprintf("git clone -b %s https://github.com/cloud-barista/cb-tumblebug.git", gitTag)
-	fmt.Printf("Executing command: %s\n", cloneCmd)
+	cloneArgs := []string{"clone", "-b", gitTag, "https://github.com/cloud-barista/cb-tumblebug.git"}
+	fmt.Printf("Executing command: git %s\n", strings.Join(cloneArgs, " "))
 
-	err = common.SysCallWithError(cloneCmd)
+	err = common.RunCommand("git", cloneArgs, nil)
 	if err != nil {
 		return fmt.Errorf("failed to clone repository: %v", err)
 	}
@@ -400,9 +393,15 @@ func handleExistingDirectory(cbTumblebugDir, gitTag, targetDir, originalDir stri
 
 	// Check if the existing version is exactly the same as the running version
 	if existingVersion == gitTag {
-		// Same version and on the correct tag
-		fmt.Printf("Same version of Tumblebug (%s) already exists and is correctly checked out in %s folder.\n", gitTag, cbTumblebugDir)
-		return showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, existingVersion, false)
+		// Same version and on the correct tag: nothing to decide. The source is
+		// already what this run needs, so asking the user to choose between
+		// "download fresh" and "use existing" only adds a prompt to the normal
+		// path. `infra run` clones the same tag on demand during OpenBao
+		// initialization, so a matching checkout is the common case rather than
+		// the exception.
+		fmt.Printf("Same version of Tumblebug (%s) is already checked out in %s folder. Using it.\n", gitTag, cbTumblebugDir)
+		fmt.Printf("\nExecuting cb-tumblebug in %s folder...\n", cbTumblebugDir)
+		return initializeTumblebug(cbTumblebugDir, originalDir)
 	} else {
 		// Different version or not on the correct tag
 		fmt.Printf("Different version of Tumblebug found in %s folder.\n", cbTumblebugDir)
@@ -422,15 +421,7 @@ func handleExistingDirectory(cbTumblebugDir, gitTag, targetDir, originalDir stri
 
 // isTagExistsInRepo checks if a specific tag exists in the repository
 func isTagExistsInRepo(cbTumblebugDir, gitTag string) bool {
-	cmdStr := fmt.Sprintf("cd %s && git tag -l %s", cbTumblebugDir, gitTag)
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
-
-	output, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-
-	return strings.TrimSpace(string(output)) == gitTag
+	return common.GitTagExists(cbTumblebugDir, gitTag)
 }
 
 // showMenuAndHandleChoice shows menu and handles user choice
@@ -505,10 +496,7 @@ func showMenuAndHandleChoice(cbTumblebugDir, gitTag, targetDir, originalDir, exi
 func switchToVersion(cbTumblebugDir, gitTag string) error {
 	fmt.Printf("Switching to version %s...\n", gitTag)
 
-	cmdStr := fmt.Sprintf("cd %s && git checkout %s", cbTumblebugDir, gitTag)
-	cmd := exec.Command("/bin/sh", "-c", cmdStr)
-
-	output, err := cmd.Output()
+	output, err := common.GitOutputInDir(cbTumblebugDir, "checkout", gitTag)
 	if err != nil {
 		return fmt.Errorf("failed to checkout version %s: %v", gitTag, err)
 	}
@@ -518,10 +506,36 @@ func switchToVersion(cbTumblebugDir, gitTag string) error {
 	return nil
 }
 
+// assertUnderCheckoutRoot reports whether target sits strictly inside root.
+// The recursive delete below is the one irreversible step in this file, so the
+// path it is handed is checked against the directory it is supposed to live in
+// rather than trusted because of how it was built.
+func assertUnderCheckoutRoot(root, target string) error {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("failed to resolve the checkout directory %s: %w", root, err)
+	}
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return fmt.Errorf("failed to resolve the removal target %s: %w", target, err)
+	}
+	rel, err := filepath.Rel(absRoot, absTarget)
+	if err != nil {
+		return fmt.Errorf("failed to compare %s against %s: %w", absTarget, absRoot, err)
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("refusing to remove %s: it lies outside %s", absTarget, absRoot)
+	}
+	return nil
+}
+
 // removeAndDownloadFresh removes existing directory and downloads fresh copy
 func removeAndDownloadFresh(cbTumblebugDir, gitTag, targetDir, originalDir string) error {
 	// Remove existing directory
-	err := os.RemoveAll(cbTumblebugDir)
+	if err := assertUnderCheckoutRoot(targetDir, cbTumblebugDir); err != nil {
+		return err
+	}
+	err := os.RemoveAll(cbTumblebugDir) // #nosec G703 -- checked to be inside targetDir just above
 	if err != nil {
 		return fmt.Errorf("failed to remove existing directory: %v", err)
 	}
@@ -533,10 +547,10 @@ func removeAndDownloadFresh(cbTumblebugDir, gitTag, targetDir, originalDir strin
 	}
 
 	// Clone fresh copy
-	cloneCmd := fmt.Sprintf("git clone -b %s https://github.com/cloud-barista/cb-tumblebug.git", gitTag)
-	fmt.Printf("Executing command: %s\n", cloneCmd)
+	cloneArgs := []string{"clone", "-b", gitTag, "https://github.com/cloud-barista/cb-tumblebug.git"}
+	fmt.Printf("Executing command: git %s\n", strings.Join(cloneArgs, " "))
 
-	err = common.SysCallWithError(cloneCmd)
+	err = common.RunCommand("git", cloneArgs, nil)
 	if err != nil {
 		return fmt.Errorf("failed to clone repository: %v", err)
 	}
@@ -564,11 +578,14 @@ func initializeTumblebug(cbTumblebugDir, originalDir string) error {
 	// token from its own container env rather than from mayfly's .env. There
 	// is nothing here that consumes ENV_FILE anymore — openbao-init.sh still
 	// takes it, but internal/openbao.Init() passes it directly.
-	script := fmt.Sprintf(`#!/bin/bash
+	// The script carries no interpolated paths. It used to start with
+	// `cd "<cbTumblebugDir>"`, and that path is built from $HOME — a shell
+	// re-parses whatever it holds, and double quotes stop word splitting but not
+	// command substitution. The directory is now set on the child process
+	// instead (cmd.Dir below), so nothing outside this literal reaches the
+	// shell.
+	script := `#!/bin/bash
 set -e
-
-# Change to cb-tumblebug directory
-cd "%s"
 
 echo "Current location: $(pwd)"
 
@@ -619,21 +636,40 @@ else
 fi
 
 echo "CB-Tumblebug initialization completed."
-`, cbTumblebugDir)
+`
 
-	// Write script to temporary file
-	tmpScript := filepath.Join(os.TempDir(), "tumblebug_init.sh")
-	err := os.WriteFile(tmpScript, []byte(script), 0755)
+	// Write the script to a temporary file.
+	//
+	// The name used to be a fixed /tmp/tumblebug_init.sh. /tmp is world-writable,
+	// os.WriteFile follows a symlink it finds at that path, and the file is
+	// executed moments after being written — so any other local user could have
+	// pre-created the name or swapped the contents in between. os.CreateTemp
+	// picks a name nobody can predict and creates it exclusively; 0700 keeps the
+	// script readable and runnable by its owner only.
+	tmpFile, err := os.CreateTemp("", "tumblebug_init-*.sh")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary script: %v", err)
 	}
+	tmpScript := tmpFile.Name()
 	defer os.Remove(tmpScript)
+	if _, err := tmpFile.Write([]byte(script)); err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("failed to write temporary script: %v", err)
+	}
+	if err := tmpFile.Chmod(0700); err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("failed to set permissions on temporary script: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary script: %v", err)
+	}
 
 	// Execute the script in a new shell with proper stdin/stdout/stderr handling
 	fmt.Println("Executing Tumblebug initialization in separate shell...")
 	fmt.Println("Note: You will be prompted for user input during the initialization process.")
 
-	cmd := exec.Command("/bin/bash", tmpScript)
+	cmd := exec.Command("/bin/bash", tmpScript) // #nosec G204 -- tmpScript is a temporary file this function just created
+	cmd.Dir = cbTumblebugDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin // This ensures stdin is properly connected

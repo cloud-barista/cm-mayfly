@@ -18,8 +18,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/cm-mayfly/cm-mayfly/common"
 )
 
 // Case enumerates the OpenBao state-consistency verdicts. See the state-signal
@@ -235,7 +233,7 @@ func waitOpenbaoActive(addr string, timeout time.Duration) error {
 	for {
 		if resp, err := c.Get(url); err == nil {
 			code := resp.StatusCode
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if code == http.StatusOK {
 				return nil // active
 			}
@@ -252,11 +250,7 @@ func waitOpenbaoActive(addr string, timeout time.Duration) error {
 // This is exactly the staged flow Init() already relies on; `infra run` uses it
 // to get a definitive diagnosis before deciding whether to bring up the rest.
 func startOpenbaoAlone() error {
-	up := fmt.Sprintf(
-		"COMPOSE_PROJECT_NAME=%s docker compose -f %s up -d openbao",
-		common.ComposeProjectName, common.DefaultDockerComposeConfig,
-	)
-	if err := common.SysCallWithError(up); err != nil {
+	if err := composeUpOpenbao(); err != nil {
 		return err
 	}
 	return waitOpenbaoAPI(60 * time.Second)
@@ -478,8 +472,8 @@ func adviceFor(c Case, shape initFileShape, reachable bool) string {
 			envPathHint, rootTok, jsonPathHint, envPathHint)
 	case CaseCorrupt:
 		return fmt.Sprintf(
-			"⚠ OpenBao data exists on disk but the API reports it is not initialized (possible mount misconfig).\n"+
-				"  Check: ./mayfly setup openbao status\n"+
+			"⚠ OpenBao data exists on disk but the API reports it is not initialized (possible mount misconfig).\n" +
+				"  Check: ./mayfly setup openbao status\n" +
 				"  If the data is truly unusable: ./mayfly infra remove --clean-all  then re-init.")
 	case CaseWrongToken:
 		return fmt.Sprintf(

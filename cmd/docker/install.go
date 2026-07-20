@@ -3,7 +3,6 @@ package docker
 import (
 	"fmt"
 
-	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
 
@@ -16,10 +15,15 @@ var pullCmd = &cobra.Command{
 		fmt.Println("\n[Install the Docker images of the subsystems that make up the Cloud-Migrator system.]")
 		fmt.Println()
 
-		convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s pull %s", ProjectName, DockerFilePath, convertedServiceName)
-		//fmt.Println(cmdStr)
-		common.SysCall(cmdStr)
+		services, err := resolveServices(ServiceName)
+		if err != nil {
+			fmt.Printf("❌ %v\n", err)
+			return
+		}
+
+		if err := runCompose(append([]string{"pull"}, services...)...); err != nil {
+			fmt.Printf("❌ docker compose pull failed: %v\n", err)
+		}
 	},
 }
 

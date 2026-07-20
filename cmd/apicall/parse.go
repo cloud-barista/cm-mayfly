@@ -3,7 +3,6 @@ package apicall
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -305,14 +304,15 @@ func resolveSwaggerURL(svc string) (string, bool) {
 	return latest, true
 }
 
-// swaggerExists reports whether the swagger URL responds with 200.
+// swaggerExists reports whether the swagger URL responds with 200. It goes
+// through common.NewHTTPClient so an unreachable host fails on the timeout
+// instead of blocking forever.
 func swaggerExists(url string) bool {
-	resp, err := http.Get(url) // #nosec G107 -- registry URL from api.yaml
+	resp, err := common.NewHTTPClient().R().Get(url) // #nosec G107 -- registry URL from api.yaml
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+	return resp.StatusCode() == http.StatusOK
 }
 
 // registeredSwaggerServices returns the services that have a swagger entry.
@@ -367,15 +367,14 @@ func confirmYN(prompt string) bool {
 // readSwaggerSource reads a swagger document from a local file or an http(s) URL.
 func readSwaggerSource(src string) ([]byte, error) {
 	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
-		resp, err := http.Get(src) // #nosec G107 -- src is an operator-supplied swagger URL
+		resp, err := common.NewHTTPClient().R().Get(src) // #nosec G107 -- src is an operator-supplied swagger URL
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("GET %s returned status %d", src, resp.StatusCode)
+		if resp.StatusCode() != http.StatusOK {
+			return nil, fmt.Errorf("GET %s returned status %d", src, resp.StatusCode())
 		}
-		return io.ReadAll(resp.Body)
+		return resp.Body(), nil
 	}
 	return os.ReadFile(src) // #nosec G304 -- src is an operator-supplied swagger path
 }
@@ -432,8 +431,10 @@ func applyToApiYaml(apiFile, service string, singleAction bool, actions map[stri
 		return fmt.Errorf("failed to read %s: %w", apiFile, err)
 	}
 
+	// apiFile is common.API_FILE at the only call site — the tool's own
+	// conf/api.yaml — so the backup name derived from it is equally fixed.
 	backup := fmt.Sprintf("%s.bak.%s", apiFile, time.Now().Format("20060102-150405"))
-	if err := os.WriteFile(backup, orig, 0600); err != nil {
+	if err := os.WriteFile(backup, orig, 0600); err != nil { // #nosec G703 -- derived from the fixed internal api.yaml path
 		return fmt.Errorf("failed to write backup %s: %w", backup, err)
 	}
 
@@ -453,12 +454,12 @@ func applyToApiYaml(apiFile, service string, singleAction bool, actions map[stri
 		}
 	}
 
-	if err := os.WriteFile(apiFile, []byte(updated), 0600); err != nil {
+	if err := os.WriteFile(apiFile, []byte(updated), 0600); err != nil { // #nosec G703 -- fixed internal api.yaml path
 		return fmt.Errorf("failed to write %s: %w", apiFile, err)
 	}
 
 	if verr := verifyApiYaml(apiFile); verr != nil {
-		_ = os.WriteFile(apiFile, orig, 0600) // restore original on failure
+		_ = os.WriteFile(apiFile, orig, 0600) // #nosec G703 -- fixed internal api.yaml path; restores the original on failure
 		return fmt.Errorf("updated %s failed verification (%v); restored original (backup kept at %s)", apiFile, verr, backup)
 	}
 

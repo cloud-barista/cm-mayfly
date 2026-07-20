@@ -3,7 +3,6 @@ package docker
 import (
 	"fmt"
 
-	"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/spf13/cobra"
 )
 
@@ -38,34 +37,39 @@ Note:
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("\n[View output from Cloud-Migrator system containers.]")
 
-		// Build docker compose logs command
-		cmdStr := fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s logs", ProjectName, DockerFilePath)
+		services, err := resolveServices(ServiceName)
+		if err != nil {
+			fmt.Printf("❌ %v\n", err)
+			return
+		}
+
+		// Build the docker compose logs argument vector. Flag values reach docker
+		// as single arguments, so a value carrying shell metacharacters is passed
+		// through literally rather than interpreted.
+		logArgs := []string{"logs"}
 
 		// Add --follow option (default: true, can be disabled with --no-follow)
 		if followLogs && !noFollow {
-			cmdStr += " --follow"
+			logArgs = append(logArgs, "--follow")
 		}
 
-		// Add --tail option
+		// Add --tail option (default: last 10 lines)
 		if tailLines != "" {
-			cmdStr += fmt.Sprintf(" --tail %s", tailLines)
+			logArgs = append(logArgs, "--tail", tailLines)
 		} else {
-			// Default: show last 10 lines
-			cmdStr += " --tail 10"
+			logArgs = append(logArgs, "--tail", "10")
 		}
 
-		// Add --since option if specified (quote the value to handle special characters)
+		// Add --since option if specified
 		if sinceTime != "" {
-			cmdStr += fmt.Sprintf(" --since '%s'", sinceTime)
+			logArgs = append(logArgs, "--since", sinceTime)
 		}
 
-		// Add service name if specified
-		if ServiceName != "" {
-			cmdStr += " " + ServiceName
-		}
+		logArgs = append(logArgs, services...)
 
-		//fmt.Println(cmdStr)
-		common.SysCall(cmdStr)
+		if err := runCompose(logArgs...); err != nil {
+			fmt.Printf("❌ docker compose logs failed: %v\n", err)
+		}
 	},
 }
 

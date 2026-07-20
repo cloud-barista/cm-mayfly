@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"sort"
@@ -51,12 +50,12 @@ const (
 	AVAILABLE_CSP_LIST_URL      = "/provider"
 	GET_CSP_CREDENTIAL_META_URL = "/forward/cloudos/metainfo/"
 
-	GET_PUBLICKEY_URL   = "/credential/publicKey"
+	GET_PUBLICKEY_URL = "/credential/publicKey"
+	// #nosec G101 -- a REST path on the tumblebug API, not a credential value
 	POST_CREDENTIAL_URL = "/credential"
 )
 
-var client = resty.New()
-var req = client.R()
+var client = common.NewHTTPClient()
 
 var host string
 var port string
@@ -92,13 +91,38 @@ type Auth struct {
 
 var serviceInfo ServiceInfo
 
+// 사용자가 -H로 전달한 헤더를 요청에 반영
+func setHeaders(r *resty.Request) *resty.Request {
+	for _, h := range headers {
+		headerParts := strings.SplitN(h, ":", 2)
+		if len(headerParts) != 2 {
+			fmt.Println("Invalid header format:", h)
+			continue
+		}
+		r.Header.Set(strings.TrimSpace(headerParts[0]), strings.TrimSpace(headerParts[1]))
+		if isVerbose {
+			fmt.Printf("%s : %s\n", strings.TrimSpace(headerParts[0]), strings.TrimSpace(headerParts[1]))
+		}
+	}
+	return r
+}
+
+// newRequest는 호출마다 새 요청을 만든다.
+// 하나의 요청을 재사용하면 앞선 호출에서 설정한 body 같은 상태가 다음 호출에 그대로 남는다.
+func newRequest() *resty.Request {
+	return setHeaders(client.R())
+}
+
 func SetBasicAuth() {
 	// Set basic authentication
 	if serviceInfo.Auth.Username != "" && serviceInfo.Auth.Password != "" {
 		if isVerbose {
 			fmt.Println("setting basic auth")
 			fmt.Println("username : " + serviceInfo.Auth.Username)
-			fmt.Println("password : " + serviceInfo.Auth.Password)
+			// Masked: -v here is about confirming which credential was picked
+			// up, which a prefix answers without writing the password itself
+			// into the terminal history.
+			fmt.Println("password : " + common.MaskSecret(serviceInfo.Auth.Password))
 		}
 		client.SetBasicAuth(serviceInfo.Auth.Username, serviceInfo.Auth.Password)
 	}
@@ -161,8 +185,13 @@ func checkServiceInfo() error {
 	}
 
 	// 사용자 입력 host, port로 BaseURL 정보 업데이트
+	// The override only fails when the configured BaseURL cannot be parsed. That
+	// used to pass unnoticed and the request went to the unmodified address, so
+	// warn instead — the printed BaseURL below then explains where it really went.
 	if host != "" || port != "" {
-		updateBaseURL(&serviceInfo.BaseURL, host, port)
+		if err := updateBaseURL(&serviceInfo.BaseURL, host, port); err != nil {
+			fmt.Printf("Warning: could not apply the host/port override to %s: %v\n", serviceInfo.BaseURL, err)
+		}
 	}
 
 	SetAuth()
@@ -204,7 +233,7 @@ func getCspList() ([]string, error) {
 	}
 
 	//resp, err := client2.R().Get(url)
-	resp, err := req.Get(url)
+	resp, err := newRequest().Get(url)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return nil, fmt.Errorf("Error: %v", err)
@@ -309,9 +338,7 @@ func getCredentialsMeta(csp string) ([]string, error) {
 		fmt.Println("Request Url : ", url)
 	}
 
-	req.SetBody("{}")
-
-	resp, err := req.Post(url)
+	resp, err := newRequest().SetBody("{}").Post(url)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return nil, fmt.Errorf("Error: %v", err)
@@ -457,6 +484,8 @@ func inputCredentialsFromCli(credentialMeta []string) (map[string]string, error)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting terminal state: %v", err)
 	}
+	// 입력 도중 오류로 빠져나가더라도 터미널의 echo가 꺼진 채 남지 않도록 함
+	defer func() { _ = term.Restore(int(syscall.Stdin), oldState) }()
 
 	for {
 		// ================================
@@ -542,7 +571,7 @@ func getPublicKey() (*PublicKeyResponse, error) {
 		fmt.Println("Request Url : ", url)
 	}
 
-	resp, err := req.Get(url)
+	resp, err := newRequest().Get(url)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return nil, fmt.Errorf("Error: %v", err)
@@ -563,9 +592,12 @@ func getPublicKey() (*PublicKeyResponse, error) {
 }
 
 // PKCS7 패딩 추가 함수
+// The only caller passes aes.BlockSize() (16), so padding lands in 1..16 and
+// always fits a byte — which PKCS#7 requires anyway, being undefined for block
+// sizes of 256 or more.
 func pkcs7Pad(data []byte, blockSize int) []byte {
 	padding := blockSize - len(data)%blockSize
-	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	padText := bytes.Repeat([]byte{byte(padding)}, padding) // #nosec G115 -- padding is 1..blockSize (16 here), always within byte range
 	return append(data, padText...)
 }
 
@@ -637,93 +669,51 @@ func encryptCredentialsWithPublicKey(publicKeyPem string, credentials map[string
 func sendCredentials(payload map[string]interface{}) (map[string]interface{}, error) {
 	fmt.Println("Sending encrypted credentials to server")
 
-	// POST_CREDENTIAL_URL = "/credential"
-
-	client := &http.Client{}
-	reqBody, _ := json.Marshal(payload)
-	req, err := http.NewRequest("POST", "http://localhost:1323/tumblebug/credential", bytes.NewBuffer(reqBody))
-	if err != nil {
-		panic(err)
+	// 다른 호출들과 마찬가지로 --host/--port/--user/--password로 해석된 정보를 사용한다.
+	// 그래야 한 대의 서버에서 여러 서버의 Tumblebug을 초기화할 수 있다.
+	// (기본값은 그대로 http://localhost:1323/tumblebug)
+	url := serviceInfo.BaseURL + POST_CREDENTIAL_URL
+	if isVerbose {
+		fmt.Println("Request Url : ", url)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Basic ZGVmYXVsdDpkZWZhdWx0")
-
-	resp, err := client.Do(req)
+	// payload를 JSON으로 변환
+	reqBody, err := json.Marshal(payload)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("Error marshalling payload: %v", err)
 	}
-	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	resp, err := newRequest().
+		SetHeader("Content-Type", "application/json").
+		SetBody(reqBody).
+		Post(url)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil, fmt.Errorf("Error: %v", err)
+	}
 
-	return nil, nil
-	/*
-		if isVerbose {
-			fmt.Println("Request payload")
-			// Print the payload in a pretty-printed JSON format
-			payloadJSON, err := json.MarshalIndent(payload, "", "  ")
-			if err != nil {
-				panic(err)
-			}
+	// 응답 결과 확인
+	body := resp.Body() // []byte 타입
+	if isVerbose {
+		fmt.Println(string(body))
+	}
 
-			fmt.Println("Payload:")
-			fmt.Println(string(payloadJSON)) // 출력
-		}
+	// 2xx가 아니면 등록에 실패한 것이므로 응답 본문과 함께 오류를 반환
+	if resp.StatusCode() < 200 || resp.StatusCode() > 299 {
+		return nil, fmt.Errorf("credential registration failed with status %d: %s", resp.StatusCode(), strings.TrimSpace(string(body)))
+	}
 
-		url := serviceInfo.BaseURL + POST_CREDENTIAL_URL
-		if isVerbose {
-			fmt.Println("Request Url : ", url)
-		}
+	// 응답 결과를 처리하여 리턴 타입에 맞게 반환
+	var result map[string]interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing JSON: %v", err)
+	}
 
-		// payload를 JSON으로 변환
-		reqBody, err := json.Marshal(payload)
-		if err != nil {
-			return nil, fmt.Errorf("Error marshalling payload: %v", err)
-		}
+	// CSP Credential 정보 등록 완료 메시지 출력
+	fmt.Println("CSP Credential registration completed successfully")
 
-		// HTTP 요청 생성
-		req.SetHeader("Content-Type", "application/json")
-		resp, err := req.SetBody(reqBody).Post(url)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return nil, fmt.Errorf("Error: %v", err)
-		}
-
-		// 응답 결과 확인
-		body := resp.Body() // []byte 타입
-		if isVerbose {
-			fmt.Println(string(body))
-		}
-
-		if isVerbose {
-			fmt.Println(string(body))
-		}
-
-		// 응답 결과를 처리하여 리턴 타입에 맞게 반환
-		var result map[string]interface{}
-		err = json.Unmarshal(body, &result)
-		if err != nil {
-			return nil, fmt.Errorf("Error parsing JSON: %v", err)
-		}
-
-		if isVerbose {
-			fmt.Println("Response:")
-			// Print the response in a pretty-printed JSON format
-			responseJSON, err := json.MarshalIndent(result, "", "  ")
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Println(string(responseJSON)) // 출력
-		}
-
-		// CSP Credential 정보 등록 완료 메시지 출력
-		fmt.Println("CSP Credential registration completed successfully")
-	*/
-
-	//return result, nil
+	return result, nil
 }
 
 var credentialCmd = &cobra.Command{
@@ -738,7 +728,7 @@ var credentialCmd = &cobra.Command{
 		// 서브 커맨드가 입력되었을 때에는 도움말을 출력하지 않음.
 		if len(args) == 0 && cmd.Flags().NFlag() == 0 && cmd.HasSubCommands() {
 			//fmt.Println(cmd.Help())
-			cmd.Help()
+			_ = cmd.Help()
 			return
 		}
 

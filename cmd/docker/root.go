@@ -47,7 +47,7 @@ For example, you can install and run, stop, update and ... Cloud-Migrator runtim
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
 		//fmt.Println(cmd.Help())
-		cmd.Help()
+		_ = cmd.Help()
 	},
 	// Before any docker (infra) subcommand runs a `docker compose` command,
 	// make sure the shared environment file exists. The compose file relies on
@@ -214,6 +214,23 @@ var generatedEnvKeys = []string{
 // key invalidates tokens that were already issued, so tasks sitting in the celery
 // queue would fail on a key the scheduler no longer signs with. Keeping the value
 // stable is the whole point — the key needs to be unguessable, not new.
+//
+// Note on ordering: this writes to .env from PersistentPreRunE, which is before
+// `infra run` asks "Do you want to proceed? (y/N)". Answering N therefore leaves
+// a generated AIRFLOW_JWT_SECRET behind in .env. That is deliberate, and moving
+// the generation after the prompt was considered and rejected: validateDockerEnvFile
+// runs in the same hook and treats a blank AIRFLOW_JWT_SECRET as a hard error, so
+// generation has to precede validation, and validation has to precede the prompt
+// for the check to fail fast rather than after the user has committed. Deferring
+// generation past the prompt would make the first run fail validation before the
+// prompt was ever reached.
+//
+// Leaving the value behind is harmless in a way the removal steps are not: it is
+// a random local secret nothing outside this stack has to agree on, it is written
+// once and never rotated, and a cancelled run is left in exactly the state a
+// successful one would have started from. What was missing was not the ordering
+// but the disclosure — the message below now says the file was changed and that
+// the value stays, so a user who cancels is not surprised by an .env diff.
 func ensureGeneratedEnvValues() error {
 	dir := filepath.Dir(DockerFilePath)
 	envPath := filepath.Join(dir, ".env")
@@ -232,7 +249,8 @@ func ensureGeneratedEnvValues() error {
 		if err := setEnvKey(envPath, key, secret); err != nil {
 			return fmt.Errorf("failed to write %s to %s: %w", key, envPath, err)
 		}
-		fmt.Printf("Generated %s in %s (first run).\n", key, envPath)
+		fmt.Printf("Generated %s and saved it to %s (first run).\n", key, envPath)
+		fmt.Println("  This value is kept even if you cancel at the confirmation prompt; it is reused on every later run.")
 	}
 	return nil
 }
@@ -252,8 +270,7 @@ func randomSecret() (string, error) {
 // version simply has no line for a key added since). Every other line, including
 // comments, is preserved.
 func setEnvKey(path, key, value string) error {
-	// path is a fixed internal .env location (conf/docker/.env), not user input.
-	data, err := os.ReadFile(path) // #nosec G304
+	data, err := os.ReadFile(path) // #nosec G304 -- path is the internal .env next to the compose file, not user input
 	if err != nil {
 		return err
 	}
@@ -276,9 +293,9 @@ func setEnvKey(path, key, value string) error {
 			lines = append(lines, key+"="+value)
 		}
 	}
-	// .env holds secrets; keep it owner-only. The file already exists here, so
-	// this preserves its current mode rather than widening it.
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0600)
+	// .env holds secrets; writeEnvFile replaces it atomically and keeps it
+	// owner-only.
+	return writeEnvFile(path, []byte(strings.Join(lines, "\n")))
 }
 
 // validateDockerEnvFile parses conf/docker/.env and reports any required key
@@ -321,41 +338,27 @@ func parseDotEnv(path string) (map[string]string, error) {
 	return common.ParseDotEnv(path)
 }
 
-// convertServiceNameForDockerCompose converts comma-separated service names to space-separated
-// for Docker Compose command compatibility
-func convertServiceNameForDockerCompose(serviceName string) string {
-	if serviceName == "" {
-		return ""
-	}
-
-	// If contains comma, convert to space-separated
-	if strings.Contains(serviceName, ",") {
-		services := strings.Split(serviceName, ",")
-		var result []string
-		for _, service := range services {
-			trimmed := strings.TrimSpace(service)
-			if trimmed != "" {
-				result = append(result, trimmed)
-			}
-		}
-		return strings.Join(result, " ")
-	}
-
-	// If space-separated or single service, return as is
-	return serviceName
-}
-
-// SysCallDockerComposePsWithAll executes `docker-compose ps` command with optional --all flag
+// SysCallDockerComposePsWithAll executes `docker compose ps` with an optional
+// --all flag, scoped to the services named by -s (all services when -s is
+// omitted).
 func SysCallDockerComposePsWithAll(showAll bool) {
 	fmt.Println("\n[v]Status of Cloud-Migrator runtimes")
-	var cmdStr string
-	convertedServiceName := convertServiceNameForDockerCompose(ServiceName)
-	if showAll {
-		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps -a %s", ProjectName, DockerFilePath, convertedServiceName)
-	} else {
-		cmdStr = fmt.Sprintf("COMPOSE_PROJECT_NAME=%s docker compose -f %s ps %s", ProjectName, DockerFilePath, convertedServiceName)
+
+	services, err := resolveServices(ServiceName)
+	if err != nil {
+		fmt.Printf("❌ %v\n", err)
+		return
 	}
-	common.SysCall(cmdStr)
+
+	args := []string{"ps"}
+	if showAll {
+		args = append(args, "-a")
+	}
+	args = append(args, services...)
+
+	if err := runCompose(args...); err != nil {
+		fmt.Printf("❌ docker compose ps failed: %v\n", err)
+	}
 }
 
 func init() {

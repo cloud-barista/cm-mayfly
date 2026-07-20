@@ -4,13 +4,13 @@
 // The cm-mayfly first-run flow matches the upstream cb-tumblebug `make up`
 // pattern:
 //
-//	1. docker compose up -d openbao   (openbao alone — depends_on chain
-//	                                   doesn't pull other services in)
-//	2. wait for openbao API to respond
-//	3. run cb-tumblebug's openbao-init.sh, which writes VAULT_TOKEN into
-//	   the shared .env file
-//	4. (caller) docker compose up -d   (everything else — these containers
-//	                                   now see the populated VAULT_TOKEN)
+//  1. docker compose up -d openbao   (openbao alone — depends_on chain
+//     doesn't pull other services in)
+//  2. wait for openbao API to respond
+//  3. run cb-tumblebug's openbao-init.sh, which writes VAULT_TOKEN into
+//     the shared .env file
+//  4. (caller) docker compose up -d   (everything else — these containers
+//     now see the populated VAULT_TOKEN)
 //
 // Keeping Init/Unseal/Status here as plain functions lets `setup openbao`
 // commands and `infra run` share one implementation (single source of truth).
@@ -46,23 +46,51 @@ func envPath() string {
 }
 
 // HasVaultToken reports whether mayfly's .env has a non-empty VAULT_TOKEN.
-// Quoted empty values ("" / '') count as empty.
+// A value that is nothing but a pair of quotes counts as empty — ParseDotEnv
+// strips the quotes, so both the double- and single-quoted forms reduce to the
+// empty string here.
 func HasVaultToken() bool {
-	f, err := os.Open(envPath())
-	if err != nil {
-		return false
+	return readEnvValue(vaultTokenKey) != ""
+}
+
+// composeUpOpenbao brings up the openbao service on its own. `docker compose up
+// -d openbao` only starts the named service — depends_on flows from dependents
+// to dependencies, so nothing else is pulled in.
+//
+// Init() and the preflight's startOpenbaoAlone() both need exactly this, and
+// both used to assemble their own `COMPOSE_PROJECT_NAME=… docker compose …`
+// string for /bin/sh. One copy, executed as an argument vector, means the
+// compose file path is passed to the kernel literally instead of being re-parsed
+// by a shell, and there is no second copy to drift.
+func composeUpOpenbao() error {
+	return common.RunCommand(
+		"docker",
+		[]string{"compose", "-f", common.DefaultDockerComposeConfig, "up", "-d", "openbao"},
+		[]string{"COMPOSE_PROJECT_NAME=" + common.ComposeProjectName},
+	)
+}
+
+// warnOnFailure prints what went wrong and why it matters, and carries on.
+//
+// The permission fixes in Init used to discard their results with `_ =`. Most of
+// them are best-effort by design: sudo may not be usable without a password, and
+// the directories are frequently already owned correctly, in which case the
+// failure is harmless and aborting would break a setup that works today. But
+// when one of them does matter, the consequence used to appear much later and in
+// an unrelated place — typically as OpenBao failing to write its keyring — with
+// nothing to connect it back to the chown that never ran. Naming the failure at
+// the moment it happens costs nothing and removes that guessing.
+//
+// Only failures that make the rest of the flow impossible are returned as errors
+// (see the mkdir fallbacks); everything else comes through here.
+func warnOnFailure(err error, what, consequence string) {
+	if err == nil {
+		return
 	}
-	defer f.Close()
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		line := s.Text()
-		if !strings.HasPrefix(line, vaultTokenKey+"=") {
-			continue
-		}
-		v := strings.TrimSpace(strings.TrimPrefix(line, vaultTokenKey+"="))
-		return v != "" && v != `""` && v != `''`
+	fmt.Printf("  warn: %s: %v\n", what, err)
+	if consequence != "" {
+		fmt.Printf("        %s\n", consequence)
 	}
-	return false
 }
 
 // Init runs the official OpenBao initialization flow. When force is false and
@@ -100,19 +128,26 @@ func Init(force bool) error {
 	// host is the only reliable workaround that doesn't require changing
 	// docker-compose.yaml to run the entrypoint as root.
 	openbaoDataDir, _ := filepath.Abs(filepath.Join("conf", "docker", "data", "openbao", "data"))
+	// #nosec G204 -- fixed argv; openbaoDataDir is an absolute path built from repo-relative constants, and no shell parses it
 	if err := exec.Command("sudo", "-n", "mkdir", "-p", openbaoDataDir).Run(); err != nil {
 		// Fall back to plain mkdir if sudo isn't usable — better than aborting.
-		_ = os.MkdirAll(openbaoDataDir, 0755)
+		// This one is not optional: without the directory there is nothing for
+		// the container to bind-mount, so a failure here is reported rather than
+		// left to surface later as an unexplained openbao startup error.
+		if err2 := os.MkdirAll(openbaoDataDir, 0700); err2 != nil {
+			return fmt.Errorf("failed to create %s: %w (sudo fallback also failed: %v)",
+				openbaoDataDir, err2, err)
+		}
 	}
 	// 100:100 matches the openbao user/group inside the official image.
-	_ = exec.Command("sudo", "-n", "chown", "-R", "100:100", openbaoDataDir).Run()
+	warnOnFailure(
+		exec.Command("sudo", "-n", "chown", "-R", "100:100", openbaoDataDir).Run(), // #nosec G204 -- fixed argv, constant-derived path, no shell involved
+		fmt.Sprintf("could not give %s to UID 100 (the openbao user inside the container)", openbaoDataDir),
+		"OpenBao will fail to write its keyring if the directory is not writable by that user.",
+	)
 
 	fmt.Println("Step 1/3: docker compose up -d openbao")
-	upCmd := fmt.Sprintf(
-		"COMPOSE_PROJECT_NAME=%s docker compose -f %s up -d openbao",
-		common.ComposeProjectName, common.DefaultDockerComposeConfig,
-	)
-	if err := common.SysCallWithError(upCmd); err != nil {
+	if err := composeUpOpenbao(); err != nil {
 		return fmt.Errorf("failed to bring up openbao: %w", err)
 	}
 
@@ -142,11 +177,21 @@ func Init(force bool) error {
 	// secrets subdir exists and is owned by us (we'll write init.json into
 	// it; the openbao-unseal sidecar mounts it read-only as :ro).
 	openbaoRoot := filepath.Dir(absSecretsDir) // .../data/openbao
-	_ = exec.Command("sudo", "-n", "chown",
-		fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
-		openbaoRoot,
-	).Run()
-	if err := os.MkdirAll(absSecretsDir, 0755); err != nil {
+	warnOnFailure(
+		// #nosec G204 -- fixed argv; the only interpolation is our own numeric uid/gid, and openbaoRoot is constant-derived
+		exec.Command("sudo", "-n", "chown",
+			fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+			openbaoRoot,
+		).Run(),
+		fmt.Sprintf("could not take ownership of %s", openbaoRoot),
+		"If docker created it as root, creating the secrets directory below it will fail.",
+	)
+	// 0700: openbao-init.json lands here and holds the root token and the
+	// unseal keys. Nobody but the owner has any reason to read it, and the
+	// openbao-unseal sidecar mounts the directory into a container rather than
+	// reading it as another host user.
+	if err := os.MkdirAll(absSecretsDir, 0700); err != nil {
+		// #nosec G204 -- fixed argv, constant-derived absolute path, no shell involved
 		if err2 := exec.Command("sudo", "-n", "mkdir", "-p", absSecretsDir).Run(); err2 != nil {
 			return fmt.Errorf("failed to create %s: %w (sudo fallback also failed: %v)",
 				absSecretsDir, err, err2)
@@ -155,24 +200,57 @@ func Init(force bool) error {
 	// Make sure secrets dir is owned by us so openbao-init.sh can write
 	// init.json. Recursive is fine here — secrets is a sibling of data,
 	// the chown above on openbaoRoot is non-recursive.
-	_ = exec.Command("sudo", "-n", "chown", "-R",
-		fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
-		absSecretsDir,
-	).Run()
+	warnOnFailure(
+		// #nosec G204 -- fixed argv; the only interpolation is our own numeric uid/gid, and absSecretsDir is constant-derived
+		exec.Command("sudo", "-n", "chown", "-R",
+			fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+			absSecretsDir,
+		).Run(),
+		fmt.Sprintf("could not take ownership of %s", absSecretsDir),
+		"openbao-init.sh writes openbao-init.json there and will fail if it cannot.",
+	)
+	// MkdirAll only applies its mode when it creates the directory, so a
+	// secrets directory left over from an earlier run keeps whatever mode it
+	// had (0755 before this change). Narrow it explicitly.
+	warnOnFailure(
+		os.Chmod(absSecretsDir, 0700), // #nosec G302 -- a directory, not a file: 0700 is already owner-only
+		fmt.Sprintf("could not restrict %s to the owner", absSecretsDir),
+		"The root token and unseal keys stored there would stay readable by other local users.",
+	)
 	absEnv, _ := filepath.Abs(envPath())
 	initOut := filepath.Join(absSecretsDir, "openbao-init.json")
 	script := filepath.Join(cbDir, "init", "openbao", "openbao-init.sh")
 	if _, err := os.Stat(script); err != nil {
 		return fmt.Errorf("openbao-init.sh not found at %s: %w", script, err)
 	}
-	_ = os.Chmod(script, 0755)
-	runCmd := fmt.Sprintf(
-		"cd %q && ENV_FILE=%q INIT_OUTPUT=%q ./init/openbao/openbao-init.sh",
-		cbDir, absEnv, initOut,
+	warnOnFailure(
+		os.Chmod(script, 0750), // #nosec G302 -- openbao-init.sh must stay executable to be run; 0750 keeps it off other users
+		fmt.Sprintf("could not make %s executable", script),
+		"Running it will fail if it is not already executable.",
 	)
-	if err := common.SysCallWithError(runCmd); err != nil {
+	// The script is executed directly with cbDir as its working directory. It
+	// used to be assembled into a `cd %q && ENV_FILE=%q … ./init/openbao/…`
+	// string handed to /bin/sh, but %q is Go quoting, not shell quoting: it
+	// produces double quotes, inside which a shell still expands $VAR and
+	// $(command). A checkout path or an .env path containing either — a
+	// directory literally named `$(id)`, or simply `$HOME` — was substituted or
+	// executed by the shell before the script ever ran.
+	if err := common.RunCommandInDir(
+		cbDir,
+		"./init/openbao/openbao-init.sh",
+		nil,
+		[]string{"ENV_FILE=" + absEnv, "INIT_OUTPUT=" + initOut},
+	); err != nil {
 		return fmt.Errorf("openbao-init.sh failed: %w", err)
 	}
+
+	// openbao-init.json now holds the root token and the unseal keys. The
+	// upstream script does not restrict it, so do it here.
+	warnOnFailure(
+		os.Chmod(initOut, 0600),
+		fmt.Sprintf("could not restrict %s to the owner", initOut),
+		"It contains the root token and the unseal keys.",
+	)
 
 	if !HasVaultToken() {
 		return fmt.Errorf(
@@ -254,7 +332,9 @@ func UnsealWith(initFile, addr string) error {
 	if !st.Sealed {
 		return nil // already unsealed — nothing to do
 	}
-	raw, err := os.ReadFile(initFile)
+	// initFile is openbaoInitFilePath() in every call site: a repo-relative
+	// constant path, never an operator-supplied one.
+	raw, err := os.ReadFile(initFile) // #nosec G304 -- constant repo-relative path, not caller-supplied
 	if err != nil {
 		return fmt.Errorf("cannot read unseal key file %s: %w", initFile, err)
 	}
@@ -382,10 +462,14 @@ func Status() StatusInfo {
 func waitOpenbaoAPI(timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for {
-		out := common.SysCallWithOutput(
-			fmt.Sprintf(`curl -sf %s/v1/sys/seal-status 2>/dev/null`, openbaoAddr),
-		)
-		if out != "" {
+		// curl is invoked as an argument vector rather than a shell string, in
+		// line with the rest of this package. openbaoAddr is a constant so the
+		// shell form was not exploitable, but keeping one style means the next
+		// address that stops being constant does not reintroduce the question.
+		// -sf already keeps curl quiet and makes an HTTP error a non-zero exit,
+		// so the discarded stderr redirect is not needed.
+		out, err := common.RunCommandOutput("curl", []string{"-sf", openbaoAddr + "/v1/sys/seal-status"}, nil)
+		if err == nil && len(out) > 0 {
 			return nil
 		}
 		if time.Now().After(deadline) {
@@ -397,30 +481,149 @@ func waitOpenbaoAPI(timeout time.Duration) error {
 
 // ensureCbTumblebugSource returns the path to a cb-tumblebug git checkout
 // matching the image tag in docker-compose.yaml, cloning it on demand.
+//
+// The checkout's *actual* version is verified, not merely the presence of the
+// init script. cb-tumblebug changes its credential yaml field names and its
+// OpenBao registration between releases, and running the wrong release's
+// openbao-init.sh does not fail — it reports success while writing an
+// inconsistent state (empty credential values that only surface much later).
+// A directory left over from an earlier version therefore has to be caught
+// here, on what is the main path of a first-time build.
 func ensureCbTumblebugSource() (string, error) {
 	version, err := tumblebugVersionFromCompose()
 	if err != nil {
 		return "", fmt.Errorf("could not read cb-tumblebug version from docker-compose.yaml: %w", err)
 	}
 	gitTag := "v" + version
-	targetDir := filepath.Join(os.Getenv("HOME"), "go", "src", "github.com", "cloud-barista")
-	cbDir := filepath.Join(targetDir, "cb-tumblebug")
-	scriptPath := filepath.Join(cbDir, "init", "openbao", "openbao-init.sh")
-	if _, err := os.Stat(scriptPath); err == nil {
-		return cbDir, nil
+	// $HOME plus fixed segments; nothing operator-supplied contributes, and
+	// Clean resolves the result before any file operation sees it.
+	targetDir := filepath.Clean(filepath.Join(os.Getenv("HOME"), "go", "src", "github.com", "cloud-barista"))
+	cbDir := filepath.Clean(filepath.Join(targetDir, "cb-tumblebug"))
+
+	if _, err := os.Stat(cbDir); err == nil { // #nosec G703 -- $HOME plus fixed segments, cleaned above
+		if err := reconcileCbTumblebugCheckout(cbDir, gitTag); err != nil {
+			return "", err
+		}
+		return cbDir, initScriptErr(cbDir, gitTag)
 	}
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
+
+	// 0750 rather than 0755: only the operator running mayfly reads this checkout.
+	if err := os.MkdirAll(targetDir, 0750); err != nil { // #nosec G703 -- $HOME plus fixed segments, cleaned above
 		return "", err
 	}
-	clone := fmt.Sprintf("cd %q && git clone -b %s https://github.com/cloud-barista/cb-tumblebug.git", targetDir, gitTag)
 	fmt.Printf("  Cloning cb-tumblebug %s into %s ...\n", gitTag, cbDir)
-	if err := common.SysCallWithError(clone); err != nil {
+	if err := common.RunCommandInDir(
+		targetDir,
+		"git",
+		[]string{"clone", "-b", gitTag, "https://github.com/cloud-barista/cb-tumblebug.git"},
+		nil,
+	); err != nil {
 		return "", fmt.Errorf("git clone failed: %w", err)
 	}
-	if _, err := os.Stat(scriptPath); err != nil {
-		return "", fmt.Errorf("openbao-init.sh still missing after clone: %w", err)
+	// Confirm the clone really landed on the wanted tag. `clone -b` accepts a
+	// branch name just as happily as a tag, so checking the checked-out version
+	// is what distinguishes "cloned release v0.12.25" from "cloned some branch".
+	tag, commit, err := common.GitCheckoutVersion(cbDir)
+	if err != nil {
+		return "", fmt.Errorf("cb-tumblebug was cloned but its version cannot be read: %w", err)
 	}
-	return cbDir, nil
+	if tag != gitTag {
+		return "", fmt.Errorf(
+			"cb-tumblebug was cloned but is not on %s (currently on %s) — remove %s and run the command again",
+			gitTag, describeCheckout(tag, commit), cbDir)
+	}
+	return cbDir, initScriptErr(cbDir, gitTag)
+}
+
+// cbTumblebugInitScript is the OpenBao initialization script shipped inside a
+// cb-tumblebug checkout.
+func cbTumblebugInitScript(cbDir string) string {
+	return filepath.Join(cbDir, "init", "openbao", "openbao-init.sh")
+}
+
+// initScriptErr reports whether the checkout actually carries the script this
+// package is about to run.
+func initScriptErr(cbDir, gitTag string) error {
+	if _, err := os.Stat(cbTumblebugInitScript(cbDir)); err != nil {
+		return fmt.Errorf("openbao-init.sh is missing from the cb-tumblebug %s checkout at %s: %w", gitTag, cbDir, err)
+	}
+	return nil
+}
+
+// reconcileCbTumblebugCheckout makes an existing cb-tumblebug directory match
+// gitTag, or fails loudly.
+//
+// This runs unattended (`infra run` initializes OpenBao by itself), so it
+// cannot put a menu in front of the user the way `setup tumblebug-init` does.
+// The order of preference is therefore: never proceed on a mismatched version;
+// switch to the right tag when that is unambiguously safe; otherwise stop with
+// an error that says what to do. A mismatch is always reported, whichever
+// branch is taken.
+func reconcileCbTumblebugCheckout(cbDir, gitTag string) error {
+	tag, commit, err := common.GitCheckoutVersion(cbDir)
+	if err != nil {
+		return fmt.Errorf(
+			"%s already exists but its cb-tumblebug version cannot be verified (%v). "+
+				"Running the wrong version's openbao-init.sh corrupts the credential store without reporting an error. "+
+				"Remove the directory and run the command again to get a clean %s checkout",
+			cbDir, err, gitTag)
+	}
+	if tag == gitTag {
+		return nil
+	}
+
+	fmt.Printf("  cb-tumblebug at %s is on %s, but docker-compose.yaml runs %s.\n",
+		cbDir, describeCheckout(tag, commit), gitTag)
+
+	clean, err := common.GitWorkTreeClean(cbDir)
+	if err != nil {
+		return fmt.Errorf("cb-tumblebug version mismatch at %s (%s, expected %s), and its state cannot be read: %w",
+			cbDir, describeCheckout(tag, commit), gitTag, err)
+	}
+	if !clean {
+		return fmt.Errorf(
+			"cb-tumblebug at %s is on %s but %s is required, and the checkout has local changes so it cannot be switched automatically. "+
+				"Commit or discard the changes and run `git -C %s checkout %s`, or remove the directory and run the command again",
+			cbDir, describeCheckout(tag, commit), gitTag, cbDir, gitTag)
+	}
+	if !common.GitTagExists(cbDir, gitTag) {
+		return fmt.Errorf(
+			"cb-tumblebug at %s is on %s but %s is required, and that tag is not present in the local checkout. "+
+				"Run `git -C %s fetch --tags && git -C %s checkout %s`, or remove the directory and run the command again",
+			cbDir, describeCheckout(tag, commit), gitTag, cbDir, cbDir, gitTag)
+	}
+
+	fmt.Printf("  Switching cb-tumblebug to %s ...\n", gitTag)
+	if _, err := common.GitOutputInDir(cbDir, "checkout", gitTag); err != nil {
+		return fmt.Errorf("could not switch cb-tumblebug at %s to %s: %w — remove the directory and run the command again",
+			cbDir, gitTag, err)
+	}
+
+	// Read the version back rather than trusting the checkout to have done what
+	// was asked: the whole point here is that a silent mismatch is the failure.
+	tag, commit, err = common.GitCheckoutVersion(cbDir)
+	if err != nil || tag != gitTag {
+		return fmt.Errorf("cb-tumblebug at %s is still not on %s after switching (currently on %s)",
+			cbDir, gitTag, describeCheckout(tag, commit))
+	}
+	fmt.Printf("  cb-tumblebug is now on %s.\n", gitTag)
+	return nil
+}
+
+// describeCheckout renders a checkout for a message: its tag when it sits on
+// one, otherwise the commit it is parked at.
+func describeCheckout(tag, commit string) string {
+	if tag != "" {
+		return tag
+	}
+	if commit == "" {
+		return "an unknown version"
+	}
+	short := commit
+	if len(short) > 12 {
+		short = short[:12]
+	}
+	return "commit " + short + " (no release tag)"
 }
 
 func tumblebugVersionFromCompose() (string, error) {
@@ -443,23 +646,25 @@ func readEnvToken() string {
 	return readEnvValue(vaultTokenKey)
 }
 
-// readEnvValue returns the raw value of key from mayfly's .env, or "" when the
-// file or the key is absent. Values are used as-is (no shell-style expansion) —
-// the keys read here (VAULT_TOKEN, TB_API_*) are plain literals.
+// readEnvValue returns the value of key from mayfly's .env, or "" when the file
+// or the key is absent. Values are used as-is apart from quote stripping (no
+// shell-style expansion) — the keys read here (VAULT_TOKEN, TB_API_*) are plain
+// literals.
+//
+// This delegates to common.ParseDotEnv rather than scanning the file itself.
+// The hand-rolled scanner it replaces did not strip surrounding quotes, and the
+// values are used as credentials: TB_API_PASSWORD="pass" came back with the
+// quotes attached, so the Basic auth header carried `"pass"` and cb-tumblebug
+// answered 401. probeContainerToken reads that 401 as "cannot tell", which
+// downgrades the container-token check to unknown and quietly disables the very
+// signal container_token.go exists to provide. Having one parser means a value
+// is read the same way whoever reads it.
 func readEnvValue(key string) string {
-	f, err := os.Open(envPath())
+	values, err := common.ParseDotEnv(envPath())
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		line := s.Text()
-		if strings.HasPrefix(line, key+"=") {
-			return strings.TrimSpace(strings.TrimPrefix(line, key+"="))
-		}
-	}
-	return ""
+	return values[key]
 }
 
 func maskToken(tok string) string {
