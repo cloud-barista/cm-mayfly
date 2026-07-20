@@ -554,12 +554,12 @@ $ ./mayfly infra logs -s cm-butterfly --tail 100 --since 2h
 
 ### 전체 시스템 제거
 
-기본적으로 컨테이너만 종료·삭제하며, 이미지·볼륨·호스트 데이터는 보존합니다(`docker compose down`과 동일). 생성된 네트워크도 삭제됩니다.
+기본적으로 컨테이너와 프로젝트 네트워크만 삭제하며, 이미지와 호스트 데이터(`conf/docker/data/`)는 보존합니다(`docker compose down`과 동일). 데이터가 남으므로 `mayfly infra run`으로 다시 올리면 기존 상태 그대로 복귀합니다.
 ```bash
 $ ./mayfly infra remove
 ```
 
-이미지·명명(named) 볼륨·DB 호스트 데이터(`conf/docker/data/*` 중 openbao 제외)까지 함께 삭제합니다. OpenBao 자격증명(데이터·`.env` 토큰)은 보존됩니다.
+이미지와 호스트 데이터(`conf/docker/data/*` 중 openbao 제외)까지 함께 삭제합니다. OpenBao 자격증명(데이터·`.env` 토큰)은 보존됩니다.
 ```bash
 $ ./mayfly infra remove --clean-db
 ```
@@ -587,11 +587,15 @@ $ ./mayfly infra remove -s "cb-tumblebug cb-spider"
 $ ./mayfly infra remove -s "cb-tumblebug,cb-spider"
 ```
 
-특정 서비스 제거 시 데이터까지 함께 정리:
+특정 서비스 제거 시 이미지·데이터까지 함께 정리:
 ```bash
-# 특정 서비스 + 해당 서비스의 이미지·볼륨·호스트 데이터(conf/docker/data/<서비스>)까지 제거
+# 특정 서비스 + 해당 서비스의 이미지 + 호스트 데이터(conf/docker/data/<서비스>)까지 제거
 $ ./mayfly infra remove -s cb-tumblebug --clean-db
 ```
+
+`--clean-db`는 `-s` 유무와 무관하게 **대상 서비스의 이미지를 삭제**합니다. 이미지가 남아 있으면 `docker compose up`이 로컬 이미지를 그대로 재사용하기 때문에, `edge`·`latest`처럼 태그가 이동하는 이미지에서는 *삭제 후 다시 받았는데도 예전 버전이 뜨는* 현상이 생깁니다. 이미지를 지우면 다음 `mayfly infra run`이 반드시 새로 받습니다.
+
+이미지를 그대로 두고 컨테이너만 재기동하고 싶다면 `--clean-db` 없이 실행하세요(재다운로드 없음).
 
 > [!NOTE]
 > - 특정 서비스 제거 시 네트워크가 보존되어 다른 서비스에 영향을 주지 않습니다.
