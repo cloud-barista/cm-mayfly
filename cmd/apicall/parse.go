@@ -193,6 +193,19 @@ func runTool(cmd *cobra.Command) error {
 		fmt.Printf("\n%s에 대해 %s.\n소스: %s\n", scope, verb, t.url)
 	}
 
+	// A raw -f source carries no requested version, so the version recorded in
+	// api.yaml falls back to whatever the document declares in info.version —
+	// usually "latest", which does not say which release is actually deployed.
+	// Warn before writing that, because the only fix afterwards is editing
+	// api.yaml by hand.
+	if applyToYaml && fileSet {
+		fmt.Println("\n⚠ Caution: the Swagger given with -f does not carry the release it belongs to.")
+		fmt.Println("  The version recorded in api.yaml will be the document's own info.version")
+		fmt.Println("  (most services publish \"latest\"), so it may not match the release you are")
+		fmt.Println("  deploying, and correcting it afterwards means editing api.yaml by hand.")
+		fmt.Println("  Use --release <tag> instead to record the exact version.")
+	}
+
 	if !skipConfirm && !confirmYN("\n계속 진행하시겠습니까? (Y/n): ") {
 		fmt.Println("취소되었습니다.")
 		return nil
@@ -245,7 +258,39 @@ func processOne(svc, source string) error {
 		fmt.Print(renderActions(actions))
 		return nil
 	}
-	return applyToApiYaml(common.API_FILE, svc, actionName != "", actions, version)
+	apiFile, err := resolveApiFile()
+	if err != nil {
+		return err
+	}
+	return applyToApiYaml(apiFile, svc, actionName != "", actions, version)
+}
+
+// resolveApiFile returns the api.yaml that --apply should update.
+//
+// -c names the file the command works on, and it has to name it for writing as
+// well as for reading: resolving the swagger URLs from one file and then writing
+// the result into another is how an update silently lands in the wrong place.
+//
+// Without -c the configured default is used when it exists, and otherwise an
+// api.yaml in the current directory is accepted, so the tool still works from a
+// checkout whose layout puts the file elsewhere.
+func resolveApiFile() (string, error) {
+	if configFile != "" {
+		if _, err := os.Stat(configFile); err == nil {
+			return configFile, nil
+		}
+		// An explicitly named file that does not exist is an error, not a
+		// reason to quietly fall back to some other file.
+		if configFile != common.API_FILE {
+			return "", fmt.Errorf("config file not found: %s", configFile)
+		}
+	}
+	for _, candidate := range []string{common.API_FILE, "./api.yaml"} {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("api.yaml not found (looked for %s and ./api.yaml)\nRun this from the directory that holds it, or point at it with -c", common.API_FILE)
 }
 
 // recordedVersion returns the version recorded to api.yaml as
@@ -431,8 +476,9 @@ func applyToApiYaml(apiFile, service string, singleAction bool, actions map[stri
 		return fmt.Errorf("failed to read %s: %w", apiFile, err)
 	}
 
-	// apiFile is common.API_FILE at the only call site — the tool's own
-	// conf/api.yaml — so the backup name derived from it is equally fixed.
+	// apiFile is whatever resolveApiFile settled on — the configured default or
+	// the file named with -c — so the backup sits next to the file being
+	// updated rather than next to a fixed path.
 	backup := fmt.Sprintf("%s.bak.%s", apiFile, time.Now().Format("20060102-150405"))
 	if err := os.WriteFile(backup, orig, 0600); err != nil { // #nosec G703 -- derived from the fixed internal api.yaml path
 		return fmt.Errorf("failed to write backup %s: %w", backup, err)
@@ -584,7 +630,7 @@ func updateServiceActionsBlock(content, service string, singleAction bool, actio
 	}
 	sa := mapChild(root, "serviceActions")
 	if sa == nil {
-		return "", fmt.Errorf("'serviceActions:' section not found in %s", common.API_FILE)
+		return "", fmt.Errorf("'serviceActions:' section not found in the target api.yaml")
 	}
 	lines := strings.Split(content, "\n")
 
