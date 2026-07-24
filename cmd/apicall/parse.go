@@ -83,18 +83,18 @@ func runTool(cmd *cobra.Command) error {
 		}
 	}
 	if srcN > 1 {
-		return fmt.Errorf("소스 옵션은 -f / --latest / --release 중 하나만 지정하세요.")
+		return fmt.Errorf("specify only one source option: -f, --latest or --release")
 	}
 
 	// No source given: ask (latest vs a specific release).
 	if srcN == 0 {
 		if skipConfirm {
-			return fmt.Errorf("자동화(-y) 시에는 소스(-f/--latest/--release)와 대상(--service)을 명시하세요.")
+			return fmt.Errorf("with -y, name both the source (-f/--latest/--release) and the target (--service)")
 		}
-		if promptChoice("Swagger 소스가 지정되지 않았습니다. 어떤 Swagger를 사용할까요?", "최신(각 서비스 기본 브랜치)", "특정 릴리스 버전") == 2 {
-			releaseVer = promptLine("릴리스 버전을 입력하세요 (예: v0.5.2): ")
+		if promptChoice("No Swagger source given. Which Swagger should be used?", "Latest (each service's default branch)", "A specific release") == 2 {
+			releaseVer = promptLine("Enter the release tag (e.g. v0.5.2): ")
 			if releaseVer == "" {
-				return fmt.Errorf("릴리스 버전이 입력되지 않았습니다.")
+				return fmt.Errorf("no release tag was entered")
 			}
 		} else {
 			useLatest = true
@@ -102,7 +102,7 @@ func runTool(cmd *cobra.Command) error {
 	}
 
 	if !applyToYaml {
-		fmt.Println("api.yaml에 직접 반영하려면 --apply 플래그를 지정해 주세요. (현재는 화면 출력만 합니다.)")
+		fmt.Println("Add --apply to write the result into api.yaml (this run only prints it).")
 	}
 
 	// Determine the target services.
@@ -111,21 +111,21 @@ func runTool(cmd *cobra.Command) error {
 	case serviceName != "":
 		svcs = []string{serviceName}
 	case fileSet:
-		return fmt.Errorf("-f로 단일 소스를 줄 때는 --service로 대상 서비스를 지정하세요.")
+		return fmt.Errorf("when a single source is given with -f, name the target service with --service")
 	default:
 		if skipConfirm {
-			return fmt.Errorf("자동화(-y) 시에는 --service를 명시하세요.")
+			return fmt.Errorf("with -y, name the target service with --service")
 		}
-		if promptChoice("--service 미지정 — 처리 대상을 선택하세요.", "특정 서비스만", "전체 서비스") == 1 {
-			s := promptLine("서비스명을 입력하세요: ")
+		if promptChoice("--service not given - choose what to process.", "A single service", "Every service") == 1 {
+			s := promptLine("Enter the service name: ")
 			if s == "" {
-				return fmt.Errorf("서비스명이 입력되지 않았습니다.")
+				return fmt.Errorf("no service name was entered")
 			}
 			svcs = []string{s}
 		} else {
 			svcs = registeredSwaggerServices()
 			if len(svcs) == 0 {
-				return fmt.Errorf("swagger 정보가 등록된 서비스가 없습니다 (api.yaml services.<svc>.swagger).")
+				return fmt.Errorf("no service has a swagger source registered (api.yaml services.<svc>.swagger)")
 			}
 		}
 	}
@@ -140,9 +140,9 @@ func runTool(cmd *cobra.Command) error {
 		url, ok := resolveSwaggerURL(svc)
 		if !ok {
 			if len(svcs) == 1 {
-				return fmt.Errorf("서비스 %q에 swagger 정보가 없습니다. -f로 직접 지정하거나 api.yaml의 services.%s.swagger를 확인하세요.", svc, svc)
+				return fmt.Errorf("service %q has no swagger source. Pass one with -f, or check services.%s.swagger in api.yaml", svc, svc)
 			}
-			missing = append(missing, swaggerTarget{svc, "(swagger 미등록)"})
+			missing = append(missing, swaggerTarget{svc, "(no swagger registered)"})
 			continue
 		}
 		if swaggerExists(url) {
@@ -153,44 +153,44 @@ func runTool(cmd *cobra.Command) error {
 	}
 
 	// Summary + confirmation.
-	verb := "api.yaml 구조로 화면에 출력합니다"
+	verb := "will be printed in api.yaml form"
 	if applyToYaml {
-		verb = "api.yaml에 반영합니다"
+		verb = "will be written into api.yaml"
 	}
 	multi := len(svcs) > 1
 	if multi {
-		relLabel := "최신"
+		relLabel := "latest"
 		if releaseVer != "" {
-			relLabel = releaseVer + " 릴리스 버전의"
+			relLabel = releaseVer + " release"
 		}
-		fmt.Printf("\n모든 서비스에 대해 %s API를 %s.\n", relLabel, verb)
+		fmt.Printf("\nThe %s API of every service %s.\n", relLabel, verb)
 		if len(missing) > 0 {
 			fmt.Println()
 			fmt.Println(hrThick)
-			fmt.Println("[경고]")
+			fmt.Println("[Warning]")
 			fmt.Println(hrThick)
-			fmt.Println("아래 서비스들은 요청한 버전의 API 문서가 존재하지 않습니다. 버전 및 URL을 확인하세요.")
-			fmt.Println("(-f 와 -s 옵션을 이용하면 특정 URL과 특정 서비스를 지정할 수 있습니다.)")
+			fmt.Println("No API document exists at the requested version for the services below. Check the version and the URL.")
+			fmt.Println("(Use -f and -s to point at a specific URL and service.)")
 			printTargets(missing)
 			fmt.Println(hrThin)
 		}
 		if len(present) == 0 {
-			fmt.Println("\n처리할 수 있는 서비스가 없습니다.")
+			fmt.Println("\nThere is no service to process.")
 			return nil
 		}
-		fmt.Println("\n아래 서비스들의 API만 처리합니다.")
+		fmt.Println("\nOnly the API of the services below will be processed.")
 		printTargets(present)
 	} else {
 		if len(present) == 0 {
 			m := missing[0]
-			return fmt.Errorf("요청한 Swagger를 찾을 수 없습니다: %s : %s — 버전(vX.Y.Z) 또는 --latest 를 확인하세요.", m.svc, m.url)
+			return fmt.Errorf("the requested Swagger was not found: %s : %s - check the version (vX.Y.Z) or use --latest", m.svc, m.url)
 		}
 		t := present[0]
-		scope := t.svc + " Service 전체"
+		scope := t.svc + " service (all actions)"
 		if actionName != "" {
-			scope = fmt.Sprintf("%s Service의 %s 액션", t.svc, actionName)
+			scope = fmt.Sprintf("the %s action of the %s service", actionName, t.svc)
 		}
-		fmt.Printf("\n%s에 대해 %s.\n소스: %s\n", scope, verb, t.url)
+		fmt.Printf("\n%s %s.\nSource: %s\n", scope, verb, t.url)
 	}
 
 	// A raw -f source carries no requested version, so the version recorded in
@@ -206,15 +206,15 @@ func runTool(cmd *cobra.Command) error {
 		fmt.Println("  Use --release <tag> instead to record the exact version.")
 	}
 
-	if !skipConfirm && !confirmYN("\n계속 진행하시겠습니까? (Y/n): ") {
-		fmt.Println("취소되었습니다.")
+	if !skipConfirm && !confirmYN("\nProceed? (Y/n): ") {
+		fmt.Println("Cancelled.")
 		return nil
 	}
 
 	var firstErr error
 	for _, t := range present {
 		if err := processOne(t.svc, t.url); err != nil {
-			fmt.Printf("[%s] 실패: %v\n", t.svc, err)
+			fmt.Printf("[%s] failed: %v\n", t.svc, err)
 			if firstErr == nil {
 				firstErr = err
 			}
@@ -381,7 +381,7 @@ func promptChoice(q string, opts ...string) int {
 	for i, o := range opts {
 		fmt.Printf("  %d) %s\n", i+1, o)
 	}
-	fmt.Print("선택: ")
+	fmt.Print("Choice: ")
 	line, _ := stdinReader.ReadString('\n')
 	n, _ := strconv.Atoi(strings.TrimSpace(line))
 	if n < 1 || n > len(opts) {
@@ -704,22 +704,22 @@ func splitNonEmpty(block string) []string {
 }
 
 func convertActionlName(tmpActionName string) string {
-	//일부 특수 기호들 제거
+	// Strip some special characters
 	tmpActionName = strings.ReplaceAll(tmpActionName, ":", "-")
 	tmpActionName = strings.ReplaceAll(tmpActionName, "`", "")
 	tmpActionName = strings.ReplaceAll(tmpActionName, "'", "")
 
-	//카멜타입으로 변경
+	// Convert to camel case
 	tmpActionName = toCamelCase(tmpActionName)
 
 	return tmpActionName
 }
 
 func toCamelCase(str string) string {
-	words := strings.Fields(str) // 문자열을 공백을 기준으로 단어로 분할
+	words := strings.Fields(str) // Split the string into words on whitespace
 	var result strings.Builder
 	for _, word := range words {
-		result.WriteString(strings.Title(word)) // 각 단어의 첫 글자를 대문자로 만듦
+		result.WriteString(strings.Title(word)) // Capitalize the first letter of each word
 	}
 	return result.String()
 }
