@@ -17,7 +17,7 @@ var RootCmd = &cobra.Command{
 	Use:               "mayfly",
 	Short:             "A tool to operate Cloud-Migrator system",
 	Long:              `The mayfly is a tool to operate Cloud-Migrator system.`,
-	CompletionOptions: cobra.CompletionOptions{HiddenDefaultCmd: true}, //completion 옵션 출력 제거
+	CompletionOptions: cobra.CompletionOptions{HiddenDefaultCmd: true}, //hide the default completion command from the help output
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },

@@ -4,7 +4,7 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package setup
 
 import (
-	//"github.com/cm-mayfly/cm-mayfly/cmd" //임시로 주석처리
+	//"github.com/cm-mayfly/cm-mayfly/cmd" //temporarily commented out
 	//"github.com/cm-mayfly/cm-mayfly/common"
 	"github.com/cm-mayfly/cm-mayfly/cmd"
 	"github.com/spf13/cobra"
