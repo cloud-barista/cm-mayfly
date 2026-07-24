@@ -41,8 +41,8 @@ var restCmd = &cobra.Command{
 
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		//fmt.Println(isVerbose)
-		//fmt.Println("============ 아규먼트 :  " + strconv.Itoa(len(args)))
-		if len(args) != 0 { //하위 커맨드가 실행된 경우에만 실행 그 외에는 도움말만 실행
+		//fmt.Println("============ args :  " + strconv.Itoa(len(args)))
+		if len(args) != 0 { //only run this when a subcommand was invoked; otherwise just show the help
 			if isVerbose {
 				req.EnableTrace()
 			}
@@ -50,13 +50,13 @@ var restCmd = &cobra.Command{
 			SetBasicAuth() // Authorization: Basic <base64-encoded-value>
 			SetHeaders()
 			//SetReqData()
-			err := SetReqData() // 전송 데이터 처리
+			err := SetReqData() // build the request body
 			if err != nil {
 				//fmt.Println(err)
 				return err
 			}
 
-			//출력 파일 지정
+			//write the response to a file instead of stdout
 			if outputFile != "" {
 				req.SetOutput(outputFile)
 			}
@@ -70,9 +70,9 @@ var restCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(cmd.UsageString())
-		//fmt.Println("============ REST 메인 호출됨!!!!  ")
+		//fmt.Println("============ REST root called!!!!  ")
 		//fmt.Println(cmd.Help())
-		_ = cmd.Help() // root.go에서는 도움말만 출력 함.
+		_ = cmd.Help() // the rest root command only prints the help.
 	},
 
 	// PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -138,7 +138,7 @@ func SetReqData() error {
 			fmt.Printf("use [%s] data file\n", inputFileData)
 		}
 
-		// 파일에서 데이터 읽기
+		// read the body from the file
 		// Reading the file the operator names with the request-data flag is
 		// the feature itself; there is no directory this path should be confined to.
 		data, err := ioutil.ReadFile(inputFileData) // #nosec G304 -- operator-supplied request body file is the documented purpose of this flag
@@ -157,7 +157,7 @@ func SetReqData() error {
 }
 
 func ProcessResultInfo(resp *resty.Response) {
-	// 응답 출력
+	// print the response
 	if isVerbose {
 		ShowTraceInfo(resp)
 	} else {
@@ -206,7 +206,7 @@ func doRequest(url string, send func(string) (*resty.Response, error)) int {
 		return 1
 	}
 
-	// 응답 출력
+	// print the response
 	ProcessResultInfo(resp)
 	return exitCodeFor(resp.StatusCode()) // for docker compose healthy check
 }
@@ -265,7 +265,7 @@ func init() {
 	restCmd.PersistentFlags().StringVarP(&username, "user", "u", "", "Username for basic authentication") // - sets the basic authentication header in the HTTP request
 	restCmd.PersistentFlags().StringVarP(&password, "password", "p", "", "Password for basic authentication")
 
-	// 인증 토큰 설정
+	// Add flags for token authentication
 	restCmd.PersistentFlags().StringVarP(&authToken, "authToken", "", "", "sets the auth token of the 'Authorization' header for all HTTP requests.(The default auth scheme is 'Bearer')")
 	restCmd.PersistentFlags().StringVarP(&authScheme, "authScheme", "", "", "sets the auth scheme type in the HTTP request.(Exam. OAuth)(The default auth scheme is Bearer)")
 
