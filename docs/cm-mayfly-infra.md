@@ -337,36 +337,61 @@ $ ./mayfly infra update -d
 `mayfly infra update` 명령은 업데이트 전에 각 서비스의 버전 상태를 체크하고 사용자에게 확인을 요청합니다.
 
 #### 동작 방식
-1. **로컬 이미지 버전 확인**: 로컬에 다운로드된 이미지 버전
-2. **docker-compose.yaml 버전 확인**: 설정 파일에 정의된 버전
-3. **Docker Hub 태그 업데이트 확인**: docker-compose.yaml에 정의된 특정 태그의 최신 상태
-4. **버전 비교 및 표시**: 각 서비스별 버전 상태를 테이블로 표시
-5. **사용자 확인**: 업데이트가 필요한 경우 사용자에게 확인 요청
+1. **로컬 이미지 버전 확인**: 실행 중인 컨테이너가 쓰는 이미지 태그
+2. **docker-compose.yaml 버전 확인**: 설정 파일에 정의된 태그
+3. **Docker Hub 조회**: 해당 태그를 언제 마지막으로 올렸는지(`Hub updated`)와 그 태그가 현재 가리키는 내용(다이제스트)
+4. **버전 비교 및 표시**: 각 서비스별 상태를 테이블로 표시
+5. **사용자 확인**: 갱신이 필요한 경우 대상 서비스를 알리고 확인 요청
+
+**태그 이름이 같아도 내용이 바뀌었으면 갱신 대상입니다.** `edge`·`latest`처럼 움직이는 태그는 새로 빌드돼도 이름이 그대로라 이름 비교만으로는 절대 잡히지 않습니다. 그래서 이름이 같은 경우에는 로컬 이미지와 Docker Hub의 다이제스트를 대조합니다.
 
 #### 출력 예시
 ```
 🔍 Checking version updates...
 
 📊 Version Comparison:
-┌─────────────────────┬───────────────┬───────────────┬───────────────┐
-│ Service             │ Local         │ Compose       │ Latest        │
-├─────────────────────┼───────────────┼───────────────┼───────────────┤
-│ cm-ant              │ 0.3.8         │ 0.4.0         │ 0.4.0         │ ●
-│ cb-tumblebug        │ 0.4.0         │ 0.4.0         │ -             │ ✓
-│ cb-spider           │ not_installed │ 0.11.5        │ 0.11.5        │ ✗
-└─────────────────────┴───────────────┴───────────────┴───────────────┘
+┌────────────────────┬───────────────┬─────────┬─────────────┐
+│ Service            │ Local         │ Compose │ Hub updated │
+├────────────────────┼───────────────┼─────────┼─────────────┤
+│ cb-spider          │ not_installed │ 0.12.35 │ 2026-06-30  │ ✗
+│ cb-tumblebug       │ 0.12.25       │ 0.12.25 │ 2026-07-02  │ ✓
+│ cm-ant             │ 0.5.4         │ 0.5.7   │ 2026-07-21  │ ●
+│ cm-butterfly-front │ edge          │ edge    │ 2026-07-24  │ ◆
+└────────────────────┴───────────────┴─────────┴─────────────┘
 
 Legend:
-✓ All versions match
-● Local version differs from docker-compose.yaml (update needed)
+✓ Up to date
+● Tag differs from docker-compose.yaml (update needed)
+◆ Same tag, but Docker Hub holds different content (update needed)
 ✗ Image not installed locally
+? Local version could not be read — left out of the update
 
+Hub updated is when Docker Hub last pushed the tag docker-compose.yaml asks for.
+It is information, not the verdict: the verdict comes from the columns to its left.
+
+Details:
+  ✗ cb-spider — not installed locally
+  ● cm-ant — tag differs from docker-compose.yaml
+  ◆ cm-butterfly-front — same tag, but Docker Hub holds different content
+
+➡️  3 service(s) will be updated: cb-spider, cm-ant, cm-butterfly-front
+   Everything else keeps running untouched.
 Do you want to proceed with the update? (y/N): y
 ```
 
+#### 갱신 범위
+
+**`-s` 없이 실행하면 위 표에서 갱신이 필요하다고 판정된 서비스만** 내려받고 재기동합니다. 변경이 없는 서비스는 실행 중인 상태 그대로 둡니다.
+
+`-s`를 주면 그 지정이 우선합니다. 서비스를 직접 고르는 것은 사용자의 결정이므로 버전 판정이 그것을 덮어쓰지 않습니다.
+
+갱신 대상이 하나도 없을 때는 "모두 최신"이라고 알린 뒤, 그래도 내려받아 재기동할지 따로 묻습니다. 이 경우에는 좁힐 근거가 없으므로 전체가 대상입니다.
+
+> **판단이 불확실하면 건드리지 않습니다.** Docker Hub 조회가 실패했거나 로컬 이미지에 다이제스트가 없어(직접 빌드한 이미지 등) 비교할 수 없으면 그 서비스는 갱신 대상에서 제외합니다. 로컬 버전을 읽지 못한 서비스도 마찬가지입니다(`?` 표시). 네트워크가 잠깐 끊겼다는 이유로 환경 전체가 재기동되면 안 되기 때문입니다.
+
 #### 사용법
 ```bash
-# 전체 서비스 업데이트 (버전 체크 포함)
+# 갱신이 필요한 서비스만 업데이트 (버전 체크 포함)
 $ ./mayfly infra update
 
 # 특정 서비스만 업데이트 (버전 체크 포함)
@@ -376,12 +401,14 @@ $ ./mayfly infra update -s cb-tumblebug
 # 여러 서비스를 동시에 업데이트
 $ ./mayfly infra update -s "cb-tumblebug cb-spider"
 $ ./mayfly infra update -s "cm-ant,cm-cicada"
+$ ./mayfly infra update -s cm-ant -s cm-cicada
 ```
 
 #### 특징
 - **docker-compose.yaml 기준**: 설정 파일에 정의된 버전으로 로컬 환경 맞춤
-- **스마트한 버전 관리**: 로컬 버전과 설정 파일 버전 비교
-- **사용자 친화적**: 업데이트 전 명확한 정보 제공
+- **바뀐 것만 갱신**: 판정된 서비스만 pull·재기동하고 나머지는 건드리지 않음
+- **움직이는 태그 대응**: 태그 이름이 같아도 내용이 바뀌었으면 다이제스트로 탐지
+- **사용자 친화적**: 업데이트 전 대상과 근거를 함께 제시
 - **안전한 업데이트**: 사용자 확인 후에만 업데이트 진행
 - **호환성 보장**: docker-compose.yaml에 정의된 버전 우선 사용
 

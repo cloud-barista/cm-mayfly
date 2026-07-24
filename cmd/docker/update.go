@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/cm-mayfly/cm-mayfly/common"
@@ -30,6 +31,18 @@ type DockerHubTagDetail struct {
 // DockerHubTagDetailResponse represents Docker Hub API response for specific tag
 type DockerHubTagDetailResponse struct {
 	LastUpdated string `json:"last_updated"`
+	// Digest identifies the content the tag currently points at. A moving tag
+	// such as edge or latest keeps its name while this changes, so it is the
+	// only way to tell whether such a tag has actually been rebuilt.
+	Digest string `json:"digest"`
+}
+
+// dockerHubTag is what one tag lookup tells us. Both fields are best-effort:
+// an empty value means the lookup did not answer for it, never that the remote
+// image is missing.
+type dockerHubTag struct {
+	LastUpdated string
+	Digest      string
 }
 
 // dockerHubRepositoryPath maps an image name to its path in the Docker Hub API.
@@ -45,8 +58,10 @@ func dockerHubRepositoryPath(imageName string) string {
 	return "library/" + imageName
 }
 
-// checkDockerHubTagUpdate checks if the specific tag on Docker Hub has been updated
-func checkDockerHubTagUpdate(imageName, tag string) (string, error) {
+// fetchDockerHubTag reads when a tag was last pushed and what content it points
+// at. One request answers both; the digest is what makes a moving tag such as
+// edge or latest comparable at all.
+func fetchDockerHubTag(imageName, tag string) (dockerHubTag, error) {
 	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/tags/%s/",
 		dockerHubRepositoryPath(imageName), tag)
 
@@ -55,19 +70,56 @@ func checkDockerHubTagUpdate(imageName, tag string) (string, error) {
 	// unresponsive Docker Hub left `infra update` waiting with no way out.
 	resp, err := common.NewHTTPClient().R().Get(url)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch Docker Hub API: %v", err)
+		return dockerHubTag{}, fmt.Errorf("failed to fetch Docker Hub API: %v", err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return "", fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode())
+		return dockerHubTag{}, fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode())
 	}
 
 	var tagResponse DockerHubTagDetailResponse
 	if err := json.Unmarshal(resp.Body(), &tagResponse); err != nil {
-		return "", fmt.Errorf("failed to parse JSON response: %v", err)
+		return dockerHubTag{}, fmt.Errorf("failed to parse JSON response: %v", err)
 	}
 
-	return tagResponse.LastUpdated, nil
+	return dockerHubTag{
+		LastUpdated: tagResponse.LastUpdated,
+		Digest:      tagResponse.Digest,
+	}, nil
+}
+
+// fetchTagInfo is the Docker Hub lookup used by the version check, indirected
+// so tests can exercise the comparison without reaching the network.
+var fetchTagInfo = fetchDockerHubTag
+
+// localImageDigest reports the registry digest of the image held locally under
+// imageName:tag, or "" when there is nothing to compare against.
+//
+// An image built on this host, or one pulled before digests were recorded, has
+// no RepoDigests entry. That is not an error and must not be read as "the local
+// copy differs" — the caller falls back to comparing tag names instead.
+func localImageDigest(imageName, tag string) string {
+	out, err := common.RunCommandOutput("docker",
+		[]string{"image", "inspect", fmt.Sprintf("%s:%s", imageName, tag),
+			"--format", "{{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}"}, nil)
+	if err != nil {
+		return ""
+	}
+
+	ref := strings.TrimSpace(string(out))
+	if _, digest, found := strings.Cut(ref, "@"); found {
+		return digest
+	}
+	return ""
+}
+
+// shortDate trims a Docker Hub timestamp to the day. The full RFC 3339 value is
+// too wide for the table and the time of day never decides anything here.
+func shortDate(timestamp string) string {
+	if date, _, found := strings.Cut(timestamp, "T"); found {
+		return date
+	}
+	return timestamp
 }
 
 // getCurrentLocalVersion gets the current local image version of a service
@@ -131,27 +183,46 @@ func getCurrentLocalVersion(imageName, tag string, serviceName string) (string, 
 	return localTag, nil
 }
 
-// checkVersionUpdates checks for version updates and displays comparison.
+// serviceVersion is one row of the comparison table.
+type serviceVersion struct {
+	Service string
+	Local   string // tag the running container uses, or not_installed / unknown
+	Compose string // tag docker-compose.yaml asks for
+	Remote  string // day Docker Hub last pushed that tag, or "-"
+	Status  string
+	Stale   bool   // needs a pull and a recreate
+	Why     string // reason, printed under the table for the stale rows
+}
+
+// checkVersionUpdates compares every service against docker-compose.yaml and
+// Docker Hub, prints the table, and returns the services that need updating.
 //
-// Individual lookups stay best-effort — a service whose Docker Hub tag cannot be
-// read still gets a row, with "-" in the Latest column, because the Local vs
-// Compose comparison is what actually decides whether an update is needed and
-// that comes from the local daemon. An error is returned only when the local
-// lookup failed for every service examined: at that point nothing in the table
-// is grounded in the real state of the host, so the returned hasUpdates says
-// nothing, and the caller must not put a confirmation prompt in front of the
-// user based on it.
+// It returns the names rather than a yes/no because the caller uses them as the
+// scope of the pull and the restart. That is the whole point: the earlier
+// version returned a single bool, so a run without -s pulled and recreated
+// *every* service, including ones the table had just shown as unchanged. What
+// the user agreed to on screen and what the command then did were different
+// things.
 //
-// This function used to return a literal nil on every path, which made the
-// caller's `if err != nil` fallback dead code and meant a completely unusable
-// docker daemon still produced a confident-looking "All services are up to date!".
-func checkVersionUpdates(services map[string]ServiceInfo) (bool, error) {
+// Two judgements are deliberately conservative, because being wrong here
+// restarts a service nobody asked to touch:
+//
+//   - A tag that matches by name is compared by content as well. A moving tag
+//     (edge, latest) keeps its name across rebuilds, so the name alone can never
+//     mark it stale. If either digest is unavailable the row stays up to date.
+//   - A service whose local version could not be read is left out entirely. It
+//     used to count as stale, which turned a docker hiccup into a restart.
+//
+// Individual Docker Hub lookups stay best-effort — an unreachable registry
+// leaves "-" in the Hub column and falls back to the tag comparison. An error is
+// returned only when the local lookup failed for every service examined: at that
+// point nothing in the table is grounded in the real state of the host, so the
+// caller must not put a confirmation prompt in front of the user based on it.
+func checkVersionUpdates(services map[string]ServiceInfo) ([]string, error) {
 	fmt.Println("🔍 Checking version updates...")
 	fmt.Println()
 
-	hasUpdates := false
-	updateInfo := make(map[string]map[string]string)
-
+	rows := make([]serviceVersion, 0, len(services))
 	examined := 0
 	localFailures := 0
 	var firstLocalErr error
@@ -176,103 +247,122 @@ func checkVersionUpdates(services map[string]ServiceInfo) (bool, error) {
 			}
 		}
 
-		// Check if the specific tag on Docker Hub has been updated
-		dockerHubLastUpdated, err := checkDockerHubTagUpdate(imageName, composeTag)
-		if err != nil {
-			dockerHubLastUpdated = "unknown"
+		remote, hubErr := fetchTagInfo(imageName, composeTag)
+
+		row := serviceVersion{
+			Service: serviceName,
+			Local:   currentVersion,
+			Compose: composeTag,
+			Remote:  "-",
+		}
+		if hubErr == nil && remote.LastUpdated != "" {
+			row.Remote = shortDate(remote.LastUpdated)
 		}
 
-		// Determine latest status
-		var latestStatus string
-		if dockerHubLastUpdated == "unknown" {
-			latestStatus = "-"
-		} else if currentVersion == "not_installed" {
-			latestStatus = composeTag // Need to install
-		} else if currentVersion == composeTag {
-			latestStatus = "-" // Same version, no update needed
-		} else {
-			latestStatus = composeTag // Different version, need to update
-		}
-
-		// Store update information
-		updateInfo[serviceName] = map[string]string{
-			"local":   currentVersion,
-			"compose": composeTag,
-			"latest":  latestStatus,
-		}
-
-		// Check if updates are needed
-		if currentVersion == "not_installed" || currentVersion != composeTag {
-			hasUpdates = true
-		}
-	}
-
-	// Every local lookup failed, so "Local" is "unknown" on every row and the
-	// hasUpdates it produced is an artefact of that, not a finding. Report it
-	// instead of letting the caller act on it.
-	if examined > 0 && localFailures == examined {
-		return false, fmt.Errorf("could not read the locally installed image version for any of the %d service(s); is the docker daemon reachable? (first failure — %w)", examined, firstLocalErr)
-	}
-
-	// Find the longest service name and version strings for proper table width
-	maxServiceLen := 15 // minimum width
-	maxVersionLen := 11 // minimum width for version columns
-
-	for serviceName, versions := range updateInfo {
-		if len(serviceName) > maxServiceLen {
-			maxServiceLen = len(serviceName)
-		}
-		// Check all version strings
-		for _, version := range versions {
-			if len(version) > maxVersionLen {
-				maxVersionLen = len(version)
+		switch {
+		case currentVersion == "not_installed":
+			row.Stale, row.Status, row.Why = true, "✗", "not installed locally"
+		case currentVersion == "unknown":
+			// Left out of the update set on purpose — see the doc comment.
+			row.Status, row.Why = "?", "local version could not be read"
+		case currentVersion != composeTag:
+			row.Stale, row.Status, row.Why = true, "●", "tag differs from docker-compose.yaml"
+		default:
+			localDigest := localImageDigest(imageName, composeTag)
+			if hubErr == nil && remote.Digest != "" && localDigest != "" && localDigest != remote.Digest {
+				row.Stale, row.Status, row.Why = true, "◆", "same tag, but Docker Hub holds different content"
+			} else {
+				row.Status = "✓"
 			}
 		}
+
+		rows = append(rows, row)
 	}
 
-	// Display version comparison
-	fmt.Println("📊 Version Comparison:")
+	// Every local lookup failed, so "Local" is "unknown" on every row and any
+	// conclusion drawn from it is an artefact of that, not a finding. Report it
+	// instead of letting the caller act on it.
+	if examined > 0 && localFailures == examined {
+		return nil, fmt.Errorf("could not read the locally installed image version for any of the %d service(s); is the docker daemon reachable? (first failure — %w)", examined, firstLocalErr)
+	}
 
-	// Create table header with dynamic width
-	headerFormat := fmt.Sprintf("┌─%%-%ds─┬─%%-%ds─┬─%%-%ds─┬─%%-%ds─┐\n", maxServiceLen, maxVersionLen, maxVersionLen, maxVersionLen)
-	separatorFormat := fmt.Sprintf("├─%%-%ds─┼─%%-%ds─┼─%%-%ds─┼─%%-%ds─┤\n", maxServiceLen, maxVersionLen, maxVersionLen, maxVersionLen)
-	footerFormat := fmt.Sprintf("└─%%-%ds─┴─%%-%ds─┴─%%-%ds─┴─%%-%ds─┘\n", maxServiceLen, maxVersionLen, maxVersionLen, maxVersionLen)
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Service < rows[j].Service })
+	printVersionComparison(rows)
 
-	// Print top border
-	fmt.Printf(headerFormat, strings.Repeat("─", maxServiceLen), strings.Repeat("─", maxVersionLen), strings.Repeat("─", maxVersionLen), strings.Repeat("─", maxVersionLen))
-	// Print header row
-	fmt.Printf("│ %-*s │ %-*s │ %-*s │ %-*s │\n", maxServiceLen, "Service", maxVersionLen, "Local", maxVersionLen, "Compose", maxVersionLen, "Latest")
-	// Print separator
-	fmt.Printf(separatorFormat, strings.Repeat("─", maxServiceLen), strings.Repeat("─", maxVersionLen), strings.Repeat("─", maxVersionLen), strings.Repeat("─", maxVersionLen))
-
-	for serviceName, versions := range updateInfo {
-		local := versions["local"]
-		compose := versions["compose"]
-		latest := versions["latest"]
-
-		// Determine status indicators using clear symbols
-		var status string
-		if local == "not_installed" {
-			status = "✗" // Image not installed locally
-		} else if local != compose {
-			status = "●" // Local version differs from compose (need update)
-		} else {
-			status = "✓" // All versions match
+	stale := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if row.Stale {
+			stale = append(stale, row.Service)
 		}
+	}
+	return stale, nil
+}
 
-		fmt.Printf("│ %-*s │ %-*s │ %-*s │ %-*s │ %s\n",
-			maxServiceLen, serviceName, maxVersionLen, local, maxVersionLen, compose, maxVersionLen, latest, status)
+// printVersionComparison renders the comparison table and the reasons behind it.
+func printVersionComparison(rows []serviceVersion) {
+	nameWidth := len("Service")
+	versionWidth := len("Compose")
+	remoteWidth := len("Hub updated")
+
+	for _, row := range rows {
+		if len(row.Service) > nameWidth {
+			nameWidth = len(row.Service)
+		}
+		for _, value := range []string{row.Local, row.Compose} {
+			if len(value) > versionWidth {
+				versionWidth = len(value)
+			}
+		}
+		if len(row.Remote) > remoteWidth {
+			remoteWidth = len(row.Remote)
+		}
 	}
 
-	fmt.Printf(footerFormat, strings.Repeat("─", maxServiceLen), strings.Repeat("─", maxVersionLen), strings.Repeat("─", maxVersionLen), strings.Repeat("─", maxVersionLen))
-	fmt.Println()
-	fmt.Println("Legend:")
-	fmt.Println("✓ All versions match")
-	fmt.Println("● Local version differs from docker-compose.yaml (update needed)")
-	fmt.Println("✗ Image not installed locally")
+	rule := func(left, mid, right string) {
+		fmt.Printf("%s%s%s%s%s%s%s%s%s\n", left,
+			strings.Repeat("─", nameWidth+2), mid,
+			strings.Repeat("─", versionWidth+2), mid,
+			strings.Repeat("─", versionWidth+2), mid,
+			strings.Repeat("─", remoteWidth+2), right)
+	}
+
+	fmt.Println("📊 Version Comparison:")
+	rule("┌", "┬", "┐")
+	fmt.Printf("│ %-*s │ %-*s │ %-*s │ %-*s │\n",
+		nameWidth, "Service", versionWidth, "Local", versionWidth, "Compose", remoteWidth, "Hub updated")
+	rule("├", "┼", "┤")
+	for _, row := range rows {
+		fmt.Printf("│ %-*s │ %-*s │ %-*s │ %-*s │ %s\n",
+			nameWidth, row.Service, versionWidth, row.Local,
+			versionWidth, row.Compose, remoteWidth, row.Remote, row.Status)
+	}
+	rule("└", "┴", "┘")
 	fmt.Println()
 
-	return hasUpdates, nil
+	fmt.Println("Legend:")
+	fmt.Println("✓ Up to date")
+	fmt.Println("● Tag differs from docker-compose.yaml (update needed)")
+	fmt.Println("◆ Same tag, but Docker Hub holds different content (update needed)")
+	fmt.Println("✗ Image not installed locally")
+	fmt.Println("? Local version could not be read — left out of the update")
+	fmt.Println()
+	fmt.Println("Hub updated is when Docker Hub last pushed the tag docker-compose.yaml asks for.")
+	fmt.Println("It is information, not the verdict: the verdict comes from the columns to its left.")
+	fmt.Println()
+
+	var notes []string
+	for _, row := range rows {
+		if row.Why != "" {
+			notes = append(notes, fmt.Sprintf("  %s %s — %s", row.Status, row.Service, row.Why))
+		}
+	}
+	if len(notes) > 0 {
+		fmt.Println("Details:")
+		for _, note := range notes {
+			fmt.Println(note)
+		}
+		fmt.Println()
+	}
 }
 
 // updateCmd represents the update command
@@ -291,6 +381,13 @@ var updateCmd = &cobra.Command{
 			return
 		}
 
+		// What the pull and the restart will actually act on. It starts as the
+		// -s selection and, when -s was not given, narrows to the services the
+		// version check finds stale. Empty means every service, which is only
+		// reached when there is nothing to narrow by — a failed check, or the
+		// user choosing to pull and restart anyway.
+		scope := targets
+
 		// Parse docker-compose.yaml to get actual image information
 		services, err := parseDockerComposeImages()
 		if err != nil {
@@ -298,7 +395,7 @@ var updateCmd = &cobra.Command{
 			fmt.Printf("🔄 Falling back to regular pull...\n")
 
 			// Fallback to regular pull without version check
-			if err := runCompose(append([]string{"pull", "--ignore-pull-failures"}, targets...)...); err != nil {
+			if err := runCompose(append([]string{"pull", "--ignore-pull-failures"}, scope...)...); err != nil {
 				fmt.Printf("❌ docker compose pull failed: %v\n", err)
 				return
 			}
@@ -314,11 +411,11 @@ var updateCmd = &cobra.Command{
 			}
 
 			// Check for version updates
-			hasUpdates, err := checkVersionUpdates(services)
+			stale, err := checkVersionUpdates(services)
 			if err != nil {
 				fmt.Printf("⚠️ Failed to check version updates: %v\n", err)
 				fmt.Printf("🔄 Proceeding with regular pull...\n")
-			} else if !hasUpdates {
+			} else if len(stale) == 0 {
 				fmt.Println("✅ All services are up to date!")
 				fmt.Print("Do you want to proceed with pull and restart anyway? (y/N): ")
 				var response string
@@ -329,6 +426,17 @@ var updateCmd = &cobra.Command{
 					return
 				}
 			} else {
+				// Without -s the update narrows itself to what the table just
+				// listed, so nothing the user saw as unchanged gets restarted.
+				// An explicit -s still wins: naming services is a decision, and
+				// this check is not entitled to overrule it.
+				if len(scope) == 0 {
+					scope = stale
+					fmt.Printf("\n➡️  %d service(s) will be updated: %s\n",
+						len(scope), strings.Join(scope, ", "))
+					fmt.Println("   Everything else keeps running untouched.")
+				}
+
 				// Ask user for confirmation
 				fmt.Print("Do you want to proceed with the update? (y/N): ")
 				var response string
@@ -346,7 +454,7 @@ var updateCmd = &cobra.Command{
 			fmt.Println("\n[Install the latest Docker images of the Cloud-Migrator subsystems.]")
 			fmt.Println()
 
-			if err := runCompose(append([]string{"pull", "--ignore-pull-failures"}, targets...)...); err != nil {
+			if err := runCompose(append([]string{"pull", "--ignore-pull-failures"}, scope...)...); err != nil {
 				fmt.Printf("❌ docker compose pull failed: %v\n", err)
 				return
 			}
@@ -358,16 +466,17 @@ var updateCmd = &cobra.Command{
 		fmt.Println("\n\n[Restart based on the installed latest Docker images.]")
 		fmt.Println()
 
-		// A targeted update brings the named services back up without the staged
-		// OpenBao flow, so apply the same readiness check `infra run` uses.
-		if len(targets) > 0 && !openBaoReadyForTargets(targets) {
+		// A scoped update brings the named services back up without the staged
+		// OpenBao flow, so apply the same readiness check `infra run` uses. The
+		// scope may come from -s or from the version check, and both need it.
+		if len(scope) > 0 && !openBaoReadyForTargets(scope) {
 			return
 		}
 
 		// Always bring the stack up detached, mirroring `infra run`. Running
 		// attached ties the stack's lifetime to this terminal, so a Ctrl-C
 		// meant to stop watching output tears the containers back down.
-		if err := runCompose(append([]string{"up", "-d"}, targets...)...); err != nil {
+		if err := runCompose(append([]string{"up", "-d"}, scope...)...); err != nil {
 			fmt.Printf("❌ docker compose up failed: %v\n", err)
 			return
 		}
@@ -376,7 +485,7 @@ var updateCmd = &cobra.Command{
 		if !UpdateDetachMode {
 			fmt.Println("\n[Showing container logs - Press Ctrl+C to stop viewing logs]")
 			fmt.Println()
-			if err := runCompose(append([]string{"logs", "-f"}, targets...)...); err != nil {
+			if err := runCompose(append([]string{"logs", "-f"}, scope...)...); err != nil {
 				fmt.Printf("❌ docker compose logs failed: %v\n", err)
 			}
 		} else {
