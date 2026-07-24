@@ -126,11 +126,15 @@ in practice you only need to set the blank secret entries (e.g. `*_PASSWORD`,
 `SPIDER_USERNAME`, `SPIDER_PASSWORD`).
 
 **Every variable in `.env.example` is required** (must be non-empty) except the
-`SMTP_*` settings (email notifications are optional) and `VAULT_TOKEN` (generated
-automatically on first run). `mayfly`'s `infra` commands validate this **before**
-running docker compose: if `conf/docker/.env` is missing, or any required value
-is blank or deleted, they stop with a clear error naming the missing keys — this
-catches an accidentally-blanked value even for variables that ship with a default.
+`SMTP_*` settings (email notifications are optional), `VAULT_TOKEN` (generated
+automatically on first run), and `OPENBAO_UNSEAL_POLL_INTERVAL` (the compose file
+defaults it to `30`). `mayfly` guards this **before** running docker compose in two
+steps: every `infra` subcommand first checks that `conf/docker/.env` exists, and the
+commands that start containers (`run` and `update`) then also check that each required
+value is filled in, stopping with a clear error naming the missing keys — this catches
+an accidentally-blanked value even for variables that ship with a default. Tear-down and
+read-only subcommands (`remove`, `stop`, `install`, `info`, `logs`) skip the value check,
+so a missing key never blocks the command you would use to clean up.
 
 For the full list of variables, which container each one is used by, and how the
 required/optional policy works, see
@@ -192,12 +196,12 @@ Example output:
 ```
 [v]Status of Cloud-Migrator runtime images
 CONTAINER           REPOSITORY                     TAG                 IMAGE ID            SIZE
-cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.12.22              d4c2abdc0e21        118MB
+cb-tumblebug        cloudbaristaorg/cb-tumblebug   0.12.25              d4c2abdc0e21        118MB
 ```
 
-Based on the cb-tumblebug version (e.g., v0.12.22), download the corresponding cb-tumblebug repository:
+Based on the cb-tumblebug version (e.g., v0.12.25), download the corresponding cb-tumblebug repository:
 ```
-$ git clone -b v0.12.22 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.12.22
+$ git clone -b v0.12.25 https://github.com/cloud-barista/cb-tumblebug.git cb-tumblebug-v0.12.25
 ```
 
 Then follow the detailed guide at:
@@ -268,7 +272,7 @@ For more details about the `api` command, please refer to the [api sub-command g
 For some subsystems, including cm-cicada, the order of startup is important. Even if they are marked as healthy, they may not be running correctly. 
 For cm-cicada, please check the logs and restart if any errors occur.
 ```
-$ ./mayfly logs -s cm-cicada
+$ ./mayfly infra logs -s cm-cicada
 ```
 Check if the number of Task Components in the Workflow Management menu on the web portal is 10 items.
 Alternatively, you can easily check using the following curl command.
@@ -285,7 +289,7 @@ To remove the Cloud-Migrator stack itself, use `infra remove`. By default it onl
 
 ```
 $ ./mayfly infra remove                 # containers only (like 'docker compose down')
-$ ./mayfly infra remove --clean-db       # also images, named volumes, and DB host data (OpenBao kept)
+$ ./mayfly infra remove --clean-db       # also images and the conf/docker/data/<service> host data (OpenBao kept)
 $ ./mayfly infra remove --clean-all      # everything above, plus OpenBao data + clears VAULT_TOKEN (full re-init next run)
 $ ./mayfly infra remove -s cb-tumblebug --clean-db   # target specific services (cannot combine -s with --clean-all)
 ```

@@ -16,7 +16,7 @@
 간단하게 git으로 소스를 내려 받은 후 실행하면 됩니다.
 
 ```bash
-$ git clone https://github.com/cm-mayfly/cm-mayfly.git
+$ git clone https://github.com/cloud-barista/cm-mayfly.git
 $ cd cm-mayfly
 $ ./mayfly api
 ```
@@ -59,7 +59,7 @@ REST 호출을 위한 username과 password 기반의 기본 인증 절차가 필
 
 [bearer인증]   
 서브 시스템에서 REST 호출을 위한 `token` 기반의 `bearer` 인증 절차가 필요한 경우에는 `auth` 영역의 `type`에는 `bearer`을 입력하고 `token`에 인증 토큰 정보를 지정하면됩니다.   
-만약, `token` 값을 api.yaml 파일의 값이 아닌 API 호출 시점에 설정하고 싶다면 `--authUser`와 `--authPassword`를 이용해서 변경 가능합니다.   
+만약, `token` 값을 api.yaml 파일의 값이 아닌 API 호출 시점에 설정하고 싶다면 `--authToken`을 이용해서 변경 가능합니다.   
 ```
 (호출 시점 인증 정보 지정 예시)
 ./mayfly api -s 서비스명 -a 액션명 --authToken=인증토큰값
@@ -97,6 +97,23 @@ services:
       password: default
   
 ```
+
+**[환경 변수 참조(`${VAR}`) 방식]**   
+`username`·`password`·`token` 같은 자격증명 값은 위 예시처럼 평문으로 직접 적을 수도 있지만, `${VAR}` 형태로 **환경 변수를 참조**하도록 적을 수도 있습니다. 실제로 배포되는 `conf/api.yaml`은 자격증명을 파일 밖으로 빼기 위해 이 방식을 사용합니다. 예:
+```
+services:
+  cb-spider:
+    baseurl: http://cb-spider:1024/spider
+    auth:
+      type: basic
+      username: ${SPIDER_USERNAME}
+      password: ${SPIDER_PASSWORD}
+```
+값이 `${VAR}`로 적혀 있으면 호출 시점에 다음 순서로 해석되며, 먼저 찾은 값이 사용됩니다.
+1. CLI 플래그(`--authUser`/`--authPassword`/`--authToken`) — 지정 시 항상 우선
+2. 프로세스(OS) 환경 변수
+3. `conf/docker/.env` 파일
+4. 어디에도 없으면 빈 값으로 처리되고 경고가 출력됩니다(암묵적 기본값은 없습니다). basic 인증에서는 Authorization 헤더가 전송되지 않습니다.
 
 ### 서비스의 액션 정의 
 `serviceActions:` 영역은 `services:` 에서 정의된 특정 서비스에서 제공하는 REST API들에 대해서 액션으로 정의하는 영역입니다.   
@@ -179,12 +196,10 @@ serviceActions:
       resourcePath: /driver/{driver_name}
 ```
 
-Cloud-Migrator 시스템의 경우 대부분의 프레임워크는 `Swagger` 기반으로 진행되고 있어서 Swagger 형태의 JSON 파일을 제공하고 있으므로 `api.yaml`파일의 설정 작업을 조금은 수월하게 진행할 수 있도록 `tool` 플래그를 제공하고 있으니 유사한 환경의 다른 프레임워크의 정보를 api.yaml에 정의하고 싶다면 `tool 플래그를 활용`하시기 바랍니다.
-```
-$ ./mayfly api tool -f Swagger파일.json
-```
+Cloud-Migrator 시스템의 경우 대부분의 프레임워크는 `Swagger` 기반으로 진행되고 있어서 Swagger 형태의 JSON 파일을 제공하고 있으므로, `api.yaml` 파일의 `serviceActions` 작성을 수월하게 하도록 `api tool` 서브 커맨드를 제공합니다. 유사한 환경의 다른 프레임워크 정보를 api.yaml에 정의하고 싶을 때 활용하시기 바랍니다.
 
-참고로, `tool` 플래그의 경우, 내부적으로 각 API의 액션 이름에 `operationId` 필드를 이용하기 때문에 `사용하려는 Swagger JSON 파일에는 반드시 operationId 필드가 정의`되어 있어야 합니다.   
+`api tool`은 Swagger JSON을 파싱해 `serviceActions` 형태로 만들어 주며, 각 API의 액션 이름에는 내부적으로 `operationId` 필드를 사용하므로 `사용하려는 Swagger JSON에는 반드시 operationId 필드가 정의`되어 있어야 합니다(operationId가 없는 operation은 건너뜁니다).
+
 **[Swagger JSON 파일 예시]**
 ```
 "basePath": "/tumblebug",
@@ -196,16 +211,55 @@ $ ./mayfly api tool -f Swagger파일.json
 			"operationId": "GetAvailableK8sClusterNodeImage",
 ```
 
+### Swagger 소스 지정 (`-f` / `--latest` / `--release`)
+Swagger 문서를 어디서 읽을지는 아래 세 옵션 중 **하나**로 지정합니다(동시에 두 개 이상 지정하면 오류).
 
+- `-f <파일 또는 URL>` : 로컬 파일 경로 또는 `http(s)` URL을 직접 지정
+- `--latest` : 각 서비스의 최신 Swagger URL 사용 (api.yaml의 `services.<svc>.swagger.latest`)
+- `--release <tag>` : 특정 릴리스 태그의 Swagger 사용 (api.yaml의 `services.<svc>.swagger.release`, URL의 `{release}`가 태그로 치환됨. 예: `--release v0.5.2`)
 
-Swagger 파일을 제공하는 cb-tumblebug의 경우 tool 플래그를 실행하면 아래와같은 형태로 출력됩니다.
+`--latest`·`--release`는 api.yaml에 등록된 **Swagger URL 레지스트리**를 이용합니다. 각 서비스의 `services.<svc>.swagger` 항목에 아래처럼 latest/release URL이 정의되어 있습니다.
 ```
-$ ./mayfly api tool -f ./cb-tumblebug.json
+services:
+  cb-spider:
+    swagger:
+      latest: https://raw.githubusercontent.com/cloud-barista/cb-spider/master/api/swagger.json
+      release: https://raw.githubusercontent.com/cloud-barista/cb-spider/{release}/api/swagger.json
+```
+소스 옵션을 하나도 지정하지 않으면 최신/특정 릴리스 중 무엇을 쓸지 대화형으로 물어봅니다.
+
+### 대상 서비스 지정 (`--service` / `--action`)
+- `-f`로 단일 파일/URL을 줄 때는 **반드시 `--service <서비스명>`으로 대상 서비스를 지정**해야 합니다. 지정하지 않으면 `-f로 단일 소스를 줄 때는 --service로 대상 서비스를 지정하세요.` 오류가 납니다.
+- `--action <액션명>`을 함께 주면 해당 서비스의 그 액션 **한 개만** 처리합니다(생략 시 서비스의 `serviceActions` 전체).
+- `--latest`/`--release`에서 `--service`를 생략하면 특정 서비스만 처리할지, 레지스트리에 등록된 전체 서비스를 처리할지 대화형으로 선택합니다.
+
+### 화면 출력 vs api.yaml 반영 (`--apply`)
+- 기본 동작은 파싱 결과를 **화면에 출력**만 합니다(직접 복사해서 api.yaml을 작성).
+- `--apply`를 주면 `conf/api.yaml`에 **직접 반영**합니다. 이때 `api.yaml.bak.<타임스탬프>` 백업을 먼저 만들고, 반영 후 결과가 YAML로 파싱되지 않으면 자동으로 원본을 복원합니다. 서비스 전체를 덤프하는 경우 `services.<svc>.version`도 Swagger의 버전으로 함께 갱신됩니다.
+
+진행 직전에는 처리 대상 요약과 함께 `계속 진행하시겠습니까? (Y/n):` 확인을 거칩니다(Enter는 예). 자동화 시에는 `-y`(`--yes`)로 확인을 건너뛸 수 있으며, 이때는 소스와 대상(`--service`)을 반드시 명시해야 합니다.
+
+**[사용 예시]**
+```
+# 로컬 파일을 cm-ant 대상으로 파싱해서 화면 출력
+$ ./mayfly api tool -f ./cm-ant.swagger.json --service cm-ant
+
+# 최신 URL 레지스트리에서 받아 api.yaml에 반영
+$ ./mayfly api tool -f https://.../swagger.json --service cm-ant --apply
+
+# 단일 액션만 갱신
+$ ./mayfly api tool -f ./cm-ant.swagger.json --service cm-ant --action GetEstimateCost --apply
+
+# 특정 릴리스 태그의 Swagger를 사용
+$ ./mayfly api tool --release v0.5.2 --service cb-spider --apply
 ```
 
-**[실행 결과 예시]**
+**[실행 결과 예시]**   
+화면 출력 시 각 서비스마다 `# <서비스명>  (version=<버전>)` 헤더와 함께 `serviceActions` 본문이 출력됩니다.
 ```
-Base Paht: /tumblebug
+$ ./mayfly api tool -f ./cb-tumblebug.json --service cb-tumblebug
+
+# cb-tumblebug  (version=0.12.25)
     GetAvailableK8sClusterNodeImage:
       method: get
       resourcePath: /availableK8sClusterNodeImage
@@ -217,15 +271,8 @@ Base Paht: /tumblebug
       method: get
       resourcePath: /cloudInfo
       description: "Get cloud information"
-    GetAllConfig:
-      method: get
-      resourcePath: /config
-      description: "List all configs"
-                . . . .
-                 생략
-                . . . .
 ```
-위 출력 결과를 참고해서 api.yaml 파일을 작성하면됩니다.
+위 출력 결과를 참고해서 api.yaml 파일을 작성하거나, `--apply`로 바로 반영하면 됩니다.
 
 
 ## 사용 방법
@@ -250,19 +297,21 @@ Usage:
   mayfly api [command]
 
 Available Commands:
-  tool        Swagger JSON parsing tool to assist in writing api.yaml files
+  tool        Swagger JSON parsing into api.yaml serviceActions
 
 Flags:
   -a, --action string        Action to perform
+      --authPassword string  Password for basic authentication
+      --authToken string     sets the auth token of the 'Authorization' header for all HTTP requests.(The default auth scheme is 'Bearer')
+      --authUser string      Username for basic authentication
   -c, --config string        config file (default "./conf/api.yaml")
   -d, --data string          Data to send to the server
   -f, --file string          Data to send to the server from file
   -h, --help                 help for api
   -l, --list                 Show Service or Action list
-  -m, --method string        HTTP Method
   -o, --output string        <file> Write to file instead of stdout
-  -p, --pathParam string     Variable path info set "key1:value1 key2:value2" for URIs
-  -q, --queryString string   Use if you have a query string to add to URIs
+  -p, --pathParam string     Variable path info set "key1:value1 key2:value2" for URIs (separated by space)
+  -q, --queryString string   Query string to add to URIs (format: "param1=value1" or "param1=value1&param2=value2")
   -s, --service string       Service to perform
   -v, --verbose              Show more detail information
 

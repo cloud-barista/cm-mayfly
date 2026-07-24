@@ -13,7 +13,6 @@
 - [소스코드 다운로드](#소스코드-다운로드)
 - [소스코드 빌드](#소스코드-빌드)
 - [환경설정 확인 및 변경](#환경설정-확인-및-변경)
-  - [mc-datamanager 인증 정보 설정](#mc-datamanager-인증-정보-설정)
 - [Cloud-Migrator 인프라 구축](#cloud-migrator-인프라-구축)
 - [Cloud-Migrator 실행상태 확인](#cloud-migrator-실행상태-확인)
   - [기본 사용법](#기본-사용법)
@@ -24,6 +23,7 @@
   - [기본 업데이트](#기본-업데이트)
   - [버전 체크 및 업데이트 확인](#버전-체크-및-업데이트-확인)
 - [Cloud-Migrator 중지](#cloud-migrator-중지)
+- [Cloud-Migrator 로그 조회](#cloud-migrator-로그-조회)
 - [Cloud-Migrator 삭제(인프라 구축 환경 정리)](#cloud-migrator-삭제인프라-구축-환경-정리)
 - [Docker 전체 환경 정리](#docker-전체-환경-정리)
 
@@ -71,7 +71,7 @@ $ sudo apt install docker-compose
 
 ## 소스코드 다운로드
 ```bash
-$ git clone https://github.com/cm-mayfly/cm-mayfly.git
+$ git clone https://github.com/cloud-barista/cm-mayfly.git
 ```
 
 ## 소스코드 빌드
@@ -84,19 +84,18 @@ $ make
 ## 환경설정 확인 및 변경
 Cloud-Migrator 시스템 구성에 필요한 정보는 `./conf/docker` 폴더 하위에 정의되어 있으니 시스템 구성전에 `./conf/docker/docker-compose.yaml` 파일 및 `./conf/docker/conf` 폴더의 내용들을 살펴 보고 필요한 경우 수정합니다.
 
-
-### mc-datamanager 인증 정보 설정
-mc-data-manger 서브 시스템은 `CSP를 이용하기 위한 인증 정보가 필요`합니다.
-현재는 profile.json 파일을 이용한 설정 방식만 제공하므로 mc-datamanager를 이용하고 싶으면 인프라 구축전에 반드시 `./conf/docker/conf/mc-data-manger/data/var/run/data-manager/profile/profile.json` 파일에 `CSP별 인증 정보를 등록`하세요.
-
-필요한 경우, 인프라 구축 후에 위 `profile.json` 파일의 내용을 수정해도 됩니다.
+CSP 자격증명(Credential) 등록은 인프라 구축 후 `mayfly setup credential` 명령으로 진행합니다. 자세한 내용은 [setup sub-command guide](./cm-mayfly-setup.md)를 참고하세요.
 
 
 ## Cloud-Migrator 인프라 구축
-아래 명령을 실행하면 도커 기반 인프라가 자동으로 구축되며 실행 과정이 화면에 출력됩니다.
+아래 명령을 실행하면 실행 대상 서비스가 카테고리별로 분류된 미리보기 표와 함께 출력되고, `Do you want to proceed with the installation? (y/N):` 확인을 거친 뒤 도커 기반 인프라 구축이 진행됩니다. (`y` 또는 `yes` 외의 입력은 취소로 처리됩니다.)
 ```bash
 $ ./mayfly infra run
 ```
+
+전체 스택(서비스 미지정)으로 실행하는 경우, 다른 서비스를 기동하기 전에 OpenBao 상태 정합성 preflight가 먼저 수행됩니다. `.env`에 `VAULT_TOKEN`이 없는 최초 구축이면 OpenBao를 자동으로 초기화(`VAULT_TOKEN` 기록)한 뒤 나머지 서비스를 올리고, 상태가 일치하면 그대로 진행합니다. 토큰이 남아 있으나 저장소와 어긋나는 등 불일치가 감지되면 안내 메시지를 출력하고 **나머지 서비스를 기동하지 않은 채 중단**하므로, 안내에 따라 조치한 뒤 다시 실행하세요. OpenBao 운영에 대한 자세한 내용은 [openbao-unseal.md](./openbao-unseal.md)를 참고하세요.
+
+`-s`로 특정 서비스만 부분 기동하는 경우에는 OpenBao를 자동 초기화하지 않습니다. 다만 대상 서비스가 OpenBao를 사용하면(compose에서 `VAULT_*`를 참조 — 예: cb-tumblebug·mc-terrarium) **읽기 전용으로 OpenBao 상태를 먼저 확인**해, 사용할 수 없는 상태면 `mayfly setup openbao init`(OpenBao만 초기화) 또는 전체 `mayfly infra run`을 안내하고 **기동하지 않고 중단**합니다(초기화되지 않은 OpenBao에 붙어 첫 시크릿 조회에서 실패하는 것을 막습니다). OpenBao를 사용하지 않는 서비스는 이 검사를 거치지 않습니다. `infra update -s`도 동일하게 동작합니다.
 
 만약, Cloud-Migrator 시스템을 구축하려는 시스템 환경이 Clean한 환경이 아니라서 `./mayfly infra run` 명령만으로는 제대로 실행되지 않는 설치 문제가 발생할 경우에는 [Docker 전체 환경 정리](#docker-전체-환경-정리) 섹션의 내용을 확인해서 시스템 환경을 먼저 깔끔하게 정리 후 실행하는 것을 추천드립니다.   
 
@@ -113,14 +112,19 @@ $ ./mayfly infra run -d
 $ ./mayfly infra run -s cb-tumblebug
 ```
 
-여러 프레임워크를 동시에 실행하고 싶은 경우:
+여러 프레임워크를 동시에 실행하고 싶은 경우 — 아래 세 형식은 모두 같은 서비스를 선택합니다:
 ```bash
+# -s 를 반복해서 지정
+$ ./mayfly infra run -s cb-tumblebug -s cb-spider
+
 # 공백으로 구분
 $ ./mayfly infra run -s "cb-tumblebug cb-spider"
 
-# 콤마로 구분 (자동으로 공백으로 변환됨)
+# 콤마로 구분
 $ ./mayfly infra run -s "cb-tumblebug,cb-spider"
 ```
+
+> `-s` 를 아예 생략하면 전체 서비스가 대상입니다. 존재하지 않는 서비스명을 지정하면 그 이름을 지목해 알리고 중단합니다.
 
 ## Cloud-Migrator 실행상태 확인
 설치된 인프라 및 서브 프레임워크들의 상태를 확인할 수 있습니다.
@@ -134,8 +138,8 @@ $ ./mayfly infra info
 - `-a, --all`: 모든 컨테이너 상태 표시 (실행 중인 컨테이너뿐만 아니라 중지된 컨테이너도 포함)
   - **주의**: 완전히 삭제된 컨테이너는 표시되지 않습니다
 - `-s, --service`: 특정 서비스만 대상으로 지정 (여러 서비스 지정 가능)
-  - **지원 형식**: 공백 또는 콤마로 구분
-  - **예시**: `-s "cb-tumblebug cb-spider"` 또는 `-s "cb-tumblebug,cb-spider"`
+  - **지원 형식**: `-s` 반복 지정, 공백 구분, 콤마 구분 (혼용 가능)
+  - **예시**: `-s cb-tumblebug -s cb-spider` 또는 `-s "cb-tumblebug cb-spider"` 또는 `-s "cb-tumblebug,cb-spider"`
   - **의존성 자동 포함**: 지정된 서비스의 의존성 서비스들도 함께 표시  
 - `-u, --human`: 인간이 이해하기 쉬운 서비스 상태 테이블 표시
   - **특징**: docker-compose.yaml에 정의된 모든 서비스의 상태를 표 형태로 표시
@@ -215,23 +219,23 @@ $ ./mayfly infra info --human
 ┌───────────────────────┬──────────────┬──────────────┬──────────┬──────────────┬──────────────┬─────────────────┐
 │SERVICE                │VERSION       │STATUS        │HEALTHY   │INTERNAL      │EXTERNAL      │IMAGE SIZE       │
 ├───────────────────────┼──────────────┼──────────────┼──────────┼──────────────┼──────────────┼─────────────────┤
-│cb-spider              │0.11.13       │running       │✓         │1024          │1024          │436MB            │
-│cb-tumblebug           │0.11.13       │running       │✓         │1323          │1323          │146MB            │
-│cb-tumblebug-etcd      │v3.5.21       │running       │✓         │2379-2380     │2379-2380     │60.4MB           │
+│cb-spider              │0.12.35       │running       │✓         │1024          │1024          │436MB            │
+│cb-tumblebug           │0.12.25       │running       │✓         │1323          │1323          │146MB            │
+│cb-tumblebug-etcd      │v3.6.11       │running       │✓         │2379-2380     │2379-2380     │60.4MB           │
 │cb-tumblebug-postgres  │16-alpine     │running       │✓         │5432          │6432          │281MB            │
-│cb-mapui               │0.11.16       │running       │✓         │1324          │1324          │422MB            │
-│cm-beetle              │0.3.9         │running       │✓         │8056          │8056          │138MB            │
-│cm-butterfly-api       │0.3.4         │running       │✓         │4000          │4000          │94.4MB           │
-│cm-butterfly-front     │0.3.4         │running       │✓         │80            │80            │54.6MB           │
+│cb-mapui               │0.12.50       │running       │✓         │1324          │1324          │422MB            │
+│cm-beetle              │0.5.6         │running       │✓         │8056          │8056          │138MB            │
+│cm-butterfly-api       │0.5.1         │running       │✓         │4000          │4000          │94.4MB           │
+│cm-butterfly-front     │0.5.1         │running       │✓         │80            │80            │54.6MB           │
 │cm-butterfly-db        │14-alpine     │running       │✓         │5432          │543           │278MB            │
-│cm-honeybee            │0.3.6         │running       │✓         │8081          │8081          │56.2MB           │
-│cm-damselfly           │0.3.6         │running       │✓         │8088          │8088          │100MB            │
-│cm-cicada              │0.3.5         │running       │✓         │8083          │8083          │890MB            │
+│cm-honeybee            │0.5.3         │running       │✓         │8081          │8081          │56.2MB           │
+│cm-damselfly           │0.5.3         │running       │✓         │8088          │8088          │100MB            │
+│cm-cicada              │0.5.2         │running       │✓         │8083          │8083          │890MB            │
 │airflow-redis          │7.2-alpine    │running       │✓         │6379          │6379          │40.9MB           │
 │airflow-mysql          │8.0-debian    │running       │✓         │3306          │3306          │610MB            │
-│airflow-server         │0.3.5         │running       │✓         │5555          │5555          │1.57GB           │
-│cm-grasshopper         │0.3.5         │running       │✓         │8084          │8084          │448MB            │
-│cm-ant                 │-             │Not Found     │-         │-             │-             │192MB            │
+│airflow-server         │0.5.2         │running       │✓         │5555          │5555          │1.57GB           │
+│cm-grasshopper         │0.5.2         │running       │✓         │8084          │8084          │448MB            │
+│cm-ant                 │0.5.4         │running       │✓         │8880          │8880          │192MB            │
 │ant-postgres           │latest-pg16   │running       │✓         │5432          │5432          │1.04GB           │
 └───────────────────────┴──────────────┴──────────────┴──────────┴──────────────┴──────────────┴─────────────────┘
 ```
@@ -247,15 +251,15 @@ $ ./mayfly infra info -s cb-tumblebug --human
 ┌──────────────────────┬──────────────┬──────────────┬──────────┬──────────────┬──────────────┬─────────────────┐
 │SERVICE               │VERSION       │STATUS        │HEALTHY   │INTERNAL      │EXTERNAL      │IMAGE SIZE       │
 ├──────────────────────┼──────────────┼──────────────┼──────────┼──────────────┼──────────────┼─────────────────┤
-│cb-tumblebug          │0.11.13       │running       │✓         │1323          │1323          │146MB            │
+│cb-tumblebug          │0.12.25       │running       │✓         │1323          │1323          │146MB            │
 └──────────────────────┴──────────────┴──────────────┴──────────┴──────────────┴──────────────┴─────────────────┘
 
 📦 Dependency Services:
 ┌───────────────────────┬──────────────┬──────────────┬──────────┬──────────────┬──────────────┬─────────────────┐
 │SERVICE                │VERSION       │STATUS        │HEALTHY   │INTERNAL      │EXTERNAL      │IMAGE SIZE       │
 ├───────────────────────┼──────────────┼──────────────┼──────────┼──────────────┼──────────────┼─────────────────┤
-│cb-tumblebug-etcd      │v3.5.21       │running       │✓         │2379-2380     │2379-2380     │60.4MB           │
-│cb-spider              │0.11.13       │running       │✓         │1024          │1024          │436MB            │
+│cb-tumblebug-etcd      │v3.6.11       │running       │✓         │2379-2380     │2379-2380     │60.4MB           │
+│cb-spider              │0.12.35       │running       │✓         │1024          │1024          │436MB            │
 │cb-tumblebug-postgres  │16-alpine     │running       │✓         │5432          │6432          │281MB            │
 └───────────────────────┴──────────────┴──────────────┴──────────┴──────────────┴──────────────┴─────────────────┘
 ```
@@ -269,23 +273,23 @@ $ ./mayfly infra info --test-versions
 
 SERVICE              COMPOSE_VERSION STATUS       ACTUAL_VERSION  IMAGE_SIZE
 --------------------------------------------------------------------------------
-cb-spider            0.11.13         running      0.11.13         436MB
-cb-tumblebug         0.11.13         running      0.11.13         146MB
-cb-tumblebug-etcd    v3.5.21         running      v3.5.21         60.4MB
+cb-spider            0.12.35         running      0.12.35         436MB
+cb-tumblebug         0.12.25         running      0.12.25         146MB
+cb-tumblebug-etcd    v3.6.11         running      v3.6.11         60.4MB
 cb-tumblebug-postgres 16-alpine       running      16-alpine       281MB
-cb-mapui             0.11.16         running      0.11.16         422MB
-cm-beetle            0.4.0           running      0.4.0           137MB
-cm-butterfly-api     0.4.0           running      0.4.0           94.4MB
-cm-butterfly-front   0.4.0           Not Running  -               -
+cb-mapui             0.12.50         running      0.12.50         422MB
+cm-beetle            0.5.6           running      0.5.6           137MB
+cm-butterfly-api     0.5.1           running      0.5.1           94.4MB
+cm-butterfly-front   0.5.1           Not Running  -               -
 cm-butterfly-db      14-alpine       running      14-alpine       278MB
-cm-honeybee          0.4.0           running      0.4.0           56.2MB
-cm-damselfly         0.3.6           running      0.3.6           100MB
-cm-cicada            0.4.0           running      0.4.0           890MB
+cm-honeybee          0.5.3           running      0.5.3           56.2MB
+cm-damselfly         0.5.3           running      0.5.3           100MB
+cm-cicada            0.5.2           running      0.5.2           890MB
 airflow-redis        7.2-alpine      running      7.2-alpine      40.9MB
 airflow-mysql        8.0-debian      running      8.0-debian      610MB
-airflow-server       0.4.0 (Not Downloaded) running      0.3.6           1.57GB
-cm-grasshopper       0.4.0           running      0.4.0           448MB
-cm-ant               0.4.0           running      0.4.0           193MB
+airflow-server       0.5.2 (Not Downloaded) running      0.5.1           1.57GB
+cm-grasshopper       0.5.2           running      0.5.2           448MB
+cm-ant               0.5.4           running      0.5.4           193MB
 ant-postgres         latest-pg16     running      latest-pg16     1.07GB
 
 Legend:
@@ -303,7 +307,7 @@ Legend:
 - **이미지 관리**: 로컬에 다운로드되지 않은 이미지("Not Downloaded") 확인 가능
 - **버전 불일치 감지**: docker-compose.yaml 버전과 실제 실행 버전이 다른 경우를 쉽게 발견
   - `(Not Downloaded)` 표시는 docker-compose.yaml에 정의된 이미지가 로컬에 없을 때 나타남
-  - 이 경우 실제로는 다른 버전의 이미지로 컨테이너가 실행 중일 수 있음 (예: airflow-server의 경우 0.4.0이 정의되어 있지만 0.3.6으로 실행 중)
+  - 이 경우 실제로는 다른 버전의 이미지로 컨테이너가 실행 중일 수 있음 (예: airflow-server의 경우 0.5.2가 정의되어 있지만 0.5.1로 실행 중)
 
 **--human 옵션의 장점:**
 - **직관적**: docker-compose.yaml에 정의된 모든 서비스가 한눈에 보임
@@ -313,7 +317,7 @@ Legend:
 - **버전 정보**: 각 서비스의 버전을 한눈에 확인 가능
 - **의존성 파악**: `-s` 옵션과 함께 사용 시 서비스 간 의존성 관계를 명확히 표시
 - **서비스 분류**: 요청된 서비스와 의존성 서비스를 구분하여 표시
-- **유연한 서비스 지정**: 공백 또는 콤마로 여러 서비스를 동시에 지정 가능
+- **유연한 서비스 지정**: `-s` 반복 지정·공백·콤마로 여러 서비스를 동시에 지정 가능
 
 
 ## Cloud-Migrator 업데이트
@@ -322,6 +326,11 @@ Cloud-Migrator 서브 시스템들의 최신 버전으로 업데이트하고 싶
 ### 기본 업데이트
 ```bash
 $ ./mayfly infra update
+```
+
+업데이트가 끝나면 기본적으로 컨테이너 로그를 이어서 출력합니다(따라가기). 로그를 보지 않고 백그라운드로만 재기동하고 싶으면 `-d` 또는 `--detach` 플래그를 사용하세요.
+```bash
+$ ./mayfly infra update -d
 ```
 
 ### 버전 체크 및 업데이트 확인
@@ -400,6 +409,11 @@ $ ./mayfly infra stop -s "cb-tumblebug cb-spider"
 $ ./mayfly infra stop -s "cb-tumblebug,cb-spider"
 ```
 
+중지 후 표시되는 컨테이너 상태 목록에 중지된 컨테이너까지 포함해서 보고 싶으면 `-a` 또는 `--all` 플래그를 사용합니다.
+```bash
+$ ./mayfly infra stop -a
+```
+
 
 ## Cloud-Migrator 로그 조회
 
@@ -419,22 +433,42 @@ $ ./mayfly infra logs --no-follow
 
 | 옵션 | 설명 | 예시 |
 |------|------|------|
-| `-s, --service` | 특정 서비스만 대상으로 지정 | `-s cb-tumblebug` |
-| `-t, --tail` | 마지막 N줄부터 출력 (0은 처음부터 모든 로그) | `--tail 50` |
+| `-s, --service` | 특정 서비스만 대상으로 지정 (여러 서비스는 공백 또는 콤마로 구분) | `-s cb-tumblebug` / `-s "cb-tumblebug cb-spider"` |
+| `-n, --tail` | 마지막 N줄부터 출력 (기본값 10, 전체 로그는 `all`) | `--tail 50` / `-n 50` |
 | `--since` | 특정 시간 이후의 로그만 출력 | `--since 1h` |
 | `--follow` | 실시간으로 로그를 따라가기 (기본값: true) | `--follow` |
 | `--no-follow` | follow 모드 비활성화 (로그 확인 후 종료) | `--no-follow` |
 
+> `--tail`의 단축키는 `-n`입니다(`-t`가 아닙니다). 전체 로그를 처음부터 보려면 `--tail all`을 사용하세요. `--tail 0`은 0줄을 의미하므로 "모든 로그"가 아닙니다.
 
-### 주요 서비스 이름
-- `cb-tumblebug`: CB-Tumblebug 서비스
-- `cm-ant`: CM-Ant 서비스  
-- `cm-butterfly`: CM-Butterfly 서비스
-- `cm-cicada`: CM-Cicada 서비스
-- `cm-grasshopper`: CM-Grasshopper 서비스
-- `cm-honeybee`: CM-Honeybee 서비스
-- `cm-beetle`: CM-Beetle 서비스
-- `cb-spider`: CB-Spider 서비스
+
+### 서비스 이름
+`-s`로 지정하는 서비스 이름은 `docker-compose.yaml`에 정의된 이름과 정확히 일치해야 합니다(잘못된 이름을 주면 사용 가능한 목록과 함께 오류로 거부됩니다). 예를 들어 CM-Butterfly는 단일 `cm-butterfly`가 아니라 `cm-butterfly-api`·`cm-butterfly-front`·`cm-butterfly-db`로 나뉘어 있습니다. 현재 라인업의 서비스 이름은 다음과 같습니다(총 22개).
+
+- `cb-spider`: CB-Spider (멀티 클라우드 연동)
+- `cb-tumblebug`: CB-Tumblebug (멀티 클라우드 인프라 관리)
+- `cb-tumblebug-etcd`: CB-Tumblebug etcd
+- `cb-tumblebug-postgres`: CB-Tumblebug PostgreSQL
+- `cb-mapui`: CB-MapUI
+- `mc-terrarium`: MC-Terrarium
+- `openbao`: OpenBao (시크릿 관리)
+- `openbao-unseal`: OpenBao unseal 사이드카
+- `cm-beetle`: CM-Beetle
+- `cm-butterfly-api`: CM-Butterfly API (백엔드)
+- `cm-butterfly-front`: CM-Butterfly Front (웹 콘솔)
+- `cm-butterfly-db`: CM-Butterfly DB
+- `cm-honeybee`: CM-Honeybee
+- `cm-damselfly`: CM-Damselfly
+- `cm-cicada`: CM-Cicada
+- `airflow-redis`: Airflow Redis
+- `airflow-mysql`: Airflow MySQL
+- `airflow-server`: Airflow Server
+- `cm-grasshopper`: CM-Grasshopper
+- `cm-grasshopper-rustfs`: CM-Grasshopper RustFS (오브젝트 스토리지)
+- `cm-ant`: CM-Ant
+- `ant-postgres`: CM-Ant PostgreSQL
+
+> 정확한 최신 목록은 `./mayfly infra info --human`으로도 확인할 수 있습니다.
 
 
 ### 사용 예시
@@ -454,7 +488,7 @@ $ ./mayfly infra logs --tail 50
 $ ./mayfly infra logs --tail 50 --no-follow
 
 # 처음부터 모든 로그 출력하고 실시간 follow
-$ ./mayfly infra logs --tail 0
+$ ./mayfly infra logs --tail all
 
 # 1시간 전부터의 로그를 실시간 follow
 $ ./mayfly infra logs --since 1h
@@ -492,8 +526,8 @@ $ ./mayfly infra logs --since 2024-01-15T10:30:00
 # cb-tumblebug 서비스의 마지막 30줄 + 30분 전부터
 $ ./mayfly infra logs -s cb-tumblebug --tail 30 --since 30m
 
-# cm-butterfly 서비스의 마지막 100줄 + 2시간 전부터
-$ ./mayfly infra logs -s cm-butterfly --tail 100 --since 2h
+# cm-butterfly-front 서비스의 마지막 100줄 + 2시간 전부터
+$ ./mayfly infra logs -s cm-butterfly-front --tail 100 --since 2h
 ```
 
 ### 로그 필터링 (grep 활용)

@@ -317,7 +317,7 @@ services:
   # This sidecar is the default choice that prioritizes operational convenience in
   # workshop, dev, and internal PoC environments; for production-grade deployments
   # we recommend switching to (2) the KMS approach or (1) the manual approach.
-  # For detailed procedures, see docs/upgrade-cb-tb-0.12.9.md.
+  # For detailed procedures, see docs/openbao-unseal.md.
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   openbao-unseal:
     image: alpine:3.20
@@ -433,9 +433,12 @@ services:
   # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
-    # image: cloudbaristaorg/cm-butterfly-api:edge
-    image: cloudbaristaorg/cm-butterfly-api:0.5.1
-    # image: csescsta/cm-butterfly-api:20260408145340-develop
+    # Pinned to edge for final pre-release review: the 0.5.2 image predates the
+    # api.yaml update in this change, so edge is the image that actually carries
+    # it. This will move to 0.5.3 once that release is published; for a stable
+    # build use 0.5.2.
+    image: cloudbaristaorg/cm-butterfly-api:edge
+    # image: cloudbaristaorg/cm-butterfly-api:0.5.2
     container_name: cm-butterfly-api
     pull_policy: always
     platform: linux/amd64
@@ -487,10 +490,12 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    # image: cloudbaristaorg/cm-butterfly-front:edge
-    image: cloudbaristaorg/cm-butterfly-front:0.5.1
-    # image: csescsta/cm-butterfly-front:edge
-    # image: csescsta/cm-butterfly-front:20260408145340-develop
+    # Pinned to edge for final pre-release review: the 0.5.2 image predates the
+    # api.yaml update in this change, so edge is the image that actually carries
+    # it. This will move to 0.5.3 once that release is published; for a stable
+    # build use 0.5.2.
+    image: cloudbaristaorg/cm-butterfly-front:edge
+    # image: cloudbaristaorg/cm-butterfly-front:0.5.2
 
     container_name: cm-butterfly-front
     pull_policy: always
@@ -524,9 +529,6 @@ services:
   # cm-butterfly-front-dev:
   #   # image: cloudbaristaorg/cm-butterfly-front:edge
   #   # image: cloudbaristaorg/cm-butterfly-front:0.5.0
-  #   # image: csescsta/cm-butterfly-front:edge
-  #   # image: csescsta/cm-butterfly-front:20260304041627-feature-260220-jsonviewer-jsyoo
-  #   image: csescsta/cm-butterfly-front:20260318094849-feature-260318-jsonviewer-workflow-jsyoo
   #
   #   container_name: cm-butterfly-front-dev
   #   pull_policy: always
@@ -896,7 +898,7 @@ services:
   cm-ant:
     container_name: cm-ant
     # image: cloudbaristaorg/cm-ant:edge
-    image: cloudbaristaorg/cm-ant:0.5.4
+    image: cloudbaristaorg/cm-ant:0.5.7
     platform: linux/amd64
     pull_policy: always
     ports:
@@ -964,7 +966,6 @@ services:
 
   # cm-mayfly:
   # #   image: cloudbaristaorg/cm-mayfly:v0.1.0
-  #   image: dev4unet/cm-mayfly:v0.2.0
   #   container_name: cm-mayfly
   #   platform: linux/amd64
   #   stdin_open: true
