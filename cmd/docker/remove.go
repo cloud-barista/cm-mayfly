@@ -154,7 +154,7 @@ host data under conf/docker/data/ are kept (equivalent to 'docker compose down')
 		// whole environment", and anything else must name services that actually
 		// exist. A value that splits to nothing (-s "," or -s " ") is rejected
 		// rather than silently widened to everything.
-		services, err := resolveServices(ServiceName)
+		services, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("\n❌ %v\n", err)
 			return

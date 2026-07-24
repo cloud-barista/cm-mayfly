@@ -274,6 +274,22 @@ func resolveServices(raw string) ([]string, error) {
 	return validateServiceNames(names, available)
 }
 
+// resolveSelectedServices turns the -s flag values into a validated service
+// list. The flag is repeatable and each occurrence may itself hold several
+// names separated by commas or spaces, so the occurrences are joined and handed
+// to resolveServices — the single splitting/validating path every subcommand
+// shares. All three forms therefore select the same services:
+//
+//	-s cb-spider -s cb-tumblebug
+//	-s cb-spider,cb-tumblebug
+//	-s "cb-spider cb-tumblebug"
+//
+// Omitting -s entirely still means "every service", and a value that holds only
+// separators is still an error rather than "all" — see resolveServices.
+func resolveSelectedServices() ([]string, error) {
+	return resolveServices(strings.Join(ServiceNames, ","))
+}
+
 // validateServiceNames checks each already-split name against the services
 // declared in the compose file. It is split out from resolveServices so the
 // validation can be exercised without touching the filesystem.

@@ -344,3 +344,94 @@ func TestHostDataTargetsDefaultWipesNothing(t *testing.T) {
 		t.Fatalf("hostDataTargets = %v, want nothing wiped without --clean-db", targets)
 	}
 }
+
+// setServiceNames points the -s flag values at the given occurrences for the
+// duration of the test.
+func setServiceNames(t *testing.T, values ...string) {
+	t.Helper()
+	prev := ServiceNames
+	ServiceNames = values
+	t.Cleanup(func() { ServiceNames = prev })
+}
+
+// -s is repeatable and each occurrence may itself list several names, so
+// repeating the flag, separating with commas, separating with spaces, and mixing
+// the two must all select the same services. Before -s became repeatable only
+// the last occurrence survived, so a user who wrote `-s a -s b` silently got
+// just b — a targeted remove could then hit a narrower set than intended without
+// any error.
+func TestResolveSelectedServicesFormsAreEquivalent(t *testing.T) {
+	writeTestCompose(t, "cb-spider", "cb-tumblebug", "openbao")
+
+	cases := []struct {
+		name   string
+		values []string
+		want   []string
+	}{
+		{"repeated flag", []string{"cb-spider", "cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"comma separated", []string{"cb-spider,cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"space separated", []string{"cb-spider cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"repeat mixed with comma", []string{"cb-spider,cb-tumblebug", "openbao"}, []string{"cb-spider", "cb-tumblebug", "openbao"}},
+		{"duplicates across occurrences collapse", []string{"cb-spider", "cb-spider,cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"single value unchanged", []string{"cb-spider"}, []string{"cb-spider"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setServiceNames(t, tc.values...)
+
+			got, err := resolveSelectedServices()
+			if err != nil {
+				t.Fatalf("resolveSelectedServices() with -s %v returned error: %v", tc.values, err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("resolveSelectedServices() with -s %v = %v, want %v", tc.values, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("resolveSelectedServices() with -s %v = %v, want %v", tc.values, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// Omitting -s is still the only way to mean "every service"; the safety rules
+// that guard destructive commands must survive the switch to a repeatable flag.
+func TestResolveSelectedServicesSafetyRules(t *testing.T) {
+	writeTestCompose(t, "cb-spider", "openbao")
+
+	t.Run("omitted means all", func(t *testing.T) {
+		setServiceNames(t)
+
+		got, err := resolveSelectedServices()
+		if err != nil {
+			t.Fatalf("resolveSelectedServices() with no -s returned error: %v", err)
+		}
+		if len(got) != 0 {
+			t.Fatalf("resolveSelectedServices() with no -s = %v, want empty (all services)", got)
+		}
+	})
+
+	t.Run("separators only is an error, never all", func(t *testing.T) {
+		setServiceNames(t, ",", " ")
+
+		got, err := resolveSelectedServices()
+		if err == nil {
+			t.Fatalf("resolveSelectedServices() with separator-only -s = %v, want an error", got)
+		}
+		if got != nil {
+			t.Fatalf("resolveSelectedServices() returned %v alongside an error; it must return no targets", got)
+		}
+	})
+
+	t.Run("unknown name is reported", func(t *testing.T) {
+		setServiceNames(t, "cb-spider", "nope-one")
+
+		if _, err := resolveSelectedServices(); err == nil {
+			t.Fatal("resolveSelectedServices() with an unknown name returned no error")
+		} else if !strings.Contains(err.Error(), "nope-one") {
+			t.Fatalf("error %q does not name the offending service", err)
+		}
+	})
+}
