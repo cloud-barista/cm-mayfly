@@ -1,16 +1,16 @@
 // https://github.com/cloud-barista/cb-tumblebug/discussions/1773
-// Credential 등록 관련 APIs
+// APIs related to credential registration
 //
 //	GET /credential/publicKey
 //	POST /credential
 //
-// CSP별 Credential 등록 포멧
+// Credential registration format per CSP
 // https://github.com/cloud-barista/cb-spider/wiki/features-and-usages
-//   AWS 예시 : curl -sX GET http://localhost:1024/spider/cloudos/metainfo/AWS -H 'Content-Type: application/json' |json_pp |more
-//		- 응답 값중 아래 둘 중 하나의 형태로 입력
-//		    - Credential : cb-spider 형식
-//			- CredentialCSP : CSP 형식
-//  [최종] curl -sX GET http://localhost:1024/spider/cloudos/metainfo/aws -H 'Content-Type: application/json' | jq '.Credential'
+//   AWS example : curl -sX GET http://localhost:1024/spider/cloudos/metainfo/AWS -H 'Content-Type: application/json' |json_pp |more
+//		- From the response, provide one of the two forms below
+//		    - Credential : cb-spider format
+//			- CredentialCSP : CSP format
+//  [final] curl -sX GET http://localhost:1024/spider/cloudos/metainfo/aws -H 'Content-Type: application/json' | jq '.Credential'
 //         curl -sX POST http://localhost:1323/tumblebug/forward/cloudos/metainfo/aws -u default:default  -d '{}'
 //		   curl -sX GET http://localhost:1323/tumblebug/credential/publicKey -u default:default
 
@@ -91,7 +91,7 @@ type Auth struct {
 
 var serviceInfo ServiceInfo
 
-// 사용자가 -H로 전달한 헤더를 요청에 반영
+// Applies the headers the user passed with -H to the request
 func setHeaders(r *resty.Request) *resty.Request {
 	for _, h := range headers {
 		headerParts := strings.SplitN(h, ":", 2)
@@ -107,8 +107,8 @@ func setHeaders(r *resty.Request) *resty.Request {
 	return r
 }
 
-// newRequest는 호출마다 새 요청을 만든다.
-// 하나의 요청을 재사용하면 앞선 호출에서 설정한 body 같은 상태가 다음 호출에 그대로 남는다.
+// newRequest builds a new request on every call.
+// Reusing a single request would leak state set by an earlier call, such as the body, into the next one.
 func newRequest() *resty.Request {
 	return setHeaders(client.R())
 }
@@ -128,11 +128,11 @@ func SetBasicAuth() {
 	}
 }
 
-// 인증 처리
+// Sets up authentication
 func SetAuth() {
 	switch strings.ToLower(serviceInfo.Auth.Type) {
 	case "none", "":
-		// 인증이 필요 없는 경우 아무 것도 하지 않음
+		// nothing to do when no authentication is required
 	case "basic":
 		// Set basic authentication
 		SetBasicAuth()
@@ -151,16 +151,16 @@ func SetAuth() {
 	}
 }
 
-// Tumblebug의 정보를 확인 함.
+// Checks the Tumblebug service information.
 func checkServiceInfo() error {
 	fmt.Printf("Configuration file[%s] processing...\n", configFile)
 	serviceName := "cb-tumblebug"
-	// 서비스 검증
+	// Verify the service
 	if !viper.IsSet("services." + serviceName) {
 		return errors.New("the name of the service[" + serviceName + "] you want to call is not on the list of supported services.\nPlease check the api.yaml configuration file or the list of available services")
 	}
 
-	// 서비스 정보 파싱
+	// Parse the service information
 	err := viper.UnmarshalKey("services."+serviceName, &serviceInfo)
 	if err != nil {
 		return err
@@ -168,8 +168,8 @@ func checkServiceInfo() error {
 
 	// fmt.Printf("Service Info: %+v\n", serviceInfo)
 
-	// // CLI로 인증 정보를 전달 받았을 경우 인증 처리
-	// 인증 정보를 CLI로 전달 받았을 경우 처리
+	// // Handle authentication when the credentials were given on the CLI
+	// Apply the credentials given on the CLI
 	if authToken != "" {
 		serviceInfo.Auth.Token = authToken
 	}
@@ -184,7 +184,7 @@ func checkServiceInfo() error {
 		return errors.New("couldn't find the BaseURL information for the service to call\nPlease check the api.yaml configuration file")
 	}
 
-	// 사용자 입력 host, port로 BaseURL 정보 업데이트
+	// Update the BaseURL with the host and port entered by the user
 	// The override only fails when the configured BaseURL cannot be parsed. That
 	// used to pass unnoticed and the request went to the unmodified address, so
 	// warn instead — the printed BaseURL below then explains where it really went.
@@ -202,13 +202,13 @@ func checkServiceInfo() error {
 }
 
 func updateBaseURL(baseURL *string, host string, port string) error {
-	// baseURL을 파싱
+	// Parse the baseURL
 	parsedURL, err := url.Parse(*baseURL)
 	if err != nil {
 		return err
 	}
 
-	// host 값이 제공된 경우 parsedURL의 Hostname을 새로운 host 값으로 변경
+	// When a host is given, replace the hostname of parsedURL with that host
 	if host != "" {
 		if port != "" {
 			parsedURL.Host = host + ":" + port
@@ -216,16 +216,16 @@ func updateBaseURL(baseURL *string, host string, port string) error {
 			parsedURL.Host = host + ":" + parsedURL.Port()
 		}
 	} else if port != "" {
-		// host 값이 제공되지 않고 port만 제공된 경우 기존 hostname에 새로운 port를 설정
+		// When only a port is given, keep the existing hostname and apply the new port
 		parsedURL.Host = parsedURL.Hostname() + ":" + port
 	}
 
-	// 업데이트된 URL을 문자열로 변환하여 baseURL에 반영
+	// Write the updated URL back into baseURL as a string
 	*baseURL = parsedURL.String()
 	return nil
 }
 
-// Tumblebug으로부터 사용 가능한 CSP 목록을 가져옴.
+// Retrieves the list of available CSPs from Tumblebug.
 func getCspList() ([]string, error) {
 	url := serviceInfo.BaseURL + AVAILABLE_CSP_LIST_URL
 	if isVerbose {
@@ -243,7 +243,7 @@ func getCspList() ([]string, error) {
 		fmt.Println(string(resp.Body()))
 	}
 
-	// JSON 결과 값에서 "output" 값을 추출
+	// Extract the "output" value out of the JSON result
 	var result map[string]interface{}
 	err = json.Unmarshal(resp.Body(), &result)
 	if err != nil {
@@ -251,12 +251,12 @@ func getCspList() ([]string, error) {
 	}
 
 	if output, ok := result["output"].([]interface{}); ok {
-		// output 값을 문자열 배열로 변환
+		// Convert the output value into a string array
 		outputArray := make([]string, len(output))
 		for i, v := range output {
 			outputArray[i] = fmt.Sprintf("%v", v)
 		}
-		// 알파벳 순으로 정렬
+		// Sort alphabetically
 		sort.Strings(outputArray)
 		return outputArray, nil
 	} else {
@@ -266,26 +266,26 @@ func getCspList() ([]string, error) {
 
 // func selectCspFromCLI(cspList []string) (string, error) {
 func selectCspFromCLI() (string, error) {
-	// CSP 목록을 가져옴
+	// Get the CSP list
 	cspList, err := getCspList()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return "", fmt.Errorf("Error: %v", err)
 	}
 
-	// cspList 배열의 값이 없을 경우 에러를 반환
+	// Return an error when the cspList array is empty
 	if len(cspList) == 0 {
 		return "", fmt.Errorf("No available CSPs found")
 	}
 
-	// CSP 목록을 출력
+	// Print the CSP list
 	fmt.Println("Available CSPs:")
 	for i, csp := range cspList {
 		fmt.Printf("%d. %s\n", i+1, csp)
 	}
 	fmt.Println("0. Exit")
 
-	// 사용자로부터 CSP 번호를 입력받음
+	// Read the CSP number from the user
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("Please select a CSP by number: ")
@@ -295,23 +295,23 @@ func selectCspFromCLI() (string, error) {
 		}
 		input = strings.TrimSpace(input)
 
-		// 입력된 값을 정수로 변환
+		// Convert the entered value to an integer
 		selection, err := strconv.Atoi(input)
 		if err != nil {
 			fmt.Println("Invalid input. Please enter a number.")
 			continue
 		}
 
-		// 0을 입력한 경우 종료
+		// Exit when 0 was entered
 		if selection == 0 {
 			//fmt.Println("Exiting.")
 			//return "", nil
 			return "", fmt.Errorf("No CSP selected. Exiting.")
 		}
 
-		// 유효한 번호인지 확인
+		// Check that the number is valid
 		if selection > 0 && selection <= len(cspList) {
-			// 선택된 CSP 값을 소문자로 변환하여 저장
+			// Return the selected CSP lowercased
 			return strings.ToLower(cspList[selection-1]), nil
 			//return cspList[selection-1], nil
 		} else {
@@ -320,9 +320,9 @@ func selectCspFromCLI() (string, error) {
 	}
 }
 
-// 사용자로부터 콘솔에서 CSP입력을 받아 처리
+// Takes the CSP entered by the user on the console and processes it
 func getCredentialsMeta(csp string) ([]string, error) {
-	// csp에 대한 인증 정보 입력 형식을 조회합니다.
+	// Look up the credential input format for the csp.
 	fmt.Printf("Retrieving credential input format for %s\n", csp)
 
 	// curl -sX POST http://localhost:1323/tumblebug/forward/cloudos/metainfo/aws -u default:default  -d '{}'
@@ -348,7 +348,7 @@ func getCredentialsMeta(csp string) ([]string, error) {
 		fmt.Println(string(resp.Body()))
 	}
 
-	// JSON 결과 값에서 "Credential" 값을 추출
+	// Extract the "Credential" value out of the JSON result
 	var result map[string]interface{}
 	err = json.Unmarshal(resp.Body(), &result)
 	if err != nil {
@@ -358,7 +358,7 @@ func getCredentialsMeta(csp string) ([]string, error) {
 	if credential, ok := result["Credential"].([]interface{}); ok {
 		fmt.Printf("Successfully retrieved credential meta information for %s\n", csp)
 
-		// Credential 값을 문자열 배열로 변환
+		// Convert the Credential value into a string array
 		credentialArray := make([]string, len(credential))
 		for i, v := range credential {
 			credentialArray[i] = fmt.Sprintf("%v", v)
@@ -371,17 +371,17 @@ func getCredentialsMeta(csp string) ([]string, error) {
 
 }
 
-// CSP의 인증 정보를 암호화 처리 함.
+// Encrypts the credentials of a CSP.
 func processCspCredentialEncrypt() {
 	//fmt.Println("Processing CSP Credential Encryption : ", csp)
 	selectedCsp := ""
 
-	// CLI에서 옵션으로 전달 받은 경우
+	// When it was passed as a CLI option
 	if csp != "" {
 		selectedCsp = strings.ToLower(csp)
 	} else {
 		var err error
-		// 사용자로부터 콘솔에서 CSP를 선택받음
+		// Let the user pick a CSP on the console
 		selectedCsp, err = selectCspFromCLI()
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -389,20 +389,20 @@ func processCspCredentialEncrypt() {
 		}
 	}
 
-	// selectedCsp 값을 소문자로 변환하여 저장
+	// Store selectedCsp lowercased
 	//selectedCsp = strings.ToLower(selectedCsp)
 
-	// 선택된 CSP에 대한 인증 정보를 처리한다는 메시지 출력
+	// Print a message saying the credentials of the selected CSP are being processed
 	fmt.Printf("\nProcessing authentication information for selected [%s] CSP\n", selectedCsp)
 
-	// CSP에 맞는 Credential 메타 정보를 가져옴
+	// Get the credential meta information for the CSP
 	credentialMeta, err := getCredentialsMeta(selectedCsp)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 
-	// 상세 모드에서는 입력 받아야할 Credential 키 값 출력
+	// In verbose mode, print the credential keys that have to be entered
 	if isVerbose {
 		// fmt.Println("Credential Meta :", credentialMeta)
 		fmt.Println("The following credential information is required:")
@@ -412,14 +412,14 @@ func processCspCredentialEncrypt() {
 		fmt.Println()
 	}
 
-	// 사용자로부터 Credential 값을 입력받음
+	// Read the credential values from the user
 	credentials, err := inputCredentialsFromCli(credentialMeta)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 
-	// PublicKey와 PublicKeyTokenId를 가져옴
+	// Get the PublicKey and the PublicKeyTokenId
 	publicKeyResponse, err := getPublicKey()
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -427,12 +427,12 @@ func processCspCredentialEncrypt() {
 	}
 
 	if isVerbose {
-		// PublicKey와 PublicKeyTokenId 값을 출력
+		// Print the PublicKey and PublicKeyTokenId values
 		fmt.Println("PublicKeyTokenId:", publicKeyResponse.PublicKeyTokenId)
 		fmt.Println("PublicKey:", publicKeyResponse.PublicKey)
 	}
 
-	// Credential 정보를 PublicKey로 암호화 처리
+	// Encrypt the credentials with the PublicKey
 	encryptedCredentials, encryptedAesKey, err := encryptCredentialsWithPublicKey(publicKeyResponse.PublicKey, credentials)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -444,7 +444,7 @@ func processCspCredentialEncrypt() {
 		fmt.Println("Encrypted AES Key:", encryptedAesKey)
 	}
 
-	// 암호화된 Credential 정보를 서버로 전송
+	// Send the encrypted credentials to the server
 	payload := map[string]interface{}{
 		"credentialHolder":                 "admin",
 		"providerName":                     selectedCsp,
@@ -453,7 +453,7 @@ func processCspCredentialEncrypt() {
 		"credentialKeyValueList":           encryptedCredentials,
 	}
 
-	// payload를 예쁘게 출력
+	// Pretty-print the payload
 	if isVerbose {
 		fmt.Println("=============================================")
 		payloadJSON, err := json.MarshalIndent(payload, "", "  ")
@@ -474,43 +474,43 @@ func processCspCredentialEncrypt() {
 	}
 }
 
-// 사용자로부터 콘솔에서 CSP의 인증 정보를 입력받아 map 형태로 반환
+// Reads the CSP credentials from the user on the console and returns them as a map
 func inputCredentialsFromCli(credentialMeta []string) (map[string]string, error) {
 	credentials := make(map[string]string)
 	reader := bufio.NewReader(os.Stdin)
 
-	// 터미널 상태 저장
+	// Save the terminal state
 	oldState, err := term.GetState(int(syscall.Stdin))
 	if err != nil {
 		return nil, fmt.Errorf("Error getting terminal state: %v", err)
 	}
-	// 입력 도중 오류로 빠져나가더라도 터미널의 echo가 꺼진 채 남지 않도록 함
+	// Make sure the terminal is not left with echo turned off if we bail out on an input error
 	defer func() { _ = term.Restore(int(syscall.Stdin), oldState) }()
 
 	for {
 		// ================================
-		// CSP 인증 정보를 입력 받음
+		// Read the CSP credentials
 		// ================================
 		for _, key := range credentialMeta {
 			fmt.Printf("Please enter %s: ", key)
 			// value, err := reader.ReadString('\n')
-			// 입력을 숨김
+			// Hide the input
 			bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 			if err != nil {
 				return nil, fmt.Errorf("Error reading input: %v", err)
 			}
 			value := string(bytePassword)
-			fmt.Println() // 줄바꿈
+			fmt.Println() // line break
 			credentials[key] = strings.TrimSpace(value)
 		}
 
-		// 터미널 설정 복원
+		// Restore the terminal settings
 		if err := term.Restore(int(syscall.Stdin), oldState); err != nil {
 			return nil, fmt.Errorf("Error restoring terminal state: %v", err)
 		}
 
 		// ================================
-		// 입력된 값을 확인할 것인지 물어봄
+		// Ask whether the entered values should be reviewed
 		// ================================
 		for {
 			fmt.Print("Do you want to review the entered credentials? (yes/no): ")
@@ -521,7 +521,7 @@ func inputCredentialsFromCli(credentialMeta []string) (map[string]string, error)
 			review = strings.TrimSpace(strings.ToLower(review))
 
 			if review == "yes" {
-				// 입력된 값들을 출력하여 확인
+				// Print the entered values so they can be reviewed
 				fmt.Println("You have entered the following credentials:")
 				for key, value := range credentials {
 					fmt.Printf("%s: %s\n", key, value)
@@ -535,7 +535,7 @@ func inputCredentialsFromCli(credentialMeta []string) (map[string]string, error)
 		}
 
 		// ================================
-		// 입력된 값을 확인할 것인지 물어봄
+		// Ask whether the entered values should be reviewed
 		// ================================
 		fmt.Print("Is this correct? (yes/no/retry): ")
 		confirmation, err := reader.ReadString('\n')
@@ -557,13 +557,13 @@ func inputCredentialsFromCli(credentialMeta []string) (map[string]string, error)
 	}
 }
 
-// PublicKeyResponse 구조체 정의
+// PublicKeyResponse struct definition
 type PublicKeyResponse struct {
 	PublicKeyTokenId string `json:"publicKeyTokenId"`
 	PublicKey        string `json:"publicKey"`
 }
 
-// 서버로부터 PublicKey와 PublicKeyTokenId를 조회 함.
+// Retrieves the PublicKey and the PublicKeyTokenId from the server.
 func getPublicKey() (*PublicKeyResponse, error) {
 	fmt.Println("Retrieving public key and public key token id")
 	url := serviceInfo.BaseURL + GET_PUBLICKEY_URL
@@ -581,7 +581,7 @@ func getPublicKey() (*PublicKeyResponse, error) {
 		fmt.Println(string(resp.Body()))
 	}
 
-	// JSON 결과 값을 PublicKeyResponse 구조체로 변환
+	// Convert the JSON result into a PublicKeyResponse struct
 	var publicKeyResponse PublicKeyResponse
 	err = json.Unmarshal(resp.Body(), &publicKeyResponse)
 	if err != nil {
@@ -591,7 +591,7 @@ func getPublicKey() (*PublicKeyResponse, error) {
 	return &publicKeyResponse, nil
 }
 
-// PKCS7 패딩 추가 함수
+// Function that adds PKCS7 padding
 // The only caller passes aes.BlockSize() (16), so padding lands in 1..16 and
 // always fits a byte — which PKCS#7 requires anyway, being undefined for block
 // sizes of 256 or more.
@@ -601,7 +601,7 @@ func pkcs7Pad(data []byte, blockSize int) []byte {
 	return append(data, padText...)
 }
 
-// PKCS7 패딩 제거 함수
+// Function that removes PKCS7 padding
 func pkcs7Unpad(data []byte) ([]byte, error) {
 	length := len(data)
 	if length == 0 {
@@ -665,19 +665,19 @@ func encryptCredentialsWithPublicKey(publicKeyPem string, credentials map[string
 	return encryptedCredentials, base64.StdEncoding.EncodeToString(encryptedAesKey), nil
 }
 
-// 서버로 암호화된 Credential 정보를 전송
+// Sends the encrypted credentials to the server
 func sendCredentials(payload map[string]interface{}) (map[string]interface{}, error) {
 	fmt.Println("Sending encrypted credentials to server")
 
-	// 다른 호출들과 마찬가지로 --host/--port/--user/--password로 해석된 정보를 사용한다.
-	// 그래야 한 대의 서버에서 여러 서버의 Tumblebug을 초기화할 수 있다.
-	// (기본값은 그대로 http://localhost:1323/tumblebug)
+	// Like every other call, this uses the address resolved from --host/--port/--user/--password.
+	// That is what makes it possible to initialize the Tumblebug of several servers from a single machine.
+	// (The default is still http://localhost:1323/tumblebug)
 	url := serviceInfo.BaseURL + POST_CREDENTIAL_URL
 	if isVerbose {
 		fmt.Println("Request Url : ", url)
 	}
 
-	// payload를 JSON으로 변환
+	// Convert the payload to JSON
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshalling payload: %v", err)
@@ -692,25 +692,25 @@ func sendCredentials(payload map[string]interface{}) (map[string]interface{}, er
 		return nil, fmt.Errorf("Error: %v", err)
 	}
 
-	// 응답 결과 확인
-	body := resp.Body() // []byte 타입
+	// Check the response
+	body := resp.Body() // []byte
 	if isVerbose {
 		fmt.Println(string(body))
 	}
 
-	// 2xx가 아니면 등록에 실패한 것이므로 응답 본문과 함께 오류를 반환
+	// Anything but a 2xx means the registration failed, so return an error along with the response body
 	if resp.StatusCode() < 200 || resp.StatusCode() > 299 {
 		return nil, fmt.Errorf("credential registration failed with status %d: %s", resp.StatusCode(), strings.TrimSpace(string(body)))
 	}
 
-	// 응답 결과를 처리하여 리턴 타입에 맞게 반환
+	// Parse the response and return it in the expected return type
 	var result map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing JSON: %v", err)
 	}
 
-	// CSP Credential 정보 등록 완료 메시지 출력
+	// Print a message saying the CSP credential registration is complete
 	fmt.Println("CSP Credential registration completed successfully")
 
 	return result, nil
@@ -725,14 +725,14 @@ var credentialCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		isInit = false
 
-		// 서브 커맨드가 입력되었을 때에는 도움말을 출력하지 않음.
+		// Do not print the help when a subcommand was given.
 		if len(args) == 0 && cmd.Flags().NFlag() == 0 && cmd.HasSubCommands() {
 			//fmt.Println(cmd.Help())
 			_ = cmd.Help()
 			return
 		}
 
-		// 설정 파일 처리
+		// Process the configuration file
 		viper.SetConfigFile(configFile)
 		err := viper.ReadInConfig()
 		if err != nil {
@@ -740,7 +740,7 @@ var credentialCmd = &cobra.Command{
 			return
 		}
 
-		// 호출할 서비스 정보 처리
+		// Process the information of the service to call
 		errParse := checkServiceInfo()
 		if errParse != nil {
 			fmt.Println(errParse)
@@ -765,12 +765,12 @@ var credentialCmd = &cobra.Command{
 		// }
 
 		// if isVerbose {
-		// 	// PublicKey와 PublicKeyTokenId 값을 출력
+		// 	// Print the PublicKey and PublicKeyTokenId values
 		// 	fmt.Println("PublicKeyTokenId:", publicKeyResponse.PublicKeyTokenId)
 		// 	fmt.Println("PublicKey:", publicKeyResponse.PublicKey)
 		// }
 
-		// CSP의 인증 정보를 암호화 처리
+		// Encrypt the credentials of the CSP
 		processCspCredentialEncrypt()
 	},
 }

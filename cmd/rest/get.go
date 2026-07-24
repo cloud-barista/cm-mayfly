@@ -24,7 +24,7 @@ var restGetCmd = &cobra.Command{
 `,
 	//Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) < 1 { // 아규먼트가 없으면 도움말 출력
+		if len(args) < 1 { // print the help message when no argument is given
 			//fmt.Println(cmd.Help())
 			_ = cmd.Help()
 			return

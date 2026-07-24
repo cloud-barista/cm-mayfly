@@ -1,4 +1,4 @@
-// docker compose의 컨테이너 실행 순서 보장을 위해 MySQL의 Ready 상태를 확인하는 기능을 수행
+// Checks whether MySQL is ready, so that docker compose can order container startup accordingly
 package tool
 
 import (
@@ -48,16 +48,16 @@ Flags:
 		//fmt.Println("len(args) ", len(args))
 		//fmt.Println("cmd.Flags().NFlag() ", cmd.Flags().NFlag())
 
-		// 아규먼트나 플래그가 입력 되지 않은 경우에만 도움말 출력 후 종료
+		// Only print the help and exit when neither an argument nor a flag was given
 		if len(args) == 0 && cmd.Flags().NFlag() == 0 {
-			// 환경 변수가 모두 설정되었으면 도움말 출력 없이 종료
+			// If the environment variables are all set, return without printing the help
 			if checkConfig(cmd) {
 				return
 			}
 			_ = cmd.Help()
-			os.Exit(1) // Docker Compose의 Health Check 사용을 감안해서 에러로 리턴 함.
+			os.Exit(1) // return an error, since this is used as a Docker Compose health check.
 		} else {
-			// verbose 플래그만 설정된 경우에는 도움말 출력
+			// Print the help when the only flag given is verbose
 			if len(args) == 0 && cmd.Flags().NFlag() == 1 && isVerbose {
 				_ = cmd.Help()
 				fmt.Print("\n\n")
@@ -65,22 +65,22 @@ Flags:
 
 			if !checkConfig(cmd) {
 				log.Println("Please set the MySQL connection information using flags or environment variables.")
-				os.Exit(1) // 비정상 종료
+				os.Exit(1) // failure exit
 			}
 		}
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
 		if dbPing() {
-			os.Exit(0) // 정상 종료
+			os.Exit(0) // success exit
 		} else {
-			os.Exit(1) // 비정상 종료
+			os.Exit(1) // failure exit
 		}
 	},
 }
 
 func dbPing() bool {
-	// DSN 구성
+	// Build the DSN
 	log.Printf("Checking MySQL[%s:%s] connection...\n", host, port)
 
 	var dsn string
@@ -94,18 +94,18 @@ func dbPing() bool {
 		log.Println("DSN:", maskDSN(dsn))
 	}
 
-	// MySQL 연결 테스트
+	// Test the MySQL connection
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Println("MySQL connection failed:", err)
-		os.Exit(1) // 비정상 종료
+		os.Exit(1) // failure exit
 	}
 	defer db.Close()
 
-	// MySQL Ping 테스트
+	// Ping MySQL
 	if err := db.Ping(); err != nil {
 		log.Println("MySQL ping failed:", err)
-		os.Exit(1) // 비정상 종료
+		os.Exit(1) // failure exit
 	}
 
 	log.Println("MySQL is healthy.")
@@ -153,7 +153,7 @@ func maskSecret(s string) string {
 	return "***"
 }
 
-// DB 접속을 위한 환경 변수 값을 체크 함.
+// Checks the environment variable values used for the DB connection.
 //
 // Precedence: a flag the user actually typed always wins over the matching
 // environment variable, which is what the command's help text promises.
@@ -169,7 +169,7 @@ func checkConfig(cmd *cobra.Command) bool {
 		log.Println("Checking MySQL connection information...")
 	}
 
-	// 플래그로 명시하지 않은 값만 환경 변수로부터 읽어오기
+	// Read from the environment only the values that were not given explicitly as flags
 	if !cmd.Flags().Changed("user") && os.Getenv("MYSQL_USER") != "" {
 		user = os.Getenv("MYSQL_USER")
 	}
