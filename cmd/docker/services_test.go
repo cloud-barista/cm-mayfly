@@ -435,3 +435,68 @@ func TestResolveSelectedServicesSafetyRules(t *testing.T) {
 		}
 	})
 }
+
+// writeComposeWithOpenBaoUser creates a compose file where only cb-tumblebug is
+// handed OpenBao settings, so the dependency has to be read off the file rather
+// than assumed from the service name.
+func writeComposeWithOpenBaoUser(t *testing.T) {
+	t.Helper()
+
+	body := `services:
+  openbao:
+    image: example/openbao:1.0.0
+  cb-tumblebug:
+    image: example/cb-tumblebug:1.0.0
+    environment:
+      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+  cm-ant:
+    image: example/cm-ant:1.0.0
+    environment:
+      ANT_DB_USER: ${ANT_DB_USER}
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yaml")
+	if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	prev := DockerFilePath
+	DockerFilePath = path
+	t.Cleanup(func() { DockerFilePath = prev })
+}
+
+// Which services need OpenBao is read from the compose file (they are the ones
+// given VAULT_* in their environment), not from a hardcoded list — a list would
+// silently go stale the next time a service starts or stops using OpenBao.
+func TestOpenBaoDependentTargets(t *testing.T) {
+	writeComposeWithOpenBaoUser(t)
+
+	cases := []struct {
+		name    string
+		targets []string
+		want    []string
+	}{
+		{"service that reads VAULT_*", []string{"cb-tumblebug"}, []string{"cb-tumblebug"}},
+		{"service that does not", []string{"cm-ant"}, nil},
+		{"only the dependent ones, order kept", []string{"cm-ant", "cb-tumblebug"}, []string{"cb-tumblebug"}},
+		{"no targets means no gate", nil, nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := openBaoDependentTargets(tc.targets)
+			if err != nil {
+				t.Fatalf("openBaoDependentTargets(%v) returned error: %v", tc.targets, err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("openBaoDependentTargets(%v) = %v, want %v", tc.targets, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("openBaoDependentTargets(%v) = %v, want %v", tc.targets, got, tc.want)
+				}
+			}
+		})
+	}
+}
