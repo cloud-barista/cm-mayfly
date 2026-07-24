@@ -37,7 +37,7 @@ Note:
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("\n[View output from Cloud-Migrator system containers.]")
 
-		services, err := resolveServices(ServiceName)
+		services, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("❌ %v\n", err)
 			return

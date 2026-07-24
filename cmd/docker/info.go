@@ -67,7 +67,7 @@ var infoCmd = &cobra.Command{
 			fmt.Println("")
 
 			fmt.Println("[v]Status of Cloud-Migrator runtime images")
-			services, err := resolveServices(ServiceName)
+			services, err := resolveSelectedServices()
 			if err != nil {
 				fmt.Printf("❌ %v\n", err)
 				return
@@ -152,7 +152,7 @@ func showHumanReadableInfo() {
 	allServices := getServicesFromCompose()
 
 	// Filter services if -s option is used
-	requested, err := resolveServices(ServiceName)
+	requested, err := resolveSelectedServices()
 	if err != nil {
 		fmt.Printf("❌ %v\n", err)
 		return
@@ -542,7 +542,7 @@ func showVersionTestInfo() {
 
 	// Honour -s, like the --human table does. Without this the flag was read,
 	// validated, and then ignored: `info -t -s cm-ant` printed every service.
-	requested, err := resolveServices(ServiceName)
+	requested, err := resolveSelectedServices()
 	if err != nil {
 		fmt.Printf("❌ %v\n", err)
 		return

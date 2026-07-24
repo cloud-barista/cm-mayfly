@@ -23,8 +23,10 @@ var DockerFilePath string
 // ProjectName is a variable that holds docker compose project name.
 var ProjectName string
 
-// ServiceName is used when you want to specify only a specific service
-var ServiceName string
+// ServiceNames holds the raw -s values. The flag may be repeated, and each
+// occurrence may itself list several services separated by commas or spaces.
+// Use resolveSelectedServices to turn it into a validated service list.
+var ServiceNames []string
 
 // restCmd represents the rest command
 var dockerCmd = &cobra.Command{
@@ -344,7 +346,7 @@ func parseDotEnv(path string) (map[string]string, error) {
 func SysCallDockerComposePsWithAll(showAll bool) {
 	fmt.Println("\n[v]Status of Cloud-Migrator runtimes")
 
-	services, err := resolveServices(ServiceName)
+	services, err := resolveSelectedServices()
 	if err != nil {
 		fmt.Printf("❌ %v\n", err)
 		return
@@ -370,6 +372,7 @@ func init() {
 	// Add flags for Docker Compose project name
 	dockerCmd.PersistentFlags().StringVarP(&ProjectName, "project-name", "p", common.ComposeProjectName, "User-defined docker compose porject name")
 
-	// ServiceName is used when you want to specify only a specific service
-	dockerCmd.PersistentFlags().StringVarP(&ServiceName, "service", "s", "", "Want to target specific services only(Default : all)")
+	// -s may be repeated and each value may list several services separated by
+	// commas or spaces; all three forms produce the same target set.
+	dockerCmd.PersistentFlags().StringArrayVarP(&ServiceNames, "service", "s", nil, "Target specific services only (repeatable; comma or space separated). Default: all")
 }

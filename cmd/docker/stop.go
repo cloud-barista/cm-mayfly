@@ -18,7 +18,7 @@ var stopCmd = &cobra.Command{
 		fmt.Println("\n[Stop Cloud-Migrator]")
 		fmt.Println()
 
-		services, err := resolveServices(ServiceName)
+		services, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("❌ %v\n", err)
 			return

@@ -285,7 +285,7 @@ var updateCmd = &cobra.Command{
 
 		// Resolve -s first so an unusable value stops the command before anything
 		// is pulled or restarted. An empty -s means "every service".
-		targets, err := resolveServices(ServiceName)
+		targets, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("⚠️ %v\n", err)
 			return

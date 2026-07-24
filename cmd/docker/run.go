@@ -101,7 +101,7 @@ var runCmd = &cobra.Command{
 
 		// Resolve -s first so an unusable value stops the command before anything
 		// is started. An empty -s means "every service".
-		targets, err := resolveServices(ServiceName)
+		targets, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("⚠️ %v\n", err)
 			return
@@ -216,6 +216,6 @@ func init() {
 	// background mode
 	runCmd.Flags().BoolVarP(&DetachMode, "detach", "d", false, "Detached mode: Run containers in the background without showing logs")
 
-	// // ServiceName is used when you want to specify only a specific service
-	// runCmd.Flags().StringVarP(&ServiceName, "service", "s", "", "Want to target only one specific service(Default : all)")
+	// -s is a persistent flag on the parent `infra` command, so it is shared by
+	// every subcommand rather than redeclared here.
 }
