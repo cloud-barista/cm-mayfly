@@ -1,5 +1,7 @@
 # CB-Tumblebug 0.12.9 라인업 업그레이드 가이드
 
+> ⚠ **이 문서는 이력(historical) 문서입니다.** cb-tumblebug 0.12.9 라인업 마일스톤 시점의 업그레이드 절차를 기록한 것으로, 이후 라인업 버전 상향(cb-tumblebug 0.12.25·cb-spider 0.12.35·cb-mapui 0.12.50 등)과 OpenBao 운영 모델 변경(0.12.25 서버 내재화·Phase 0 init/unseal·state-consistency preflight)으로 일부 절차·버전이 현행과 다릅니다. **현행 OpenBao 운영은 [`docs/openbao-unseal.md`](openbao-unseal.md), 현행 라인업은 [`conf/docker/docker-compose.yaml`](../conf/docker/docker-compose.yaml)를 참조하세요.** 아래 본문은 당시 기록으로 보존합니다.
+
 > 본 문서는 cm-mayfly가 오케스트레이션하는 CB-Tumblebug 라인업을 v0.12.9로 업그레이드하는 절차와 변경 사항 검증 방법을 안내합니다.
 
 ---
@@ -21,7 +23,7 @@
 - **cb-spider 0.12.17 강제 인증**: `SPIDER_USERNAME`/`SPIDER_PASSWORD`가 비어있으면 `log.Fatal`로 컨테이너 기동 자체가 차단됩니다. cm-mayfly는 `default`/`default` 기본값으로 충족하지만 운영 환경에서는 `.env`로 외부 주입을 권장합니다.
 - **multi-init.sh 도입**: 기존 `init.sh` 대신 OpenBao 자격증명 등록 + tumblebug init을 통합 처리합니다. `mayfly setup tumblebug-init`이 자동 분기합니다.
 - **openbao-unseal sidecar**: 재기동 시 사용자가 unseal 명령을 입력할 필요 없이 sidecar가 자동 처리합니다.
-- **공통 환경변수**: `conf/docker/.env.template`을 참조해 자격증명·DB·로그레벨을 한 곳에서 관리할 수 있습니다.
+- **공통 환경변수**: `conf/docker/.env.example`을 참조해 자격증명·DB·로그레벨을 한 곳에서 관리할 수 있습니다.
 
 ---
 
@@ -37,7 +39,7 @@
 
 ```bash
 # (선택) 환경변수 외부 주입 시
-cp conf/docker/.env.template conf/docker/.env
+cp conf/docker/.env.example conf/docker/.env
 vi conf/docker/.env
 
 # 1. 컨테이너 기동
@@ -111,7 +113,7 @@ git pull               # 0.12.9 docker-compose.yaml 반영된 commit
 - cb-mapui
 - mc-terrarium
 - openbao
-- openbao-unseal (exited 0 — sidecar는 종료가 정상)
+- openbao-unseal (healthy — 상시 폴링 watcher. `restart: unless-stopped`로 계속 떠 있으며 OpenBao가 unsealed면 healthy)
 
 ### 6.2 cb-spider 인증 변경 검증
 

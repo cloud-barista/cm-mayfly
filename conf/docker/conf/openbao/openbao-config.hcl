@@ -32,7 +32,7 @@ ui = true
 # (선택) 클라우드 KMS Auto-Unseal 활성화 시 아래 stanza 활용
 # 운영 환경에서는 호스트 평문 키 자동 unseal(openbao-unseal sidecar)
 # 대신 KMS 봉인 방식을 권장합니다. 자세한 절차는
-# docs/upgrade-cb-tb-0.12.9.md 의 보안 가이드 섹션을 참조하세요.
+# See the security guide section in docs/openbao-unseal.md.
 # ─────────────────────────────────────────────────────────────────────
 #
 # AWS KMS 예시:

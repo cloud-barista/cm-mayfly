@@ -25,7 +25,9 @@ Usage:
   mayfly setup [command]
 
 Available Commands:
-  credential  Registration of CSP-Specific Credentials and Default Resources
+  credential      Registration of CSP-Specific Credentials and Default Resources
+  openbao         Manage the OpenBao secret manager (init / unseal / status)
+  tumblebug-init  Initialize CB-Tumblebug with the current running version
 
 Flags:
   -h, --help   help for setup
@@ -105,6 +107,8 @@ Please enter ClientSecret:
 Do you want to review the entered credentials? (yes/no): no
 Is this correct? (yes/no/retry): yes
 ```
+
+> 위 예시의 `ClientId`·`ClientSecret` 같은 입력 항목 이름은 cm-mayfly가 정한 값이 아니라 **실행 중인 cb-spider 서버가 해당 CSP에 대해 알려주는 자격증명 입력 양식**에서 가져옵니다. 따라서 CSP와 cb-spider 버전에 따라 항목 이름과 개수가 달라질 수 있으며, 화면에 실제로 표시되는 항목에 맞춰 입력하면 됩니다.
 
 
 

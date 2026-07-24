@@ -46,7 +46,7 @@ $ newgrp docker
 8. **Intuitive Menu System**: Provide optimized selection options for each situation
 9. **Download**: Download the version matching the currently running CB-Tumblebug from GitHub
 10. **Execution Guidance**: Display information about the folder to be executed
-11. **Initialization**: Execute init.sh after sourcing setup.env (with user input support)
+11. **Initialization**: Run the cb-tumblebug init script — `multi-init.sh` (unified OpenBao + Tumblebug init, cb-tumblebug 0.12.9+) when present, or the legacy `init.sh` (0.12.8 and below) as a fallback. There is no `setup.env` sourcing; the script is run interactively so its prompts (encryption password, init.py fetch-method choice, confirmations) are answered directly by the user.
 12. **Return**: Return to the original working directory
 
 ## Enhanced Capabilities
@@ -56,18 +56,18 @@ $ newgrp docker
 - Prevents initialization attempts on unstable containers
 - Provides clear guidance when container is not ready
 
-### 2. Advanced Git Version Management
+### 2. OpenBao State Consistency (hard precondition)
+- Before doing anything else, `tumblebug-init` runs an OpenBao state-consistency preflight and **aborts if OpenBao is not initialized or its `VAULT_TOKEN` is inconsistent** with the running container.
+- Since cb-tumblebug 0.12.25 the credential registration performed during initialization writes to the OpenBao secret store; if the running cb-tumblebug container holds an empty or invalid token, that registration silently fails. The preflight catches this up front instead of letting the run flood with `VAULT_TOKEN is not set` errors.
+- If you see `❌ OpenBao state is not consistent for tumblebug-init.`, follow the printed remediation. For a full-stack setup, `./mayfly infra run` performs the OpenBao initialization (Phase 0) before this command is needed; you can also run `./mayfly setup openbao init` / `./mayfly setup openbao status` directly.
+
+### 3. Advanced Git Version Management
 - **Precise Tag State Verification**: Verify that the current HEAD points exactly to a tag using `git describe --exact-match HEAD`
 - **Git Checkout Functionality**: Switch to the desired version using `git checkout` command
 - **Tag Existence Check**: Verify that the desired tag exists in the repository
 
-### 3. Smart Directory Handling
-- **Same Version (Exact Tag Checkout)**:
-  ```
-  1. Delete and download fresh
-  2. Use existing files
-  0. Exit
-  ```
+### 4. Smart Directory Handling
+- **Same Version (Exact Tag Checkout)**: No menu is shown. When the existing directory is already checked out at the exact tag of the running version, initialization proceeds automatically using that directory — there is nothing to decide. This is the common case, since `infra run` clones the matching tag on demand during OpenBao initialization.
 
 - **Different Version or Tag Not Checked Out**:
   ```
@@ -77,7 +77,7 @@ $ newgrp docker
   0. Exit
   ```
 
-### 4. User Experience Improvements
+### 5. User Experience Improvements
 - **Clear Guidance Messages**: Provide specific explanations for each situation
 - **Git Command Guide**: Present manual resolution methods
 - **English Interface**: All messages unified in English
@@ -105,10 +105,11 @@ $ newgrp docker
 
 # The command will:
 # 1. Check if CB-Tumblebug is running and healthy
-# 2. Detect the current running version
-# 3. Validate existing directory Git state
-# 4. Provide appropriate options based on the situation
-# 5. Execute initialization with proper version matching
+# 2. Verify OpenBao state is consistent (aborts otherwise)
+# 3. Detect the current running version
+# 4. Validate existing directory Git state
+# 5. Provide appropriate options based on the situation
+# 6. Execute initialization with proper version matching
 ```
 
 ## Benefits
@@ -124,17 +125,18 @@ $ newgrp docker
 ### Scenario 1: Fresh Installation
 ```bash
 ✅ CB-Tumblebug is running.
+✅ OpenBao VAULT_TOKEN is present and consistent.
 ✅ CB-Tumblebug is healthy.
-✅ Version confirmed: 0.11.9
-Downloading CB-Tumblebug v0.11.9 version from GitHub...
+✅ Version confirmed: 0.12.25
+Downloading CB-Tumblebug v0.12.25 version from GitHub...
 ```
 
 ### Scenario 2: Existing Directory with Wrong Version
 ```bash
 Different version of Tumblebug found in /path/to/cb-tumblebug folder.
-Current running version: v0.11.9
+Current running version: v0.12.25
 Existing directory version: a1b2c3d4e5f6
-The running version (v0.11.9) exists in the repository but is not currently checked out.
+The running version (v0.12.25) exists in the repository but is not currently checked out.
 
 Please select an option:
 1. Delete and download fresh
@@ -169,6 +171,6 @@ This is the password that decrypts your credential file during initialization (d
 3. `MULTI_INIT_PWD` environment variable
 4. interactive prompt (`read -s`)
 
-Note that `multi-init.sh` still performs one non-skippable read for `MULTI_INIT_PWD` even when a key file is present, so a value has to be provided on stdin during a non-interactive run (the key file takes precedence downstream).
+`tumblebug-init` runs the init script **interactively**: the script's prompts (the `MULTI_INIT_PWD` read, the `init.py` fetch-method choice, and any confirmations) are exposed to you and you answer them directly. cm-mayfly deliberately does **not** pre-feed fixed answers on stdin (e.g. `printf "y\n..." | ...`), because the prompt sequence is owned by CB-Tumblebug and changes by version/condition — a hardcoded answer would misalign and cause wrong answers, hangs, or "Invalid input" loops. `multi-init.sh` does begin with its own read for `MULTI_INIT_PWD`, but you simply answer it at the prompt; whatever is entered there does not decide the actual decryption — the key file (`.tmp_enc_key`) or `MULTI_INIT_PWD` is honoured downstream by `init.py`.
 
-This order is owned by CB-Tumblebug and may change between versions — refer to the CB-Tumblebug `init` scripts for the authoritative behaviour. Knowing it lets you wire your own automation around `tumblebug-init` (provide the key file or `MULTI_INIT_PWD`) instead of feeding the password interactively.
+This order is owned by CB-Tumblebug and may change between versions — refer to the CB-Tumblebug `init` scripts for the authoritative behaviour. To avoid typing the password at the prompt, prepare the key file (via `encCredential.sh`) or export `MULTI_INIT_PWD` before running `tumblebug-init`; `init.py` then uses it for the decryption while you still answer the interactive prompts.

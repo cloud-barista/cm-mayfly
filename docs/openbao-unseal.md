@@ -133,7 +133,7 @@ Two health-semantic subtleties that matter:
 
 Secrets are always **masked** in any human-facing output (first 8 characters + `***`). The unseal key is never returned by the API and never printed.
 
-Because the root token is stored in **two** places — `openbao-init.json` (the durable copy) and `.env` (the copy the containers consume) — the `.env` copy is **recoverable**: if it is lost or overwritten, it can be restored from `openbao-init.json` without re-initializing OpenBao and without losing any encrypted data. The preflight detects exactly this situation (`lost-token`) and prints the masked value to restore. See [§9](#10-recovery--troubleshooting).
+Because the root token is stored in **two** places — `openbao-init.json` (the durable copy) and `.env` (the copy the containers consume) — the `.env` copy is **recoverable**: if it is lost or overwritten, it can be restored from `openbao-init.json` without re-initializing OpenBao and without losing any encrypted data. The preflight detects exactly this situation (`lost-token`) and prints the masked value to restore. See [§10](#10-recovery--troubleshooting).
 
 ### 3.2 Token flow (init → .env → containers)
 
@@ -472,7 +472,7 @@ There is also **`not-ready`** (unsealed but the API has not become active yet). 
 | Stage | What it does with OpenBao |
 |-------|---------------------------|
 | **`mayfly infra run`** (full stack) | Runs the [state-consistency preflight](#6-state-consistency-preflight) first. On a clean install (no token, no data) it auto-runs `init` (staged flow above). On a consistent existing setup it proceeds. On any inconsistency it prints the specific remediation and **stops before starting the rest**, so the stack never deadlocks half-up. |
-| **`mayfly infra run -s <svc>`** (targeted) | **Does not** run the preflight — a targeted start should not auto-init/auto-start OpenBao. OpenBao readiness is still enforced by compose (`depends_on: openbao-unseal service_healthy`). Token *validity* is not re-checked on this path; use the full `mayfly infra run` for the guarded path. |
+| **`mayfly infra run -s <svc>`** (targeted) | Runs a **read-only** readiness check when the targeted services use OpenBao (they declare `VAULT_*` in compose, e.g. cb-tumblebug, mc-terrarium). It never auto-inits or auto-starts OpenBao — that would be surprising for a targeted start — but if OpenBao is not usable it prints what to run (`mayfly setup openbao init`, or the full `mayfly infra run`) and **stops** rather than starting services that would fail on their first secret lookup. Targets that do not use OpenBao are not gated. `mayfly infra update -s <svc>` behaves the same. |
 | **`mayfly setup openbao init`** | One-time init (staged: openbao alone → wait API → `openbao-init.sh`). Refuses without `--force` if `VAULT_TOKEN` is already set (re-init would orphan existing encrypted data). |
 | **`mayfly setup openbao unseal`** | Reads the saved unseal key and unseals. No-op if already unsealed. |
 | **`mayfly setup openbao status`** | Read-only diagnosis (never starts OpenBao). Prints the full signal set + verdict. |
@@ -486,7 +486,7 @@ There is also **`not-ready`** (unsealed but the API has not become active yet). 
 
 ## 6. State-consistency preflight
 
-Before `infra run`, `tumblebug-init`, and `openbao status` act, a shared **preflight** in `internal/openbao` collects the state signals and returns one authoritative verdict, so all entry points share one judgement. It is **detection/diagnosis only — it never writes `.env` and never destroys data.** When it finds a mismatch it returns a masked, actionable remediation message. The reasoning behind that choice is in [§6](#7-why-mayfly-guides-instead-of-auto-repairing).
+Before `infra run`, `tumblebug-init`, and `openbao status` act, a shared **preflight** in `internal/openbao` collects the state signals and returns one authoritative verdict, so all entry points share one judgement. It is **detection/diagnosis only — it never writes `.env` and never destroys data.** When it finds a mismatch it returns a masked, actionable remediation message. The reasoning behind that choice is in [§7](#7-why-mayfly-guides-instead-of-auto-repairing).
 
 ### 6.1 Signals
 
@@ -501,7 +501,7 @@ Before `infra run`, `tumblebug-init`, and `openbao status` act, a shared **prefl
 | **V** | Token validity — **valid / invalid / unknown** | `GET /v1/auth/token/lookup-self` |
 | **C** | The token the **running cb-tumblebug holds** — **valid / invalid / unknown** | cb-tumblebug `GET /credential/openbaoStatus` (it runs `lookup-self` with its own container token) |
 
-**Readiness gate (the key ordering).** After bringing OpenBao up and unsealing it, the preflight waits for **`health 200` (active)** *before* it checks the token. Right after an unseal, OpenBao spends a short window (seconds) still answering `503` while it loads its mount table / settles leadership — see the measured ~14 s window in [§8](#9-behavior-by-situation-verified). Gating on `health 200` absorbs that window as **infrastructure readiness**, so a transition-window `503` can never be mistaken for a bad token. Only after readiness is confirmed does the token check run.
+**Readiness gate (the key ordering).** After bringing OpenBao up and unsealing it, the preflight waits for **`health 200` (active)** *before* it checks the token. Right after an unseal, OpenBao spends a short window (seconds) still answering `503` while it loads its mount table / settles leadership — see the measured ~14 s window in [§9](#9-behavior-by-situation-verified). Gating on `health 200` absorbs that window as **infrastructure readiness**, so a transition-window `503` can never be mistaken for a bad token. Only after readiness is confirmed does the token check run.
 
 **Token is tri-state.** Because readiness is guaranteed upstream, the token probe returns:
 
@@ -676,7 +676,7 @@ conf/docker/data/openbao/secrets/openbao-init.json
    ```
 3. Re-run `mayfly infra run`. The dependent containers are recreated with the restored token and the preflight verdict returns to `consistent`.
 
-`mayfly` prints these steps for you, with the masked value filled in, whenever the preflight lands on `lost-token` or `wrong-token`. It does **not** perform the edit itself — see [§6](#7-why-mayfly-guides-instead-of-auto-repairing).
+`mayfly` prints these steps for you, with the masked value filled in, whenever the preflight lands on `lost-token` or `wrong-token`. It does **not** perform the edit itself — see [§7](#7-why-mayfly-guides-instead-of-auto-repairing).
 
 If the token in `openbao-init.json` is *also* rejected, then the key material and the storage no longer belong to each other (for example, the data directory was restored from a different backup than the init file). At that point the encrypted data is unrecoverable and the only path forward is `mayfly infra remove --clean-all` followed by a fresh init — which is exactly why that command is explicit and destructive by declaration.
 
@@ -710,7 +710,7 @@ Adding token validation to the preflight introduced a false positive. Immediatel
 **And: the token probe must not follow redirects.**
 The validity probe sends the root token in an `X-Vault-Token` header. Go's HTTP client strips `Authorization` and `Cookie` on a cross-host redirect — but not custom headers. A misconfigured or hostile endpoint answering `3xx` could therefore have the root token forwarded to it. The probe now refuses to follow redirects and treats a `3xx` as a transient. The readiness wait is also bounded, so a read-only command (`status`, `info`) reports `not-ready` instead of hanging on a stuck API.
 
-The through-line: **each layer exists because the simpler version silently produced a wrong-looking-right system.** That is also why [§6](#7-why-mayfly-guides-instead-of-auto-repairing) refuses to auto-repair — the failure mode this component keeps producing is not "it crashes", it is "it looks fine and isn't".
+The through-line: **each layer exists because the simpler version silently produced a wrong-looking-right system.** That is also why [§7](#7-why-mayfly-guides-instead-of-auto-repairing) refuses to auto-repair — the failure mode this component keeps producing is not "it crashes", it is "it looks fine and isn't".
 
 ---
 
@@ -720,16 +720,16 @@ The through-line: **each layer exists because the simpler version silently produ
 No, not in normal use. `infra run` initializes on a clean install and the sidecar re-unseals after every restart. You only run `setup openbao unseal` if the sidecar is disabled.
 
 **Q. Is the sidecar required? Can I run without it?**
-It is **not** required — it is a default chosen for convenience. Comment the `openbao-unseal` service out of `docker-compose.yaml` and unseal by hand with `mayfly setup openbao unseal` after each restart. Everything else behaves identically. See [§13](#14-auto-unseal-sidecar--a-default-not-a-requirement).
+It is **not** required — it is a default chosen for convenience. Comment the `openbao-unseal` service out of `docker-compose.yaml` and unseal by hand with `mayfly setup openbao unseal` after each restart. Everything else behaves identically. See [§14](#14-auto-unseal-sidecar--a-default-not-a-requirement).
 
 **Q. `infra run` says "wrong token" but my token is fine — what happened?**
 Earlier versions had this behavior: a `503` from the post-unseal transition window was misread as a bad token. The readiness gate now waits for `health 200` before checking the token, so a transient `503`/timeout no longer trips a false `wrong-token`. A `wrong-token` verdict now means a genuine `401/403`.
 
 **Q. Why does `mayfly` tell me to edit `.env` myself instead of just fixing it?**
-Because the fix for a *misdiagnosed* state destroys data. See [§6](#7-why-mayfly-guides-instead-of-auto-repairing) for the full reasoning.
+Because the fix for a *misdiagnosed* state destroys data. See [§7](#7-why-mayfly-guides-instead-of-auto-repairing) for the full reasoning.
 
 **Q. I lost the `VAULT_TOKEN` in `.env`. Do I have to re-initialize and lose my credentials?**
-No. The root token is also stored in `openbao-init.json`. Copy it back into `.env` and re-run `infra run` — the encrypted data is untouched. `mayfly` prints the masked value and the exact steps when it detects `lost-token`. See [§9.1](#101-restoring-the-root-token-no-data-loss). Re-initializing (`init --force`) is the one thing you should *not* do here: it would generate new keys and orphan the existing data.
+No. The root token is also stored in `openbao-init.json`. Copy it back into `.env` and re-run `infra run` — the encrypted data is untouched. `mayfly` prints the masked value and the exact steps when it detects `lost-token`. See [§10.1](#101-restoring-the-root-token-no-data-loss). Re-initializing (`init --force`) is the one thing you should *not* do here: it would generate new keys and orphan the existing data.
 
 **Q. After `infra run`, `cm-ant` keeps restarting and `cm-cicada` / `airflow-server` stay `Created`. Is that a bug?**
 No — that is the documented ordering. `cm-ant` exits with `cb-tumblebug not initialized (Ready=true, Initialized=false)` and waits for `mayfly setup tumblebug-init` to register credentials. Run `tumblebug-init` and those services start.
@@ -747,7 +747,7 @@ Unsealing and becoming *active* are two steps. Right after unseal, OpenBao still
 The **root token** (as `VAULT_TOKEN`). Never the unseal key.
 
 **Q. Why is only one unseal key generated? Isn't Shamir supposed to split it?**
-It is, and the current setup deliberately does not use that. See [§14](#15-unseal-key-shares-shamir-threshold--the-current-limit) — with the key stored on disk for auto-unseal, splitting it into shares that all live in the same file on the same host adds complexity and buys no security. The production answer is KMS auto-unseal, not more shares.
+It is, and the current setup deliberately does not use that. See [§15](#15-unseal-key-shares-shamir-threshold--the-current-limit) — with the key stored on disk for auto-unseal, splitting it into shares that all live in the same file on the same host adds complexity and buys no security. The production answer is KMS auto-unseal, not more shares.
 
 **Q. Why does the `openbao` container report healthy while it is sealed?**
 On purpose. `bao status` exits `2` when sealed, and the healthcheck accepts `rc ≤ 2` — meaning "the process is up". That lets the unseal sidecar depend on `openbao: service_healthy` and then do the unsealing. Readiness for *consumers* is expressed by the **sidecar's** healthcheck (`sealed:false`), which is what cb-tumblebug and mc-terrarium actually wait on.
@@ -768,7 +768,7 @@ ENV_FILE=<abs .env>  INIT_OUTPUT=<abs openbao-init.json>  ./init/openbao/openbao
 2. **The init output JSON shape.** We parse `openbao-init.json` for the unseal key under any of `keys` / `keys_base64` / `unseal_keys_hex` / `unseal_keys_b64`, and the token under `root_token`. The REST `POST /v1/sys/init` flow the script uses emits `keys[]` + `keys_base64[]` + `root_token`; the `bao operator init -format=json` CLI would instead emit `unseal_keys_hex`/`unseal_keys_b64`. We already accept both, but a **new key layout** would need a parser update (`internal/openbao.initFileShape`).
 3. **`docker compose up -d openbao` brings up OpenBao alone** (depends_on flows dependent→dependency). If upstream restructures the compose so OpenBao pulls other services in, the staged flow changes.
 4. **OpenBao image / unseal semantics.** A different OpenBao image or seal type (e.g. KMS auto-unseal) changes the sealed-on-restart assumption and the file-based unseal path.
-5. **The number of unseal key shares.** The script initializes with a single share (`secret_shares: 1, secret_threshold: 1`). If that changes, the single-key unseal path breaks — see [§14](#15-unseal-key-shares-shamir-threshold--the-current-limit).
+5. **The number of unseal key shares.** The script initializes with a single share (`secret_shares: 1, secret_threshold: 1`). If that changes, the single-key unseal path breaks — see [§15](#15-unseal-key-shares-shamir-threshold--the-current-limit).
 
 **When cb-tumblebug changes its OpenBao init logic, check the five points above** and adjust `internal/openbao` (`Init`, `initFileShape`, `UnsealWith`, the preflight signals) plus this document accordingly. Because we call their script rather than duplicating it, most upstream changes flow through automatically — the risk is in the **contract** (env-file key, JSON shape, staged compose, seal type, share count), not in the init steps themselves.
 
@@ -811,7 +811,7 @@ This is the maximum number of seconds OpenBao can stay sealed after a restart be
 
 A sealed OpenBao is not an obvious failure. cb-tumblebug keeps running and keeps answering; only its direct-CSP path quietly degrades to a fallback, and the symptoms show up somewhere else entirely, looking like a code regression. Requiring a person to run an unseal command after every restart, in an environment that restarts that often, means the environment spends a meaningful fraction of its life in a subtly wrong state that nobody notices.
 
-The sidecar removes that class of problem entirely, at a cost that is honest and bounded: the unseal key sits in a file on the host. That trade-off is stated in [§15](#16-security--development--testing-only), and it is acceptable **for development and testing**, which is what this configuration is for.
+The sidecar removes that class of problem entirely, at a cost that is honest and bounded: the unseal key sits in a file on the host. That trade-off is stated in [§16](#16-security--development--testing-only), and it is acceptable **for development and testing**, which is what this configuration is for.
 
 ### 14.2 Turning it off (manual mode)
 
@@ -860,8 +860,8 @@ Should a real threshold ever be needed, these are the changes:
 | `internal/openbao.initFileShape` | `firstKey()` → return **all** keys (`allKeys()`), preserving order. |
 | `internal/openbao.UnsealWith` | Apply keys one at a time, re-reading `seal-status` after each, until `sealed:false` or the keys are exhausted. Report progress (`n/threshold`) on failure. |
 | Preflight case `C8 stuck-sealed` | Distinguish "key does not match the data" from "not enough shares applied", and word the advice accordingly. |
-| `openbao-init.sh` (upstream cb-tumblebug) | The share count is set there, not here. Changing it is an upstream decision — see [§12](#13-relationship-with-cb-tumblebugs-openbao-init) point 5. |
-| The sidecar | **Conceptually incompatible.** A sidecar can only auto-unseal if it can read *threshold*-many shares from one place — which collapses the shares back to a single holder and defeats the purpose. Genuine multi-share operation implies **manual unseal by the key holders**, so the sidecar would be commented out ([§13.2](#142-turning-it-off-manual-mode)). |
+| `openbao-init.sh` (upstream cb-tumblebug) | The share count is set there, not here. Changing it is an upstream decision — see [§13](#13-relationship-with-cb-tumblebugs-openbao-init) point 5. |
+| The sidecar | **Conceptually incompatible.** A sidecar can only auto-unseal if it can read *threshold*-many shares from one place — which collapses the shares back to a single holder and defeats the purpose. Genuine multi-share operation implies **manual unseal by the key holders**, so the sidecar would be commented out ([§14.2](#142-turning-it-off-manual-mode)). |
 
 ### 15.4 Why the production answer is KMS, not more shares
 
@@ -873,7 +873,7 @@ Multi-share solves "no single human should be able to unseal alone". It does **n
 - **no unseal step to automate** — so no sidecar, no polling, and no "sealed after reboot" class of incident at all;
 - **auditable, revocable access** — KMS logs every decrypt and IAM can withdraw it, which a file on a host cannot do.
 
-That is why the production recommendation is KMS ([§15](#16-security--development--testing-only)) and why multi-share was never implemented: on the path we would actually take to production, multi-share becomes moot. It stays documented here as a known limit, so that anyone who *does* need it knows precisely what to change.
+That is why the production recommendation is KMS ([§16](#16-security--development--testing-only)) and why multi-share was never implemented: on the path we would actually take to production, multi-share becomes moot. It stays documented here as a known limit, so that anyone who *does* need it knows precisely what to change.
 
 ---
 
@@ -892,7 +892,7 @@ What this does and does not expose:
 - It **cannot be stolen over the network alone** — the key file is not served on any port, and the OpenBao API never returns the unseal key.
 - It **is** exposed by host compromise, a backup/snapshot leak, or an accidental commit of the secrets file — anyone who can read that file gets full access.
 
-This trade-off is a property of file-based auto-unseal itself; it is the same whether the sidecar polls continuously or unseals once. Adding more unseal key shares does not change it either — see [§14](#15-unseal-key-shares-shamir-threshold--the-current-limit).
+This trade-off is a property of file-based auto-unseal itself; it is the same whether the sidecar polls continuously or unseals once. Adding more unseal key shares does not change it either — see [§15](#15-unseal-key-shares-shamir-threshold--the-current-limit).
 
 For production, remove the on-disk plaintext key by using one of:
 

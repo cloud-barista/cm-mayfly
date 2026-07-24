@@ -60,7 +60,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/main/src/interface/rest/docs/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/{release}/src/interface/rest/docs/swagger.json
   cm-ant:
-    version: 0.5.4(0.6.0)
+    version: 0.5.7(0.6.0)
     baseurl: http://cm-ant:8880/ant
     auth:
       type: none
@@ -68,7 +68,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cm-ant/main/api/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cm-ant/{release}/api/swagger.json
   cm-beetle:
-    version: 0.5.5(latest)
+    version: 0.5.6(latest)
     baseurl: http://cm-beetle:8056/beetle
     auth:
       type: basic
@@ -79,14 +79,16 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-beetle/{release}/api/swagger.json
 
   cm-butterfly-api:
-    version: 0.4.0
+    # No public swagger source is registered for this service, so the version is
+    # kept in step with the image tag in conf/docker/docker-compose.yaml by hand.
+    version: 0.5.2
     #baseurl: http://localhost:4000
     baseurl: http://cm-butterfly-api:4000
     auth:
       type: none
       
   cm-cicada:
-    version: latest(latest)
+    version: 0.5.2(latest)
     baseurl: http://cm-cicada:8083/cicada
     auth:
       type: none
@@ -95,7 +97,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-cicada/{release}/pkg/api/rest/docs/swagger.json
 
   cm-honeybee:
-    version: 0.5.2(latest)
+    version: 0.5.3(latest)
     baseurl: http://cm-honeybee:8081/honeybee
     auth:
       type: none
@@ -104,7 +106,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/server/pkg/api/rest/docs/swagger.json
 
   cm-honeybee-agent:
-    version: latest(latest)
+    version: 0.5.3(latest)
     baseurl: http://cm-honeybee:8082/honeybee-agent
     auth:
       type: none
@@ -113,7 +115,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/agent/pkg/api/rest/docs/swagger.json
 
   cm-grasshopper:
-    version: latest(latest)
+    version: 0.5.2(latest)
     baseurl: http://cm-grasshopper:8084/grasshopper
     auth:
       type: none
@@ -2849,11 +2851,11 @@ serviceActions:
     Example-Get-Data:
       method: get
       resourcePath: /example/data
-      description: "Return a deterministic JSON payload used by the http_xcom workflow example."
+      description: "Return a deterministic JSON payload used by the task-reference workflow example."
     Example-Post-Echo:
       method: post
       resourcePath: /example/echo
-      description: "Echo the raw request body back. Used by the http_xcom workflow example to verify body propagation."
+      description: "Echo the raw request body back. Used by the task-reference workflow example to verify body propagation."
     Get-Connection:
       method: get
       resourcePath: /connection/{connId}
