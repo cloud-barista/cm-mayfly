@@ -15,7 +15,7 @@ var pullCmd = &cobra.Command{
 		fmt.Println("\n[Install the Docker images of the subsystems that make up the Cloud-Migrator system.]")
 		fmt.Println()
 
-		services, err := resolveServices(ServiceName)
+		services, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("❌ %v\n", err)
 			return

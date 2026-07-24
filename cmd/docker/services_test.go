@@ -344,3 +344,159 @@ func TestHostDataTargetsDefaultWipesNothing(t *testing.T) {
 		t.Fatalf("hostDataTargets = %v, want nothing wiped without --clean-db", targets)
 	}
 }
+
+// setServiceNames points the -s flag values at the given occurrences for the
+// duration of the test.
+func setServiceNames(t *testing.T, values ...string) {
+	t.Helper()
+	prev := ServiceNames
+	ServiceNames = values
+	t.Cleanup(func() { ServiceNames = prev })
+}
+
+// -s is repeatable and each occurrence may itself list several names, so
+// repeating the flag, separating with commas, separating with spaces, and mixing
+// the two must all select the same services. Before -s became repeatable only
+// the last occurrence survived, so a user who wrote `-s a -s b` silently got
+// just b — a targeted remove could then hit a narrower set than intended without
+// any error.
+func TestResolveSelectedServicesFormsAreEquivalent(t *testing.T) {
+	writeTestCompose(t, "cb-spider", "cb-tumblebug", "openbao")
+
+	cases := []struct {
+		name   string
+		values []string
+		want   []string
+	}{
+		{"repeated flag", []string{"cb-spider", "cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"comma separated", []string{"cb-spider,cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"space separated", []string{"cb-spider cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"repeat mixed with comma", []string{"cb-spider,cb-tumblebug", "openbao"}, []string{"cb-spider", "cb-tumblebug", "openbao"}},
+		{"duplicates across occurrences collapse", []string{"cb-spider", "cb-spider,cb-tumblebug"}, []string{"cb-spider", "cb-tumblebug"}},
+		{"single value unchanged", []string{"cb-spider"}, []string{"cb-spider"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setServiceNames(t, tc.values...)
+
+			got, err := resolveSelectedServices()
+			if err != nil {
+				t.Fatalf("resolveSelectedServices() with -s %v returned error: %v", tc.values, err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("resolveSelectedServices() with -s %v = %v, want %v", tc.values, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("resolveSelectedServices() with -s %v = %v, want %v", tc.values, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// Omitting -s is still the only way to mean "every service"; the safety rules
+// that guard destructive commands must survive the switch to a repeatable flag.
+func TestResolveSelectedServicesSafetyRules(t *testing.T) {
+	writeTestCompose(t, "cb-spider", "openbao")
+
+	t.Run("omitted means all", func(t *testing.T) {
+		setServiceNames(t)
+
+		got, err := resolveSelectedServices()
+		if err != nil {
+			t.Fatalf("resolveSelectedServices() with no -s returned error: %v", err)
+		}
+		if len(got) != 0 {
+			t.Fatalf("resolveSelectedServices() with no -s = %v, want empty (all services)", got)
+		}
+	})
+
+	t.Run("separators only is an error, never all", func(t *testing.T) {
+		setServiceNames(t, ",", " ")
+
+		got, err := resolveSelectedServices()
+		if err == nil {
+			t.Fatalf("resolveSelectedServices() with separator-only -s = %v, want an error", got)
+		}
+		if got != nil {
+			t.Fatalf("resolveSelectedServices() returned %v alongside an error; it must return no targets", got)
+		}
+	})
+
+	t.Run("unknown name is reported", func(t *testing.T) {
+		setServiceNames(t, "cb-spider", "nope-one")
+
+		if _, err := resolveSelectedServices(); err == nil {
+			t.Fatal("resolveSelectedServices() with an unknown name returned no error")
+		} else if !strings.Contains(err.Error(), "nope-one") {
+			t.Fatalf("error %q does not name the offending service", err)
+		}
+	})
+}
+
+// writeComposeWithOpenBaoUser creates a compose file where only cb-tumblebug is
+// handed OpenBao settings, so the dependency has to be read off the file rather
+// than assumed from the service name.
+func writeComposeWithOpenBaoUser(t *testing.T) {
+	t.Helper()
+
+	body := `services:
+  openbao:
+    image: example/openbao:1.0.0
+  cb-tumblebug:
+    image: example/cb-tumblebug:1.0.0
+    environment:
+      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_TOKEN=${VAULT_TOKEN}
+  cm-ant:
+    image: example/cm-ant:1.0.0
+    environment:
+      ANT_DB_USER: ${ANT_DB_USER}
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yaml")
+	if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	prev := DockerFilePath
+	DockerFilePath = path
+	t.Cleanup(func() { DockerFilePath = prev })
+}
+
+// Which services need OpenBao is read from the compose file (they are the ones
+// given VAULT_* in their environment), not from a hardcoded list — a list would
+// silently go stale the next time a service starts or stops using OpenBao.
+func TestOpenBaoDependentTargets(t *testing.T) {
+	writeComposeWithOpenBaoUser(t)
+
+	cases := []struct {
+		name    string
+		targets []string
+		want    []string
+	}{
+		{"service that reads VAULT_*", []string{"cb-tumblebug"}, []string{"cb-tumblebug"}},
+		{"service that does not", []string{"cm-ant"}, nil},
+		{"only the dependent ones, order kept", []string{"cm-ant", "cb-tumblebug"}, []string{"cb-tumblebug"}},
+		{"no targets means no gate", nil, nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := openBaoDependentTargets(tc.targets)
+			if err != nil {
+				t.Fatalf("openBaoDependentTargets(%v) returned error: %v", tc.targets, err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("openBaoDependentTargets(%v) = %v, want %v", tc.targets, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("openBaoDependentTargets(%v) = %v, want %v", tc.targets, got, tc.want)
+				}
+			}
+		})
+	}
+}

@@ -285,7 +285,7 @@ var updateCmd = &cobra.Command{
 
 		// Resolve -s first so an unusable value stops the command before anything
 		// is pulled or restarted. An empty -s means "every service".
-		targets, err := resolveServices(ServiceName)
+		targets, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("⚠️ %v\n", err)
 			return
@@ -357,6 +357,12 @@ var updateCmd = &cobra.Command{
 		//============================
 		fmt.Println("\n\n[Restart based on the installed latest Docker images.]")
 		fmt.Println()
+
+		// A targeted update brings the named services back up without the staged
+		// OpenBao flow, so apply the same readiness check `infra run` uses.
+		if len(targets) > 0 && !openBaoReadyForTargets(targets) {
+			return
+		}
 
 		// Always bring the stack up detached, mirroring `infra run`. Running
 		// attached ties the stack's lifetime to this terminal, so a Ctrl-C

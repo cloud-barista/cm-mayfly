@@ -101,7 +101,7 @@ var runCmd = &cobra.Command{
 
 		// Resolve -s first so an unusable value stops the command before anything
 		// is started. An empty -s means "every service".
-		targets, err := resolveServices(ServiceName)
+		targets, err := resolveSelectedServices()
 		if err != nil {
 			fmt.Printf("⚠️ %v\n", err)
 			return
@@ -183,6 +183,12 @@ var runCmd = &cobra.Command{
 			}
 		}
 
+		// A targeted run skips the staged OpenBao flow above, so check that the
+		// services being asked for can actually work once they are up.
+		if len(targets) > 0 && !openBaoReadyForTargets(targets) {
+			return
+		}
+
 		// Always use detached mode to avoid dependency issues
 		// If user wants to see logs, we'll show them after containers are started
 		if err := runCompose(append([]string{"up", "-d"}, targets...)...); err != nil {
@@ -208,6 +214,64 @@ var runCmd = &cobra.Command{
 	},
 }
 
+// openBaoReadyForTargets reports whether a targeted (-s) start may go ahead.
+//
+// The full-stack path initializes OpenBao on the way up. A targeted start
+// deliberately does not: initializing the secret store as a side effect of
+// bringing up one service would be surprising, and it is not what the user
+// asked for. But letting services that read VAULT_ADDR / VAULT_TOKEN start
+// against an uninitialized or inconsistent OpenBao is worse — they come up and
+// then fail on their first secret lookup, with nothing on screen pointing at
+// the cause.
+//
+// So the state is only *checked* here, never repaired: Preflight(false) reads
+// the signals without starting a container, and the user is told which command
+// to run. Services that do not touch OpenBao are not gated at all.
+func openBaoReadyForTargets(targets []string) bool {
+	dependent, err := openBaoDependentTargets(targets)
+	if err != nil {
+		// The compose file is unreadable; resolveSelectedServices already
+		// reported that. Do not add a second, confusing message here.
+		return true
+	}
+	if len(dependent) == 0 {
+		return true
+	}
+
+	pf := openbao.Preflight(false) // read-only: never starts a container
+
+	subject := fmt.Sprintf("%s needs it", dependent[0])
+	if len(dependent) > 1 {
+		subject = fmt.Sprintf("%s need it", strings.Join(dependent, ", "))
+	}
+
+	// CaseFresh is "OK" for a full install, which goes on to initialize OpenBao.
+	// For a targeted start it is a stop condition: nothing will initialize it,
+	// so the dependent services would start without a usable token.
+	if pf.Case == openbao.CaseFresh {
+		fmt.Println()
+		fmt.Printf("❌ OpenBao is not initialized yet, and %s.\n", subject)
+		fmt.Println("Initialize it first, then start the service(s) again:")
+		fmt.Println("  ./mayfly setup openbao init      (initialize OpenBao only)")
+		fmt.Println("  ./mayfly infra run -d            (bring the whole stack up, initializing on the way)")
+		return false
+	}
+
+	if pf.OK {
+		if pf.Note != "" {
+			fmt.Println()
+			fmt.Println(pf.Note)
+		}
+		return true
+	}
+
+	fmt.Println()
+	fmt.Printf("❌ OpenBao is not in a usable state, and %s.\n", subject)
+	fmt.Println(pf.Advice)
+	fmt.Println("\nNothing was started. Resolve the above, then run this command again.")
+	return false
+}
+
 var DetachMode bool
 
 func init() {
@@ -216,6 +280,6 @@ func init() {
 	// background mode
 	runCmd.Flags().BoolVarP(&DetachMode, "detach", "d", false, "Detached mode: Run containers in the background without showing logs")
 
-	// // ServiceName is used when you want to specify only a specific service
-	// runCmd.Flags().StringVarP(&ServiceName, "service", "s", "", "Want to target only one specific service(Default : all)")
+	// -s is a persistent flag on the parent `infra` command, so it is shared by
+	// every subcommand rather than redeclared here.
 }
