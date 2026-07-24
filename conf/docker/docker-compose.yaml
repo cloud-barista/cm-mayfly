@@ -773,6 +773,17 @@ services:
       # The AIRFLOW__CORE__ alias is gone: Airflow 3 removed [core] sql_alchemy_conn, so only
       # the [database] key is consulted.
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=mysql+mysqldb://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
+      # The Celery result backend is a *separate* connection string, and airflow.cfg hardcodes it
+      # the same way: db+mysql://airflow:airflow_pass@airflow-mysql/airflow. Overriding
+      # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN alone does not cover it.
+      #
+      # The scheduler and the celery worker are the only processes that open this connection, and
+      # they open it while starting up. When AIRFLOW_DB_PASSWORD differs from the hardcoded
+      # airflow_pass, both die immediately with "Access denied for user 'airflow'" while
+      # api-server and dag-processor - which use the [database] connection - keep running. The
+      # container therefore stays healthy, the web UI looks normal, and every workflow run sits at
+      # Pending 0/N tasks forever with nothing in the migration frameworks' logs.
+      - AIRFLOW__CELERY__RESULT_BACKEND=db+mysql://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-mysql/${AIRFLOW_DB_NAME}
     ports:
       - "5555:5555"
       - "8080:8080"
