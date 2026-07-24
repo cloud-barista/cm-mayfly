@@ -221,7 +221,9 @@ If a new version of the Docker image is released, you can update the running ver
 $ ./mayfly infra update
 ```
 
-You can `update` a specific service using the `-s` flag.
+It compares what is running against `docker-compose.yaml` and Docker Hub, shows the result, and then pulls and restarts **only the services that need it** — everything else keeps running untouched. A tag whose name has not changed is compared by content as well, so a rebuilt `edge` or `latest` is picked up.
+
+You can `update` a specific service using the `-s` flag. An explicit selection takes precedence over the version check.
 ```
 $ ./mayfly infra update -s cb-spider
 ```
