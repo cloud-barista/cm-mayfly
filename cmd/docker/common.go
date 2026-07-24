@@ -31,6 +31,12 @@ type ComposeService struct {
 	Tag        string
 	Category   string
 	DependsOn  []string
+	// UsesOpenBao reports whether the service is handed an OpenBao address or
+	// token through its environment. Those services cannot work until OpenBao
+	// has been initialized, so starting them on their own needs a preflight.
+	// It is derived from the compose file rather than a hardcoded list, so a
+	// service that starts (or stops) using OpenBao is picked up automatically.
+	UsesOpenBao bool
 }
 
 // ComposeFile is the parsed compose file. Order preserves the order the
@@ -114,8 +120,9 @@ func parseComposeContent(content []byte) (*ComposeFile, error) {
 		}
 
 		var body struct {
-			Image     string    `yaml:"image"`
-			DependsOn yaml.Node `yaml:"depends_on"`
+			Image       string    `yaml:"image"`
+			DependsOn   yaml.Node `yaml:"depends_on"`
+			Environment yaml.Node `yaml:"environment"`
 		}
 		if err := root.Services.Content[i+1].Decode(&body); err != nil {
 			// A service we cannot decode is still a service: record the name so
@@ -127,12 +134,13 @@ func parseComposeContent(content []byte) (*ComposeFile, error) {
 
 		repository, tag := splitImageRef(body.Image)
 		svc := ComposeService{
-			Name:       name,
-			Image:      body.Image,
-			Repository: repository,
-			Tag:        tag,
-			Category:   categorizeService(name, repository),
-			DependsOn:  decodeDependsOn(&body.DependsOn),
+			Name:        name,
+			Image:       body.Image,
+			Repository:  repository,
+			Tag:         tag,
+			Category:    categorizeService(name, repository),
+			DependsOn:   decodeDependsOn(&body.DependsOn),
+			UsesOpenBao: nodeMentions(&body.Environment, openBaoEnvPrefix),
 		}
 
 		result.Order = append(result.Order, name)
@@ -272,6 +280,49 @@ func resolveServices(raw string) ([]string, error) {
 	}
 
 	return validateServiceNames(names, available)
+}
+
+// openBaoEnvPrefix is the environment-variable prefix that marks a service as
+// depending on OpenBao (VAULT_ADDR / VAULT_TOKEN). The compose file wires the
+// dependency through the environment rather than depends_on, so this is what we
+// look for.
+const openBaoEnvPrefix = "VAULT_"
+
+// nodeMentions reports whether any scalar anywhere under node contains needle.
+// compose accepts `environment` as either a list ("- KEY=value") or a mapping,
+// so the node is walked instead of being decoded into one specific shape.
+func nodeMentions(node *yaml.Node, needle string) bool {
+	if node == nil {
+		return false
+	}
+	if strings.Contains(node.Value, needle) {
+		return true
+	}
+	for _, child := range node.Content {
+		if nodeMentions(child, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// openBaoDependentTargets returns the subset of the given services that cannot
+// start without OpenBao, in the order they were given.
+func openBaoDependentTargets(targets []string) ([]string, error) {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	parsed, err := loadComposeFile()
+	if err != nil {
+		return nil, err
+	}
+	var dependent []string
+	for _, name := range targets {
+		if svc, ok := parsed.Services[name]; ok && svc.UsesOpenBao {
+			dependent = append(dependent, name)
+		}
+	}
+	return dependent, nil
 }
 
 // resolveSelectedServices turns the -s flag values into a validated service

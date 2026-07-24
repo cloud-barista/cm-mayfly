@@ -358,6 +358,12 @@ var updateCmd = &cobra.Command{
 		fmt.Println("\n\n[Restart based on the installed latest Docker images.]")
 		fmt.Println()
 
+		// A targeted update brings the named services back up without the staged
+		// OpenBao flow, so apply the same readiness check `infra run` uses.
+		if len(targets) > 0 && !openBaoReadyForTargets(targets) {
+			return
+		}
+
 		// Always bring the stack up detached, mirroring `infra run`. Running
 		// attached ties the stack's lifetime to this terminal, so a Ctrl-C
 		// meant to stop watching output tears the containers back down.
