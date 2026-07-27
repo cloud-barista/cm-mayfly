@@ -80,6 +80,7 @@ services:
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./conf/cb-tumblebug/conf:/app/conf/:ro
+      - ./conf/cb-tumblebug/assets/:/app/assets/
       - ./data/cb-tumblebug/meta_db/:/app/meta_db/
       - ./data/cb-tumblebug/log/:/app/log/
     environment:
