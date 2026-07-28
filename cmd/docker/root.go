@@ -118,6 +118,9 @@ var startsContainers = map[string]bool{
 //   - VAULT_TOKEN : intentionally blank in the template; it is generated/written by
 //     the OpenBao init flow during `infra run` (a fresh clean install starts with it
 //     blank — requiring it would block the auto-init the install depends on).
+//   - AIRFLOW_DB_BINLOG_ARGS, LOG_MAX_SIZE, LOG_MAX_FILE : the compose file
+//     substitutes defaults for all three (`:---skip-log-bin`, `:-50m`, `:-10`), so a
+//     blank value never reaches a container. They only tune how much log is kept.
 //   - OPENBAO_UNSEAL_POLL_INTERVAL : the compose file already substitutes a default
 //     for it (`${OPENBAO_UNSEAL_POLL_INTERVAL:-30}`), so a blank value never reaches
 //     the sidecar — 30 does. It is not a secret either.
@@ -133,6 +136,9 @@ var optionalEnvKeys = map[string]bool{
 	"SMTP_MAIL_FROM":               true,
 	"VAULT_TOKEN":                  true,
 	"OPENBAO_UNSEAL_POLL_INTERVAL": true,
+	"AIRFLOW_DB_BINLOG_ARGS":       true,
+	"LOG_MAX_SIZE":                 true,
+	"LOG_MAX_FILE":                 true,
 }
 
 // fallbackRequiredEnvKeys is used only when .env.example cannot be read (so the
