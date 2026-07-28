@@ -20,6 +20,13 @@ func TestOptionalEnvKeys(t *testing.T) {
 		// compose substitutes `${OPENBAO_UNSEAL_POLL_INTERVAL:-30}`, so a blank
 		// value never reaches the sidecar.
 		"OPENBAO_UNSEAL_POLL_INTERVAL",
+
+		// compose substitutes `${AIRFLOW_DB_BINLOG_ARGS:---skip-log-bin}`,
+		// `${LOG_MAX_SIZE:-50m}` and `${LOG_MAX_FILE:-10}`, so a blank value
+		// still starts the stack with the defaults.
+		"AIRFLOW_DB_BINLOG_ARGS",
+		"LOG_MAX_SIZE",
+		"LOG_MAX_FILE",
 	}
 	for _, k := range mustBeOptional {
 		if !optionalEnvKeys[k] {
