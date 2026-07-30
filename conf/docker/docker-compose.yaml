@@ -400,7 +400,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.5.6
+    image: cloudbaristaorg/cm-beetle:0.5.7
     container_name: cm-beetle
     logging: *default-logging
     pull_policy: always
@@ -453,7 +453,7 @@ services:
   # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
-    image: cloudbaristaorg/cm-butterfly-api:0.5.3
+    image: cloudbaristaorg/cm-butterfly-api:0.5.4
     # image: cloudbaristaorg/cm-butterfly-api:edge
     container_name: cm-butterfly-api
     logging: *default-logging
@@ -507,7 +507,7 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    image: cloudbaristaorg/cm-butterfly-front:0.5.3
+    image: cloudbaristaorg/cm-butterfly-front:0.5.4
     # image: cloudbaristaorg/cm-butterfly-front:edge
 
     container_name: cm-butterfly-front
