@@ -60,7 +60,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/main/src/interface/rest/docs/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/{release}/src/interface/rest/docs/swagger.json
   cm-ant:
-    version: 0.5.7(0.6.0)
+    version: 0.6.0(0.6.0)
     baseurl: http://cm-ant:8880/ant
     auth:
       type: none
@@ -68,7 +68,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cm-ant/main/api/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cm-ant/{release}/api/swagger.json
   cm-beetle:
-    version: 0.5.6(latest)
+    version: 0.6.0(latest)
     baseurl: http://cm-beetle:8056/beetle
     auth:
       type: basic
@@ -81,14 +81,14 @@ services:
   cm-butterfly-api:
     # No public swagger source is registered for this service, so the version is
     # kept in step with the image tag in conf/docker/docker-compose.yaml by hand.
-    version: 0.5.2
+    version: 0.6.0
     #baseurl: http://localhost:4000
     baseurl: http://cm-butterfly-api:4000
     auth:
       type: none
       
   cm-cicada:
-    version: 0.5.2(latest)
+    version: 0.6.0(latest)
     baseurl: http://cm-cicada:8083/cicada
     auth:
       type: none
@@ -97,7 +97,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-cicada/{release}/pkg/api/rest/docs/swagger.json
 
   cm-honeybee:
-    version: 0.5.3(latest)
+    version: 0.6.0(latest)
     baseurl: http://cm-honeybee:8081/honeybee
     auth:
       type: none
@@ -106,7 +106,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/server/pkg/api/rest/docs/swagger.json
 
   cm-honeybee-agent:
-    version: 0.5.3(latest)
+    version: 0.6.0(latest)
     baseurl: http://cm-honeybee:8082/honeybee-agent
     auth:
       type: none
@@ -115,7 +115,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/agent/pkg/api/rest/docs/swagger.json
 
   cm-grasshopper:
-    version: 0.5.2(latest)
+    version: 0.6.0(latest)
     baseurl: http://cm-grasshopper:8084/grasshopper
     auth:
       type: none
@@ -124,7 +124,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-grasshopper/{release}/pkg/api/rest/docs/swagger.json
 
   cm-damselfly:
-    version: 0.5.3(latest)
+    version: 0.6.0(latest)
     baseurl: http://cm-damselfly:8088/damselfly
     auth: # cm-damselfly checks these only when DAMSELFLY_API_AUTH_ENABLED=true; otherwise they are ignored.
       type: basic
