@@ -571,7 +571,7 @@ services:
   # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
     # image: cloudbaristaorg/cm-honeybee:edge
-    image: cloudbaristaorg/cm-honeybee:0.5.3
+    image: cloudbaristaorg/cm-honeybee:0.5.4
     container_name: cm-honeybee
     logging: *default-logging
     pull_policy: always
@@ -581,11 +581,21 @@ services:
       # 8081 : Server / 8082 : Agent
       - "8081:8081"
       #- "8082:8082"
+    networks:
+      - spider_net
+      - default
     # depends_on:
     #   - cm-honeybee-agent
+    environment:
+      # cm-honeybee calls cb-spider with Basic Auth; the mounted
+      # conf/cm-honeybee/cm-honeybee.yaml references these via ${VAR} so the
+      # credentials stay in sync with cb-spider (cm-honeybee 0.5.4+).
+      - SPIDER_USERNAME=${SPIDER_USERNAME}
+      - SPIDER_PASSWORD=${SPIDER_PASSWORD}
     volumes:
       - ./tool/mayfly:/app/tool/mayfly
       - ./data/cm-honeybee/:/root/.cm-honeybee/:rw
+      - ./conf/cm-honeybee/cm-honeybee.yaml:/conf/cm-honeybee.yaml:ro
     healthcheck:
       test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-honeybee:8081/honeybee/readyz"]
       <<: *default-health-check
