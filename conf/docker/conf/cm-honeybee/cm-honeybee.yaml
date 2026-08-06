@@ -14,3 +14,9 @@ cm-honeybee:
         endpoint: http://cb-spider:1024/spider
         username: ${SPIDER_USERNAME}
         password: ${SPIDER_PASSWORD}
+    # Secrets backend: cm-honeybee stores SSH access secrets and CSP credentials
+    # ONLY in its OWN dedicated OpenBao (honeybee-openbao). Address + token file
+    # are injected via this service's environment block in docker-compose.yaml.
+    openbao:
+        address: ${HONEYBEE_VAULT_ADDR}
+        token_file: ${HONEYBEE_VAULT_TOKEN_FILE}
