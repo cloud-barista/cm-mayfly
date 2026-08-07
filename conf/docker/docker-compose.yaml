@@ -813,7 +813,7 @@ services:
     container_name: airflow-server
     logging: *default-logging
     # image: cloudbaristaorg/airflow-server:edge
-    image: cloudbaristaorg/airflow-server:0.5.2
+    image: cloudbaristaorg/airflow-server:0.5.3
     restart: unless-stopped
     environment:
       # SMTP settings (managed centrally in the host .env)
