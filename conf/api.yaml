@@ -68,7 +68,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cm-ant/main/api/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cm-ant/{release}/api/swagger.json
   cm-beetle:
-    version: 0.5.7(latest)
+    version: 0.5.9(latest)
     baseurl: http://cm-beetle:8056/beetle
     auth:
       type: basic
@@ -97,7 +97,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-cicada/{release}/pkg/api/rest/docs/swagger.json
 
   cm-honeybee:
-    version: 0.5.3(latest)
+    version: 0.5.4(latest)
     baseurl: http://cm-honeybee:8081/honeybee
     auth:
       type: none
@@ -106,7 +106,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/server/pkg/api/rest/docs/swagger.json
 
   cm-honeybee-agent:
-    version: 0.5.3(latest)
+    version: 0.5.4(latest)
     baseurl: http://cm-honeybee:8082/honeybee-agent
     auth:
       type: none
@@ -115,7 +115,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/agent/pkg/api/rest/docs/swagger.json
 
   cm-grasshopper:
-    version: 0.5.2(latest)
+    version: 0.5.3(latest)
     baseurl: http://cm-grasshopper:8084/grasshopper
     auth:
       type: none
@@ -2574,7 +2574,7 @@ serviceActions:
     CheckSSHReady:
       method: get
       resourcePath: /migration/ns/{nsId}/infra/{infraId}/ssh-ready
-      description: "Check if all nodes in the migrated infrastructure are SSH-accessible.\n\n\"Running\" status doesn't mean cloud-init (SSH user setup) is done; timing varies by\nCSP (IBM Cloud VPC: up to ~3 min in testing). Works for any CSP.\n\n**Rate Limiting**: To prevent SSH server abuse, this API can only be called\nonce every 3 minutes for the same infrastructure. If called too soon, it returns\nHTTP 429 with the time to wait before the next check is allowed.\n\n**Check Method**: This API runs a lightweight command on each node via Tumblebug's\nremote command API (not a direct connection from CM-Beetle), so it reuses Tumblebug's\nexisting SSH/bastion setup for the node's CSP.\n\n**Response Options**:\n- Default (no option): Returns summary information (ready, totalNodes, readyNodes, message)\n- option=detail: Returns summary + detailed node status array (nodeStatus) for troubleshooting (per-node SSH readiness)"
+      description: "Check if all nodes in the migrated infrastructure are SSH-accessible.\n\n\"Running\" status doesn't mean cloud-init (SSH user setup) is done; timing varies by\nCSP (IBM Cloud VPC: up to ~3 min in testing). Works for any CSP.\n\n**Rate limiting**: At most **1 check per 30 seconds per infrastructure**, counted per\n`nsId:infraId` rather than per caller, because the protected resource is the nodes' own SSH\nservers. The window matches this API's own **30 s** runtime, so only one check per\ninfrastructure runs at a time. An early or concurrent call is rejected with **`429`** plus a\n**`Retry-After`** header in seconds, and performs no SSH activity. A client that awaits each\nresponse is never rate limited: a not-ready check runs the full 30 s before answering.\n\n**Check Method**: This API runs a lightweight command on each node via Tumblebug's\nremote command API (not a direct connection from CM-Beetle), so it reuses Tumblebug's\nexisting SSH/bastion setup for the node's CSP. It re-probes every **10 s** for up to\n**30 s**, returning as soon as every node responds.\n\n**Response Options**:\n- Default (no option): Returns summary information (ready, totalNodes, readyNodes, message)\n- option=detail: Returns summary + detailed node status array (nodeStatus) for troubleshooting (per-node SSH readiness)"
     CreateMigratedSSHKey:
       method: post
       resourcePath: /migration/ns/{nsId}/resources/sshKey
@@ -2594,7 +2594,7 @@ serviceActions:
     DeleteInfra:
       method: delete
       resourcePath: /migration/ns/{nsId}/infra/{infraId}
-      description: "Delete the migrated mult-cloud infrastructure (MCI)"
+      description: "Delete the migrated multi-cloud infrastructure (Infra).\n\nThis operation can take a long time (multiple settle-time waits and vNet-deletion\nretries). By default it runs synchronously. Send header `Prefer: respond-async` to run\nit asynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized.\n\n**Rate limiting** — Calls to CB-Tumblebug are paced at **~1.6 req/s (one per 625 ms)** to stay\nunder its **2 req/s per-client-IP** limit. This operation allows its paced read up to **30 s**\nfor a slot, rather than the usual 8 s, because deletion tolerates a longer wait. On timeout the\nresponse is **`503`** with a **`Retry-After`** header in seconds."
     DeleteMigratedSSHKey:
       method: delete
       resourcePath: /migration/ns/{nsId}/resources/sshKey/{sshKeyId}
@@ -2622,11 +2622,11 @@ serviceActions:
     DeleteNlb:
       method: delete
       resourcePath: /migration/middleware/ns/{nsId}/infra/{infraId}/nlb/{nlbId}
-      description: "Delete a specific NLB from the target infra.\n\n[Note] Some CSPs delete NLBs asynchronously — the API returns success before ENIs are fully released.\nDeleting VNet/subnets immediately after NLB deletion may cause dependency errors (e.g., DependencyViolation on AWS).\nCM-Beetle waits a short period (e.g., 15s) after a successful deletion response to allow CSP-side cleanup to complete."
+      description: "Delete a specific NLB from the target infra.\n\n[Note] Some CSPs delete NLBs asynchronously — the API returns success before ENIs are fully released.\nDeleting VNet/subnets immediately after NLB deletion may cause dependency errors (e.g., DependencyViolation on AWS).\nCM-Beetle waits a short period (e.g., 15s) after a successful deletion response to allow CSP-side cleanup to complete.\n\nBy default this API runs synchronously (always includes the 15s settle wait). Send header\n`Prefer: respond-async` to run it asynchronously instead: receive 202 Accepted with a reqId,\nthen poll GET /request/{reqId} (status flow: Handling → Success / Error)."
     DeleteObjectStorage:
       method: delete
       resourcePath: /migration/middleware/ns/{nsId}/objectStorage/{osId}
-      description: "Delete a specific object storage (bucket).\n\nDeletion behavior is controlled by the `option` query parameter (mutually exclusive):\n- (none): Standard delete — fails if the bucket is not empty.\n- `empty`: Empty the bucket first, then delete.\n- `force`: Force-delete with all contents (passed to Spider as force=true).\n- `reconcile`: Remove only Tumblebug metadata without calling the CSP delete API."
+      description: "Delete a specific object storage (bucket).\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously (RFC 7240). Check progress via GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized.\n\nDeletion behavior is controlled by the `option` query parameter (mutually exclusive):\n- (none): Standard delete — fails if the bucket is not empty.\n- `empty`: Empty the bucket first, then delete.\n- `force`: Force-delete with all contents (passed to Spider as force=true).\n- `reconcile`: Remove only Tumblebug metadata without calling the CSP delete API."
     DeleteRequest:
       method: delete
       resourcePath: /request/{reqId}
@@ -2654,7 +2654,7 @@ serviceActions:
     GetAllRequests:
       method: get
       resourcePath: /requests
-      description: "Retrieves all API requests tracked by Beetle with optional filters.\n\n[Note]\n- Request tracking is managed independently by Beetle (not shared with Tumblebug).\n- This API only returns requests made to Beetle, not to Tumblebug.\n\n[Status Values]\n- Handling: Request is currently being processed\n- Success: Request completed successfully\n- Error: Request failed with an error"
+      description: "Retrieves all API requests tracked by Beetle with optional filters.\n\n[Note]\n- Request tracking is managed independently by Beetle (not shared with Tumblebug).\n- This API only returns requests made to Beetle, not to Tumblebug.\n\n[Status Values]\n- Handling: Request is currently being processed\n- Success: Request completed successfully\n- Error: Request failed with an error\n\n[Retry Information]\n- retry.retryable: Whether the failed request can be retried (present only for retriable errors)\n- retry.retryAfter: Suggested retry delay in seconds\n- retry.retryReason: Human-readable reason for retry requirement (e.g., \"Rate Limit Exceeded\")"
     GetDataMigrationEncryptionKey:
       method: get
       resourcePath: /migration/data/encryptionKey
@@ -2662,7 +2662,7 @@ serviceActions:
     GetInfra:
       method: get
       resourcePath: /migration/ns/{nsId}/infra/{infraId}
-      description: "Get the migrated multi-cloud infrastructure (MCI)"
+      description: "Get the migrated multi-cloud infrastructure (Infra)\n\n**Rate limiting** — Calls to CB-Tumblebug are paced at **~1.6 req/s (one per 625 ms)** to stay\nunder its **2 req/s per-client-IP** limit, and wait up to **8 s** for a slot. If none frees up\nin time the response is **`503`** with a **`Retry-After`** header in seconds. Those are the\ndefaults; operators tune them via `BEETLE_TUMBLEBUG_RETRIEVAL_REQUESTS_PER_SEC` and `_MAX_WAIT_SEC`."
     GetMigratedSSHKey:
       method: get
       resourcePath: /migration/ns/{nsId}/resources/sshKey/{sshKeyId}
@@ -2698,7 +2698,7 @@ serviceActions:
     GetRequest:
       method: get
       resourcePath: /request/{reqId}
-      description: "Retrieves the details of a specific API request tracked by Beetle.\n\n[Note]\n- Request tracking is managed independently by Beetle (not shared with Tumblebug).\n- The reqId corresponds to the X-Request-Id header value from a previous API call.\n- Do NOT call Tumblebug's /request/{reqId} API with this reqId; each system manages its own request tracking.\n\n[Status Values]\n- Handling: Request is currently being processed\n- Success: Request completed successfully\n- Error: Request failed with an error"
+      description: "Retrieves the details of a specific API request tracked by Beetle.\n\n[Note]\n- Request tracking is managed independently by Beetle (not shared with Tumblebug).\n- The reqId corresponds to the X-Request-Id header value from a previous API call.\n- Do NOT call Tumblebug's /request/{reqId} API with this reqId; each system manages its own request tracking.\n\n[Status Values]\n- Handling: Request is currently being processed\n- Success: Request completed successfully\n- Error: Request failed with an error\n\n[Retry Information]\n- retry.retryable: Whether the failed request can be retried (present only for retriable errors)\n- retry.retryAfter: Suggested retry delay in seconds\n- retry.retryReason: Human-readable reason for retry requirement (e.g., \"Rate Limit Exceeded\")"
     GetSecurityPublicKey:
       method: get
       resourcePath: /migration/security/publicKey
@@ -2714,7 +2714,7 @@ serviceActions:
     ListInfra:
       method: get
       resourcePath: /migration/ns/{nsId}/infra
-      description: "Get the migrated multi-cloud infrastructure (MCI)"
+      description: "Get the migrated multi-cloud infrastructure (Infra)\n\n**Rate limiting** — Calls to CB-Tumblebug are paced at **~1.6 req/s (one per 625 ms)** to stay\nunder its **2 req/s per-client-IP** limit, and wait up to **8 s** for a slot. If none frees up\nin time the response is **`503`** with a **`Retry-After`** header in seconds. Those are the\ndefaults; operators tune them via `BEETLE_TUMBLEBUG_RETRIEVAL_REQUESTS_PER_SEC` and `_MAX_WAIT_SEC`."
     ListMigratedSSHKeys:
       method: get
       resourcePath: /migration/ns/{nsId}/resources/sshKey
@@ -2742,23 +2742,23 @@ serviceActions:
     MigrateData:
       method: post
       resourcePath: /migration/data
-      description: "**Asynchronous Operation**: This API returns immediately with a request ID. The actual migration runs in the background.\n\n[How to Use]\n1. Call this API → Receive 202 Accepted with reqId\n2. Poll GET /request/{reqId} to check status\n3. Status flow: Handling → Success / Error\n\n[Endpoint Requirements]\n* Both source and destination must be remote endpoints (SSH or object storage)\n* Local filesystem access is not allowed for security reasons\n\n[Transfer Options]\n* Strategy: auto (default), direct, relay\n* SSH: Supports PrivateKey content or PrivateKeyPath\n\n[Encryption Support]\n* To encrypt sensitive fields, first call GET /migration/data/encryptionKey\n* Encrypted requests include `encryptionKeyId` field\n* Server automatically detects and decrypts encrypted requests\n\n[Examples]\n* Test results: https://github.com/cloud-barista/cm-beetle/blob/main/docs/test-results-data-migration.md\n"
+      description: "By default this API runs synchronously and returns the migration result directly.\n\n[Async Operation (opt-in)]\n1. Send header `Prefer: respond-async` → Receive 202 Accepted with reqId\n2. Poll GET /request/{reqId} to check status\n3. Status flow: Handling → Success / Error\n* Only the \"respond-async\" preference token is recognized; other tokens (e.g. wait=N) are ignored.\n* If too many async jobs are already running, this returns 503 instead of 202; retry after the `Retry-After` seconds.\n\n[Endpoint Requirements]\n* Both source and destination must be remote endpoints (SSH or object storage)\n* Local filesystem access is not allowed for security reasons\n\n[Transfer Options]\n* Strategy: auto (default), direct, relay\n* SSH: Supports PrivateKey content or PrivateKeyPath\n\n[Encryption Support]\n* To encrypt sensitive fields, first call GET /migration/data/encryptionKey\n* Encrypted requests include `encryptionKeyId` field\n* Server automatically detects and decrypts encrypted requests\n\n[Examples]\n* Test results: https://github.com/cloud-barista/cm-beetle/blob/main/docs/test-results-data-migration.md\n"
     MigrateInfra:
       method: post
       resourcePath: /migration/ns/{nsId}/infra
-      description: "Migrate an infrastructure to the multi-cloud infrastructure (MCI) with defaults.\n\n**[Request Field: `nodeGroups[].cspImageName`]** Optional CSP-native image identifier.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup (may encounter stale images for some CSPs).\n- Recommended: pass the recommendation API response as-is to use the latest resolved image."
+      description: "Migrate an infrastructure to the multi-cloud infrastructure (Infra) with defaults.\n\n**[Request Field: `nodeGroups[].cspImageName`]** Optional CSP-native image identifier.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-node image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup (may encounter stale images for some CSPs).\n- Recommended: pass the recommendation API response as-is to use the latest resolved image.\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized.\n\n**Rate limiting** — Calls to CB-Tumblebug are paced at **~1.6 req/s (one per 625 ms)** to stay\nunder its **2 req/s per-client-IP** limit, and wait up to **8 s** for a slot. If none frees up\nin time the response is **`503`** with a **`Retry-After`** header in seconds. Those are the\ndefaults; operators tune them via `BEETLE_TUMBLEBUG_RETRIEVAL_REQUESTS_PER_SEC` and `_MAX_WAIT_SEC`."
     MigrateInfraWithDefaults:
       method: post
       resourcePath: /migration/ns/{nsId}/infraWithDefaults
-      description: "Migrate an infrastructure to the multi-cloud infrastructure (MCI) with defaults."
+      description: "Migrate an infrastructure to the multi-cloud infrastructure (Infra) with defaults.\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized."
     MigrateNlbs:
       method: post
       resourcePath: /migration/middleware/ns/{nsId}/infra/{infraId}/nlb
-      description: "Migrate NLBs to the target cloud infra based on recommendation results.\n\n[Prerequisites]\n- The target Namespace (nsId) must exist.\n- The target Infra (infraId) must exist and have at least one NodeGroup in Running state.\n- Each `targetNlbList[].targetGroup.nodeGroupId` must reference an existing NodeGroup in the Infra.\n\n[Note] Input should be the `targetNlbList` field from the POST /recommendation/infraWithNlb response.\nEnsure `targetGroup.nodeGroupId` matches the NodeGroup IDs created during infra migration.\n\n[Note] All NLBs are attempted independently. Partial success is possible."
+      description: "Migrate NLBs to the target cloud infra based on recommendation results.\n\n[Prerequisites]\n- The target Namespace (nsId) must exist.\n- The target Infra (infraId) must exist and have at least one NodeGroup in Running state.\n- Each `targetNlbList[].targetGroup.nodeGroupId` must reference an existing NodeGroup in the Infra.\n\n[Note] Input should be the `targetNlbList` field from the POST /recommendation/infraWithNlb response.\nEnsure `targetGroup.nodeGroupId` matches the NodeGroup IDs created during infra migration.\n\n[Note] All NLBs are attempted independently. Partial success is possible.\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized."
     MigrateObjectStorage:
       method: post
       resourcePath: /migration/middleware/ns/{nsId}/objectStorage
-      description: "Migrate object storages to cloud based on recommendation results\n\n[Note]\n- This API creates object storages (buckets) in the target cloud within the specified namespace\n- Input should be the output from RecommendObjectStorage API\n- Connection name is automatically generated from CSP and region in the request body\n\n[Note] `nameSeed` enables dynamic naming via **Late Binding**.\n- If `nameSeed` query param is set (e.g., `?nameSeed=my`), bucket names are prefixed at migration time: `my-os-01`.\n- If `nameSeed` is omitted, bucket names are used as-is from the recommendation result.\n\n[Examples]\n* Test results: https://github.com/cloud-barista/cm-beetle/blob/main/docs/test-results-data-migration.md\n"
+      description: "Migrate object storages to cloud based on recommendation results\n\n[Note]\n- This API creates object storages (buckets) in the target cloud within the specified namespace\n- Input should be the output from RecommendObjectStorage API\n- Connection name is automatically generated from CSP and region in the request body\n\n[Note] `nameSeed` enables dynamic naming via **Late Binding**.\n- If `nameSeed` query param is set (e.g., `?nameSeed=my`), bucket names are prefixed at migration time: `my-os-01`.\n- If `nameSeed` is omitted, bucket names are used as-is from the recommendation result.\n\n[Examples]\n* Test results: https://github.com/cloud-barista/cm-beetle/blob/main/docs/test-results-data-migration.md\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized."
     PreviewInfra:
       method: post
       resourcePath: /naming/preview
@@ -2775,6 +2775,14 @@ serviceActions:
       method: post
       resourcePath: /recommendation/k8sNodeGroup
       description: "Get recommendation for K8s worker node group based on honeybee source cluster data\nReturns configuration that can be directly used with cb-tumblebug k8sNodeGroupDynamic API"
+    RecommendMultiInfraCandidates:
+      method: post
+      resourcePath: /recommendation/multiInfra
+      description: "Recommend a single best-effort infrastructure candidate for each of several target CSP/region pairs.\n\nUse this API to compare candidate clouds before committing to one; once a target is chosen,\nuse `POST /recommendation/infra` against that single CSP/region to explore multiple candidates.\n\n**[Required Parameter: `desiredCspAndRegionPairs`]** 2 to 10 target CSP/region pairs (project scope: 10 supported CSPs).\nDuplicate pairs are rejected.\n\n**[Response]** Always returns exactly one item per requested target, in request order\n(`len(data) == len(desiredCspAndRegionPairs)`), so items map back to targets via `targetCloud`\nwithout needing to be re-sorted or grouped. A target that fails validation or yields no\ncompatible infrastructure still produces one item, with `status` set to `failed` or\n`nothing-to-recommend` and `targetInfra` left empty.\n\n**[Optional Parameter: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 90.0, range: 0-100)\n\n[Note] Each target costs roughly as much as one `/recommendation/infra` call; requests with\nseveral targets can take a while. `Prefer: respond-async` is strongly recommended."
+    RecommendMultiInfraWithNlbCandidates:
+      method: post
+      resourcePath: /recommendation/multiInfraWithNlb
+      description: "NLB-aware counterpart of `POST /recommendation/multiInfra`. Recommends a single best-effort\ninfrastructure candidate (including NLB mapping) for each of several target CSP/region pairs.\n\nUse this API to compare candidate clouds before committing to one; once a target is chosen,\nuse `POST /recommendation/infraWithNlb` against that single CSP/region to explore multiple candidates.\n\n**[Required Parameter: `desiredCspAndRegionPairs`]** 2 to 10 target CSP/region pairs (project scope: 10 supported CSPs).\nDuplicate pairs are rejected.\n\n[Note] `sourceInfra.nlbs` must be populated (HAProxy frontend-backend pairs from cm-honeybee).\n\n**[Response]** Always returns exactly one item per requested target, in request order\n(`len(data) == len(desiredCspAndRegionPairs)`), so items map back to targets via `targetCloud`\nwithout needing to be re-sorted or grouped. A target that fails validation or yields no\ncompatible infrastructure still produces one item, with `status` set to `failed` or\n`nothing-to-recommend` and `targetInfra` left empty.\n\n**[Optional Parameter: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 90.0, range: 0-100)\n\n[Note] Each target costs roughly as much as one `/recommendation/infraWithNlb` call; requests with\nseveral targets can take a while. `Prefer: respond-async` is strongly recommended."
     RecommendObjectStorage:
       method: post
       resourcePath: /recommendation/middleware/objectStorage
@@ -2786,7 +2794,7 @@ serviceActions:
     RecommendVMInfraWithDefaults:
       method: post
       resourcePath: /recommendation/infraWithDefaults
-      description: "Recommend an appropriate VM infrastructure (i.e., MCI, multi-cloud infrastructure) with defaults for cloud migration\n\n[Note] `desiredCsp` and `desiredRegion` are required.\n- `desiredCsp` and `desiredRegion` can set on the query parameter or the request body.\n\n- If desiredCsp and desiredRegion are set on request body, the values in the query parameter will be ignored.\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path."
+      description: "Recommend an appropriate infrastructure (i.e., Infra, multi-cloud infrastructure) with defaults for cloud migration\n\n[Note] `desiredCsp` and `desiredRegion` are required.\n- `desiredCsp` and `desiredRegion` can set on the query parameter or the request body.\n\n- If desiredCsp and desiredRegion are set on request body, the values in the query parameter will be ignored.\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path."
     RecommendVNet:
       method: post
       resourcePath: /recommendation/resources/vNet
@@ -2794,7 +2802,7 @@ serviceActions:
     RecommendVmInfraCandidates:
       method: post
       resourcePath: /recommendation/infra
-      description: "Recommend best-effort VM infrastructure (MCI) candidates for migrating on-premise workloads to cloud environments.\n\n- See overview and examples on https://github.com/cloud-barista/cm-beetle/discussions/256\n\n**[Required Parameters: `desiredCsp`, `desiredRegion`]** The desired cloud service provider and region for the recommended infrastructure.\n- if **desiredCsp** and **desiredRegion** are set on request body, the values in the query parameter will be ignored.\n\n**[Optional Parameters: `limit`]** Maximum number of recommended infrastructures to return (default: 3)\n\n**[Optional Parameters: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 90.0, range: 0-100)\n\n**[Response Field: `status`]** Candidate status based on the match rate threshold\n- **highly-matched**: Candidates meet or exceed the match rate threshold\n- **partially-matched**: Valid candidates below the match rate threshold\n\n**[Response Field: `description`]** Summary containing Candidate ID, status, match rate statistics (Min/Max/Avg), and VM counts\n- Example: \"Candidate #1 | partially-matched | Overall Match Rate: Min=88.9% Max=100.0% Avg=98.7% | VMs: 3 total, 2 matched, 1 acceptable\"\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path.\n- Pass the recommendation response as-is to the migration API to ensure the resolved image is used.\n"
+      description: "Recommend best-effort infrastructure (Infra) candidates for migrating on-premise workloads to cloud environments.\n\n- See overview and examples on https://github.com/cloud-barista/cm-beetle/discussions/256\n\n**[Required Parameters: `desiredCsp`, `desiredRegion`]** The desired cloud service provider and region for the recommended infrastructure.\n- if **desiredCsp** and **desiredRegion** are set on request body, the values in the query parameter will be ignored.\n\n**[Optional Parameters: `limit`]** Maximum number of recommended infrastructures to return (default: 3)\n\n**[Optional Parameters: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 90.0, range: 0-100)\n\n**[Response Field: `status`]** Candidate status based on the match rate threshold\n- **highly-matched**: Candidates meet or exceed the match rate threshold\n- **partially-matched**: Valid candidates below the match rate threshold\n\n**[Response Field: `description`]** Summary containing Candidate ID, status, match rate statistics (Min/Max/Avg), and VM counts\n- Example: \"Candidate #1 | partially-matched | Overall Match Rate: Min=88.9% Max=100.0% Avg=98.7% | VMs: 3 total, 2 matched, 1 acceptable\"\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path.\n- Pass the recommendation response as-is to the migration API to ensure the resolved image is used.\n"
     RecommendVmOsImages:
       method: post
       resourcePath: /recommendation/resources/osImages
@@ -2830,7 +2838,7 @@ serviceActions:
     ValidateInfra:
       method: post
       resourcePath: /validation/ns/{nsId}/infra
-      description: "Runs, without creating or modifying any resource, the same checks\nmigration execution performs immediately before provisioning:\n\n- **Naming & referential integrity**: names must be 3-63 alphanumeric/hyphen\ncharacters, and internal references must resolve within the submitted model\n(e.g. a NodeGroup's `securityGroupIds` must match a `name` in `targetSecurityGroupList`).\n- **Required fields**, which differ by `useExisting`:\n- `true`: each NodeGroup's `vNetId`, `sshKeyId`, `securityGroupIds` must be set.\n- `false`: `targetVNet.name`, `targetSshKey.name`, and each security group's `name` must be set.\n- **Resource name collision / availability** against Tumblebug, which also differs by `useExisting`:\n- `false`: the VNet/SSH key/security groups to be created must NOT already exist in the\nnamespace (e.g. `targetVNet.name: \"vnet-01\"` fails if a VNet named `vnet-01` already exists).\n- `true`: an existing resource must be under the same CSP/region connection the NodeGroup\nrequests (e.g. reusing a VNet provisioned under connection `aws-ap-northeast-2` while the\nNodeGroup's `connectionName` is `gcp-asia-northeast3` fails); a resource that doesn't exist\nyet must have enough data alongside it to create it instead (e.g. `targetVNet.cidrBlock`).\n- **VM spec/image compatibility** per NodeGroup: `specId`, `imageId`, and `connectionName` must\nbe set, `connectionName` must be in `csp-region` format (e.g. `aws-ap-northeast-2`), and the\nresolved spec/image pair must be compatible for that CSP (e.g. an `x86_64` spec paired with\nan `arm64` image fails).\n- **Infra (MCI) name collision**: `targetInfra.name` must not already exist in the namespace.\n\nAlways returns HTTP 200: the response body's `valid` field and\n`issues` list carry the outcome, since a failed check is a normal,\nsuccessfully-answered result rather than a malformed request.\n400 is reserved for request body/parameter errors.\n\nBecause Tumblebug/CSP state can change afterward, a `valid: true`\nresult is a best-effort snapshot, not a guarantee - the migration\nAPI re-runs this same validation immediately before provisioning."
+      description: "Runs, without creating or modifying any resource, the same checks\nmigration execution performs immediately before provisioning:\n\n- **Naming & referential integrity**: names must be 3-63 alphanumeric/hyphen\ncharacters, and internal references must resolve within the submitted model\n(e.g. a NodeGroup's `securityGroupIds` must match a `name` in `targetSecurityGroupList`).\n- **Required fields**, which differ by `useExisting`:\n- `true`: each NodeGroup's `vNetId`, `sshKeyId`, `securityGroupIds` must be set.\n- `false`: `targetVNet.name`, `targetSshKey.name`, and each security group's `name` must be set.\n- **Resource name collision / availability** against Tumblebug, which also differs by `useExisting`:\n- `false`: the VNet/SSH key/security groups to be created must NOT already exist in the\nnamespace (e.g. `targetVNet.name: \"vnet-01\"` fails if a VNet named `vnet-01` already exists).\n- `true`: an existing resource must be under the same CSP/region connection the NodeGroup\nrequests (e.g. reusing a VNet provisioned under connection `aws-ap-northeast-2` while the\nNodeGroup's `connectionName` is `gcp-asia-northeast3` fails); a resource that doesn't exist\nyet must have enough data alongside it to create it instead (e.g. `targetVNet.cidrBlock`).\n- **VM spec/image compatibility** per NodeGroup: `specId`, `imageId`, and `connectionName` must\nbe set, `connectionName` must be in `csp-region` format (e.g. `aws-ap-northeast-2`), and the\nresolved spec/image pair must be compatible for that CSP (e.g. an `x86_64` spec paired with\nan `arm64` image fails).\n- **Infra name collision**: `targetInfra.name` must not already exist in the namespace.\n\nAlways returns HTTP 200: the response body's `valid` field and\n`issues` list carry the outcome, since a failed check is a normal,\nsuccessfully-answered result rather than a malformed request.\n400 is reserved for request body/parameter errors.\n\nBecause Tumblebug/CSP state can change afterward, a `valid: true`\nresult is a best-effort snapshot, not a guarantee - the migration\nAPI re-runs this same validation immediately before provisioning."
     ValidateNames:
       method: post
       resourcePath: /naming/validation
