@@ -1,0 +1,22 @@
+# cm-honeybee server configuration for the cm-mayfly stack.
+# Mounted over the image's /conf/cm-honeybee.yaml.
+#
+# cm-honeybee resolves ${VAR} values from its process environment at startup
+# (cm-honeybee 0.5.4+). The cb-spider credentials are injected from the shared
+# conf/docker/.env via this service's `environment:` block, keeping the
+# honeybee -> cb-spider Basic Auth in sync with cb-spider itself.
+cm-honeybee:
+    listen:
+        port: 8081
+    agent:
+        port: 8082
+    spider:
+        endpoint: http://cb-spider:1024/spider
+        username: ${SPIDER_USERNAME}
+        password: ${SPIDER_PASSWORD}
+    # Secrets backend: cm-honeybee stores SSH access secrets and CSP credentials
+    # ONLY in its OWN dedicated OpenBao (honeybee-openbao). Address + token file
+    # are injected via this service's environment block in docker-compose.yaml.
+    openbao:
+        address: ${HONEYBEE_VAULT_ADDR}
+        token_file: ${HONEYBEE_VAULT_TOKEN_FILE}
