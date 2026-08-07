@@ -701,7 +701,7 @@ services:
   # **important** : The cm-beetle, cm-grasshopper, and airflow-server containers must be in a readyz state and running beforehand
   cm-cicada:
     # image: cloudbaristaorg/cm-cicada:edge
-    image: cloudbaristaorg/cm-cicada:0.5.2
+    image: cloudbaristaorg/cm-cicada:0.5.3
     container_name: cm-cicada
     logging: *default-logging
     pull_policy: always
