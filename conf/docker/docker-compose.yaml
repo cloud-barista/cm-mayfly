@@ -31,7 +31,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.12.42
+    image: cloudbaristaorg/cb-spider:0.13.20
     pull_policy: always
     container_name: cb-spider
     logging: *default-logging
@@ -52,6 +52,8 @@ services:
       - ./data/cb-spider/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
     environment:
       - PLUGIN_SW=OFF
+      # Go GC soft target (no hard limit), as in the cb-tumblebug reference compose since 0.13
+      - GOMEMLIMIT=8GiB
       - SERVER_ADDRESS=0.0.0.0:1024
       # cb-spider 0.12.17+ enforces authentication — empty values cause log.Fatal on startup
       - SPIDER_USERNAME=${SPIDER_USERNAME}
@@ -97,7 +99,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.12.30
+    image: cloudbaristaorg/cb-tumblebug:0.13.8
     container_name: cb-tumblebug
     logging: *default-logging
     restart: unless-stopped
@@ -244,7 +246,7 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.12.56
+    image: cloudbaristaorg/cb-mapui:0.13.14
     container_name: cb-mapui
     logging: *default-logging
     restart: unless-stopped
@@ -429,7 +431,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.6.0
+    image: cloudbaristaorg/cm-beetle:0.6.3
     container_name: cm-beetle
     logging: *default-logging
     pull_policy: always
@@ -625,7 +627,7 @@ services:
   # See https://github.com/cloud-barista/cm-honeybee/blob/main/server/docker-compose.yaml
   cm-honeybee:
     # image: cloudbaristaorg/cm-honeybee:edge
-    image: cloudbaristaorg/cm-honeybee:0.6.0
+    image: cloudbaristaorg/cm-honeybee:0.6.3
     container_name: cm-honeybee
     logging: *default-logging
     pull_policy: always
@@ -695,7 +697,7 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cm-damselfly
   cm-damselfly:
     # image: cloudbaristaorg/cm-damselfly:edge
-    image: cloudbaristaorg/cm-damselfly:0.6.2
+    image: cloudbaristaorg/cm-damselfly:0.6.4
     container_name: cm-damselfly
     logging: *default-logging
     pull_policy: always
