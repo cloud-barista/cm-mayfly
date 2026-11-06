@@ -1032,7 +1032,7 @@ services:
     container_name: cm-ant
     logging: *default-logging
     # image: cloudbaristaorg/cm-ant:edge
-    image: cloudbaristaorg/cm-ant:0.6.0
+    image: cloudbaristaorg/cm-ant:0.6.1
     platform: linux/amd64
     pull_policy: always
     ports:
