@@ -87,7 +87,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cm-ant/main/api/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cm-ant/{release}/api/swagger.json
   cm-beetle:
-    version: edge(latest)
+    version: 0.6.4(latest)
     baseurl: http://cm-beetle:8056/beetle
     auth:
       type: basic
@@ -107,7 +107,7 @@ services:
       type: none
       
   cm-cicada:
-    version: edge(latest)
+    version: 0.6.2(latest)
     baseurl: http://cm-cicada:8083/cicada
     auth:
       type: none
@@ -116,7 +116,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-cicada/{release}/pkg/api/rest/docs/swagger.json
 
   cm-honeybee:
-    version: edge(latest)
+    version: 0.6.4(latest)
     baseurl: http://cm-honeybee:8081/honeybee
     auth:
       type: none
@@ -149,7 +149,7 @@ services:
   #    release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/agent/pkg/api/rest/docs/swagger.json
 
   cm-grasshopper:
-    version: edge(latest)
+    version: 0.6.1(latest)
     baseurl: http://cm-grasshopper:8084/grasshopper
     auth:
       type: none

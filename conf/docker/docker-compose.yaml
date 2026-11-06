@@ -57,8 +57,6 @@ services:
       - ./data/cb-spider/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
     environment:
       - PLUGIN_SW=OFF
-      # Go GC soft target (no hard limit), as in the cb-tumblebug reference compose since 0.13
-      - GOMEMLIMIT=8GiB
       - SERVER_ADDRESS=0.0.0.0:1024
       # cb-spider 0.12.17+ enforces authentication — empty values cause log.Fatal on startup
       - SPIDER_USERNAME=${SPIDER_USERNAME}
@@ -669,7 +667,7 @@ services:
       - "8081:8081"
       #- "8082:8082"
     networks:
-      # Only for the 0.6.3 tag line above (see the cb-spider settings below).
+      # Only for cm-honeybee 0.6.3 and earlier (see the cb-spider settings below).
       # - spider_net
       - default
     depends_on:
@@ -678,10 +676,10 @@ services:
         condition: service_healthy
     environment:
       # cm-honeybee reads its config from these env vars (no mounted yaml).
-      # cb-spider REST access, read only by cm-honeybee 0.6.3 and earlier. Builds after
-      # 0.6.3 (the edge line) link the cb-spider drivers into cm-honeybee and call them
-      # directly, so they do not use the cb-spider container. When switching to the 0.6.3
-      # tag line, uncomment these three lines and spider_net above.
+      # cb-spider REST access, read only by cm-honeybee 0.6.3 and earlier. Since 0.6.4,
+      # cm-honeybee links the cb-spider drivers and calls them directly, so it does not
+      # use the cb-spider container. When running 0.6.3 or earlier, uncomment these three
+      # lines and spider_net above.
       # - HONEYBEE_SPIDER_ENDPOINT=http://cb-spider:1024/spider
       # - HONEYBEE_SPIDER_USERNAME=${SPIDER_USERNAME}
       # - HONEYBEE_SPIDER_PASSWORD=${SPIDER_PASSWORD}
