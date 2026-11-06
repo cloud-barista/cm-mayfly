@@ -644,7 +644,8 @@ services:
       - "8081:8081"
       #- "8082:8082"
     networks:
-      - spider_net
+      # Only for the 0.6.3 tag line above (see the cb-spider settings below).
+      # - spider_net
       - default
     depends_on:
       # Only needs OpenBao running; cm-honeybee initializes/unseals it itself.
@@ -652,10 +653,13 @@ services:
         condition: service_healthy
     environment:
       # cm-honeybee reads its config from these env vars (no mounted yaml).
-      # cb-spider Basic Auth — kept in sync via the shared .env.
-      - HONEYBEE_SPIDER_ENDPOINT=http://cb-spider:1024/spider
-      - HONEYBEE_SPIDER_USERNAME=${SPIDER_USERNAME}
-      - HONEYBEE_SPIDER_PASSWORD=${SPIDER_PASSWORD}
+      # cb-spider REST access, read only by cm-honeybee 0.6.3 and earlier. Builds after
+      # 0.6.3 (the edge line) link the cb-spider drivers into cm-honeybee and call them
+      # directly, so they do not use the cb-spider container. When switching to the 0.6.3
+      # tag line, uncomment these three lines and spider_net above.
+      # - HONEYBEE_SPIDER_ENDPOINT=http://cb-spider:1024/spider
+      # - HONEYBEE_SPIDER_USERNAME=${SPIDER_USERNAME}
+      # - HONEYBEE_SPIDER_PASSWORD=${SPIDER_PASSWORD}
       # cm-honeybee self-manages OpenBao (init/unseal/KV-enable); the unseal key +
       # root token are stored RSA-encrypted in its DB.
       - HONEYBEE_VAULT_ADDR=http://openbao-honeybee:8200
