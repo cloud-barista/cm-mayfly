@@ -2,8 +2,9 @@
 # docker image : https://hub.docker.com/u/cloudbaristaorg
 #
 # Image tags: frameworks that keep moving after their last release run on "edge" by default,
-# so this lineup follows their latest builds. The last released tag of each one is kept as a
-# commented-out line right next to it; switch to that line if you need a fixed version.
+# so this lineup follows their latest builds. For each of them the whole image line with the
+# last released tag is kept, commented out, directly above or below the edge line. To pin a
+# fixed version, comment out the edge line and uncomment the tagged one.
 
 # Default health check configuration
 # Container output is capped so a long-running lineup cannot fill the disk.
