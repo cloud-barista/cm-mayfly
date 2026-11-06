@@ -1,5 +1,10 @@
 #version: "3.3"
 # docker image : https://hub.docker.com/u/cloudbaristaorg
+#
+# Image tags: frameworks that keep moving after their last release run on "edge" by default,
+# so this lineup follows their latest builds. For each of them the whole image line with the
+# last released tag is kept, commented out, directly above or below the edge line. To pin a
+# fixed version, comment out the edge line and uncomment the tagged one.
 
 # Default health check configuration
 # Container output is capped so a long-running lineup cannot fill the disk.
@@ -451,6 +456,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
+    # image: cloudbaristaorg/cm-beetle:edge
     image: cloudbaristaorg/cm-beetle:0.6.4
     container_name: cm-beetle
     logging: *default-logging
@@ -514,8 +520,8 @@ services:
   # (Not required) https://github.com/cloud-barista/cm-butterfly/tree/main/api/conf/authsetting.yaml.sample to authsetting.yaml
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-api
   cm-butterfly-api:
-    image: cloudbaristaorg/cm-butterfly-api:0.6.0
-    # image: cloudbaristaorg/cm-butterfly-api:edge
+    # image: cloudbaristaorg/cm-butterfly-api:0.6.0
+    image: cloudbaristaorg/cm-butterfly-api:edge
     container_name: cm-butterfly-api
     logging: *default-logging
     pull_policy: always
@@ -586,8 +592,8 @@ services:
   # https://github.com/cloud-barista/cm-butterfly/blob/main/front/nginx.conf
   # https://hub.docker.com/r/cloudbaristaorg/cm-butterfly-front
   cm-butterfly-front:
-    image: cloudbaristaorg/cm-butterfly-front:0.6.0
-    # image: cloudbaristaorg/cm-butterfly-front:edge
+    # image: cloudbaristaorg/cm-butterfly-front:0.6.0
+    image: cloudbaristaorg/cm-butterfly-front:edge
 
     container_name: cm-butterfly-front
     logging: *default-logging
@@ -661,7 +667,8 @@ services:
       - "8081:8081"
       #- "8082:8082"
     networks:
-      - spider_net
+      # Only for cm-honeybee 0.6.3 and earlier (see the cb-spider settings below).
+      # - spider_net
       - default
     depends_on:
       # Only needs OpenBao running; cm-honeybee initializes/unseals it itself.
@@ -669,10 +676,13 @@ services:
         condition: service_healthy
     environment:
       # cm-honeybee reads its config from these env vars (no mounted yaml).
-      # cb-spider Basic Auth — kept in sync via the shared .env.
-      - HONEYBEE_SPIDER_ENDPOINT=http://cb-spider:1024/spider
-      - HONEYBEE_SPIDER_USERNAME=${SPIDER_USERNAME}
-      - HONEYBEE_SPIDER_PASSWORD=${SPIDER_PASSWORD}
+      # cb-spider REST access, read only by cm-honeybee 0.6.3 and earlier. Since 0.6.4,
+      # cm-honeybee links the cb-spider drivers and calls them directly, so it does not
+      # use the cb-spider container. When running 0.6.3 or earlier, uncomment these three
+      # lines and spider_net above.
+      # - HONEYBEE_SPIDER_ENDPOINT=http://cb-spider:1024/spider
+      # - HONEYBEE_SPIDER_USERNAME=${SPIDER_USERNAME}
+      # - HONEYBEE_SPIDER_PASSWORD=${SPIDER_PASSWORD}
       # cm-honeybee self-manages OpenBao (init/unseal/KV-enable); the unseal key +
       # root token are stored RSA-encrypted in its DB.
       - HONEYBEE_VAULT_ADDR=http://openbao-honeybee:8200
@@ -719,8 +729,8 @@ services:
   # https://github.com/cloud-barista/cm-damselfly
   # https://hub.docker.com/r/cloudbaristaorg/cm-damselfly
   cm-damselfly:
-    # image: cloudbaristaorg/cm-damselfly:edge
-    image: cloudbaristaorg/cm-damselfly:0.6.2
+    image: cloudbaristaorg/cm-damselfly:edge
+    # image: cloudbaristaorg/cm-damselfly:0.6.4
     container_name: cm-damselfly
     logging: *default-logging
     pull_policy: always
@@ -1055,7 +1065,7 @@ services:
     container_name: cm-ant
     logging: *default-logging
     # image: cloudbaristaorg/cm-ant:edge
-    image: cloudbaristaorg/cm-ant:0.6.0
+    image: cloudbaristaorg/cm-ant:0.6.1
     platform: linux/amd64
     pull_policy: always
     ports:

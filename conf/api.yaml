@@ -58,7 +58,7 @@
 # =============================================================================
 services:
   cb-spider: #service name
-    version: 0.12.42(latest)
+    version: 0.13.20(latest)
     baseurl: http://cb-spider:1024/spider # baseurl is Scheme + Host + Base Path
     auth: # cb-spider 0.12.17+ requires REST auth; credentials are read from the env (see header).
       type: basic
@@ -69,7 +69,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cb-spider/{release}/api/swagger.json
 
   cb-tumblebug:
-    version: 0.12.30(latest)
+    version: 0.13.8(latest)
     baseurl: http://cb-tumblebug:1323/tumblebug
     auth:
       type: basic
@@ -79,7 +79,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/main/src/interface/rest/docs/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/{release}/src/interface/rest/docs/swagger.json
   cm-ant:
-    version: 0.6.0(0.6.0)
+    version: 0.6.1(0.6.0)
     baseurl: http://cm-ant:8880/ant
     auth:
       type: none
@@ -87,7 +87,7 @@ services:
       latest: https://raw.githubusercontent.com/cloud-barista/cm-ant/main/api/swagger.json
       release: https://raw.githubusercontent.com/cloud-barista/cm-ant/{release}/api/swagger.json
   cm-beetle:
-    version: 0.6.0(latest)
+    version: 0.6.4(latest)
     baseurl: http://cm-beetle:8056/beetle
     auth:
       type: basic
@@ -100,14 +100,14 @@ services:
   cm-butterfly-api:
     # No public swagger source is registered for this service, so the version is
     # kept in step with the image tag in conf/docker/docker-compose.yaml by hand.
-    version: 0.6.0
+    version: edge
     #baseurl: http://localhost:4000
     baseurl: http://cm-butterfly-api:4000
     auth:
       type: none
       
   cm-cicada:
-    version: 0.6.0(latest)
+    version: 0.6.2(latest)
     baseurl: http://cm-cicada:8083/cicada
     auth:
       type: none
@@ -116,7 +116,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-cicada/{release}/pkg/api/rest/docs/swagger.json
 
   cm-honeybee:
-    version: 0.6.0(latest)
+    version: 0.6.4(latest)
     baseurl: http://cm-honeybee:8081/honeybee
     auth:
       type: none
@@ -149,7 +149,7 @@ services:
   #    release: https://raw.githubusercontent.com/cloud-barista/cm-honeybee/{release}/agent/pkg/api/rest/docs/swagger.json
 
   cm-grasshopper:
-    version: 0.6.0(latest)
+    version: 0.6.1(latest)
     baseurl: http://cm-grasshopper:8084/grasshopper
     auth:
       type: none
@@ -158,7 +158,7 @@ services:
       release: https://raw.githubusercontent.com/cloud-barista/cm-grasshopper/{release}/pkg/api/rest/docs/swagger.json
 
   cm-damselfly:
-    version: 0.6.2(latest)
+    version: edge(latest)
     baseurl: http://cm-damselfly:8088/damselfly
     auth: # cm-damselfly checks these only when DAMSELFLY_API_AUTH_ENABLED=true; otherwise they are ignored.
       type: basic
@@ -170,6 +170,10 @@ services:
 
 serviceActions:
   cb-spider:
+    Add-Dnsrecord:
+      method: post
+      resourcePath: /dnszone/{DNSZoneName}/record
+      description: "Add a new record(ex: A, CNAME) to an existing Public DNS Zone."
     Add-Favorite-Imagespec:
       method: post
       resourcePath: /vm/imagespecfavorite
@@ -185,7 +189,7 @@ serviceActions:
     Add-Nodegroup:
       method: post
       resourcePath: /cluster/{Name}/nodegroup
-      description: "Add a new Node Group to an existing Cluster."
+      description: "Add a new Node Group to an existing Cluster.\nMalformed scaling values are rejected; omitted creation fields retain their zero values for driver validation."
     Add-Rule:
       method: post
       resourcePath: /securitygroup/{SGName}/rules
@@ -197,11 +201,15 @@ serviceActions:
     Add-Tag:
       method: post
       resourcePath: /tag
-      description: "Add a tag to a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+      description: "Add a tag to a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER, RDBMS\n※ RDBMS: tagging support (mysql, mariadb, etc.) varies by CSP driver — check GetMetaInfo().SupportsTag before use"
     Any-Call:
       method: post
       resourcePath: /anycall
       description: "Execute a custom function (FID) with key-value parameters through AnyCall. 🕷️ [[Development Guide](https://github.com/cloud-barista/cb-spider/wiki/AnyCall-API-Extension-Guide)]"
+    Assign-Vm-Default-Publicip:
+      method: post
+      resourcePath: /vm/{Name}/publicip
+      description: "Create a new PublicIP and attach it to the VM's default NIC (nic0) - the same effect as creating the VM with AssignPublicIP=true. Fails if the VM already has a default PublicIP. 🕷️"
     Associate-Publicip:
       method: put
       resourcePath: /publicip/{Name}/associate
@@ -214,6 +222,10 @@ serviceActions:
       method: put
       resourcePath: /nic/{Name}/attach
       description: "Attach a NIC to a VM instance."
+    Attach-Vm-Publicip:
+      method: put
+      resourcePath: /vm/{Name}/publicip/{PublicIPName}
+      description: "Attach a PublicIP that was previously created via the PublicIP Manager (POST /publicip) to the VM's default NIC (nic0). Fails if the VM already has a default PublicIP. 🕷️"
     Bulk-Import-Favorite-Imagespec:
       method: post
       resourcePath: /vm/imagespecfavorite/bulk
@@ -222,10 +234,14 @@ serviceActions:
       method: post
       resourcePath: /vm/imagespecrecent/bulk
       description: "Import multiple VM recent records from JSON, skipping duplicates"
+    Change-Dnsrecord:
+      method: put
+      resourcePath: /dnszone/{DNSZoneName}/record/{RecordName}
+      description: "Change the value/TTL of an existing record(by Name) in a Public DNS Zone."
     Change-Nodegroup-Scaling:
       method: put
       resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/autoscalesize
-      description: "Change the scaling settings for a Node Group in a Cluster."
+      description: "Change the scaling settings for a Node Group in a Cluster.\nNode sizes must be non-negative integers."
     Check-Tcp-Port:
       method: get
       resourcePath: /check/tcp
@@ -250,6 +266,10 @@ serviceActions:
       method: get
       resourcePath: /countdisk
       description: "Get the total number of Disks across all connections."
+    Count-All-Dnszone:
+      method: get
+      resourcePath: /countdnszone
+      description: "Get the total number of DNS Zones across all connections."
     Count-All-Keypair:
       method: get
       resourcePath: /countkeypair
@@ -306,6 +326,10 @@ serviceActions:
       method: get
       resourcePath: /countdisk/{ConnectionName}
       description: "Get the total number of Disks for a specific connection."
+    Count-Dnszone-By-Connection:
+      method: get
+      resourcePath: /countdnszone/{ConnectionName}
+      description: "Get the total number of DNS Zones for a specific connection."
     Count-Keypair-By-Connection:
       method: get
       resourcePath: /countkeypair/{ConnectionName}
@@ -353,7 +377,7 @@ serviceActions:
     Create-Cluster:
       method: post
       resourcePath: /cluster
-      description: "Create a new Cluster with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Provider-Managed-Kubernetes-and-Driver-API)] <br> * NodeGroupList is optional, depends on CSP type: <br> &nbsp;- Type-I (e.g., Tencent, Alibaba): requires separate Node Group addition after Cluster creation. <br> &nbsp;- Type-II (e.g., Azure, NHN): mandates at least one Node Group during initial Cluster creation."
+      description: "Create a new Cluster with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Provider-Managed-Kubernetes-and-Driver-API)] <br> * NodeGroupList is optional, depends on CSP type: <br> &nbsp;- Type-I (e.g., Tencent, Alibaba): requires separate Node Group addition after Cluster creation. <br> &nbsp;- Type-II (e.g., Azure, NHN): mandates at least one Node Group during initial Cluster creation.\nMalformed scaling values are rejected; omitted creation fields retain their zero values for driver validation."
     Create-Connection-Config:
       method: post
       resourcePath: /connectionconfig
@@ -362,6 +386,10 @@ serviceActions:
       method: post
       resourcePath: /disk
       description: "Create a new Disk with the specified configuration. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Disk-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    Create-Dnszone:
+      method: post
+      resourcePath: /dnszone
+      description: "Create a new Public Authoritative DNS Zone(Hosted Zone) for the given domain name."
     Create-Filesystem:
       method: post
       resourcePath: /filesystem
@@ -389,11 +417,11 @@ serviceActions:
     Create-Rdbms:
       method: post
       resourcePath: /rdbms
-      description: "Create a new Relational Database (RDBMS) with the specified configuration."
+      description: "Create a new Relational Database (RDBMS) with the specified configuration. <br> The response never echoes back MasterUserName/MasterUserPassword -- you already supplied them in this request, so keep them yourself, e.g. alongside your SSH private key."
     Create-Rdbms-Database:
       method: post
       resourcePath: /rdbms/{Name}/databases
-      description: "Create a database inside an RDBMS instance using the CSP-native API."
+      description: "Create a database inside an RDBMS instance using the CSP-native API. Charset/Collation are optional and mysql/mariadb-only; CB-Spider does not validate their value against a fixed list, only that it's safe to pass through, and support depends on the CSP driver (see field docs)."
     Create-S3-Bucket:
       method: put
       resourcePath: /s3/{BucketName}
@@ -454,6 +482,10 @@ serviceActions:
       method: delete
       resourcePath: /disk/{Name}
       description: "Delete a specified Disk."
+    Delete-Dnszone:
+      method: delete
+      resourcePath: /dnszone/{Name}
+      description: "Delete a Public DNS Zone, including every record CB-Spider or the CSP has in it."
     Delete-Favorite-Imagespec:
       method: delete
       resourcePath: /vm/imagespecfavorite
@@ -522,6 +554,14 @@ serviceActions:
       method: put
       resourcePath: /nic/{Name}/detach
       description: "Detach a NIC from its VM instance."
+    Detach-Vm-Publicip:
+      method: delete
+      resourcePath: /vm/{Name}/publicip/{PublicIPName}
+      description: "Detach a PublicIP previously attached via AttachVMPublicIP, WITHOUT deleting the PublicIP resource itself (it belongs to the user). Fails if the VM has no default PublicIP assigned. 🕷️"
+    Disable-Storage-Driver:
+      method: delete
+      resourcePath: /cluster/{Name}/storagedriver/{Kind}
+      description: "Disable a CSP-managed CSI storage driver of a Cluster through the CSP API. Only Kind \"Block\" is supported. <br> Only the driver components are removed; volumes, their data and cloud resources are kept. <br> WARNING: existing PVs of the driver can no longer be attached or mounted, so Pods using them fail when rescheduled. <br> BuiltIn drivers cannot be disabled."
     Disassociate-Publicip:
       method: put
       resourcePath: /publicip/{Name}/disassociate
@@ -530,6 +570,10 @@ serviceActions:
       method: get
       resourcePath: /s3/{BucketName}/{ObjectKey}
       description: "Downloads an object from S3 or lists parts of a multipart upload. **Response type varies by query parameter:**\n\n| Query Parameter | Response | Description |\n|---|---|---|\n| *(none)* | `application/octet-stream` (binary) | Download object content |\n| `?versionId={id}` | `application/octet-stream` (binary) | Download specific object version |\n| `?uploadId={id}&list-type=parts` | `ListPartsResultJSON` | List parts of in-progress multipart upload |\n\n**Note**: The example value below shows the `?uploadId&list-type=parts` (list parts JSON) response.\nFor binary downloads, the response body is the raw file content.\n\n**List Parts Example (verify uploaded parts):**\n- uploadId: Use UploadId from initiate response\n- list-type: Must be \"parts\"\n- Response shows all uploaded parts with PartNumber, ETag, Size\n- Optional: part-number-marker (pagination), max-parts (limit)"
+    Enable-Storage-Driver:
+      method: put
+      resourcePath: /cluster/{Name}/storagedriver
+      description: "Enable a CSP-managed CSI storage driver of a Cluster through the CSP API. Only Kind \"Block\" is supported. <br> Enabling installs the driver components and wires the permissions the driver needs (e.g., AWS IAM Role and Pod Identity). <br> Idempotent: an already enabled or BuiltIn driver is returned as-is. <br> Some CSPs apply the change asynchronously and return Status \"Updating\"; check the result with the GET API."
     Fetch-Resource-Usage:
       method: get
       resourcePath: /sysstats/usage
@@ -566,10 +610,18 @@ serviceActions:
       method: get
       resourcePath: /cspvm/{Id}
       description: "Retrieve details of a specific CSP Virtual Machine (VM)."
+    Get-Db-Spec:
+      method: get
+      resourcePath: /dbspec/{Name}
+      description: "Retrieve details (vCPU/Memory/StorageSize) of a specific Database instance spec."
     Get-Disk:
       method: get
       resourcePath: /disk/{Name}
       description: "Retrieve details of a specific Disk."
+    Get-Dnszone:
+      method: get
+      resourcePath: /dnszone/{Name}
+      description: "Retrieve a specific Public DNS Zone, including the records CB-Spider manages in it."
     Get-Driver:
       method: get
       resourcePath: /driver/{DriverName}
@@ -606,6 +658,10 @@ serviceActions:
       method: post
       resourcePath: /getnlbowner
       description: "Retrieve the owner VPC of a specified Network Load Balancer (NLB)."
+    Get-Org-Db-Spec:
+      method: get
+      resourcePath: /dborgspec/{Name}
+      description: "Retrieve details of a specific Original Database instance spec."
     Get-Org-Vm-Spec:
       method: get
       resourcePath: /vmorgspec/{Name}
@@ -630,6 +686,10 @@ serviceActions:
       method: get
       resourcePath: /getrdbmsowner
       description: "Retrieve the Owner VPC of a given RDBMS CSP ID."
+    Get-Rdbms-Secure-Transport:
+      method: get
+      resourcePath: /rdbms/{Name}/secure-transport
+      description: "Report whether an RDBMS instance enforces encrypted (TLS/SSL) client connections, whether TLS is actually available, and its CA certificate. <br> Determined uniformly across every CSP via standard SQL and protocol handshakes against the engine itself, not each CSP's own (inconsistently available) management API: <br> MySQL/MariaDB: `SHOW VARIABLES LIKE 'require_secure_transport'`. <br> PostgreSQL: `pg_hba_file_rules`. <br> TLS availability and the server's certificate are captured live from the connection/handshake itself — see the response fields below."
     Get-Region:
       method: get
       resourcePath: /region/{RegionName}
@@ -681,7 +741,7 @@ serviceActions:
     Get-Tag:
       method: get
       resourcePath: /tag/{Key}
-      description: "Retrieve a specific tag for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+      description: "Retrieve a specific tag for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER, RDBMS\n※ RDBMS: tagging support (mysql, mariadb, etc.) varies by CSP driver — check GetMetaInfo().SupportsTag before use"
     Get-Topology-Layout:
       method: get
       resourcePath: /topology/layout/version
@@ -834,10 +894,18 @@ serviceActions:
       method: get
       resourcePath: /credential
       description: "Retrieve a list of registered Credentials."
+    List-Db-Spec:
+      method: get
+      resourcePath: /dbspec
+      description: "Retrieve a list of Database instance specs (vCPU/Memory/StorageSize details) for a specific DB engine, associated with a specific connection."
     List-Disk:
       method: get
       resourcePath: /disk
       description: "Retrieve a list of Disks associated with a specific connection."
+    List-Dnszone:
+      method: get
+      resourcePath: /dnszone
+      description: "Retrieve a list of Public DNS Zones associated with a specific connection."
     List-Driver:
       method: get
       resourcePath: /driver
@@ -866,6 +934,10 @@ serviceActions:
       method: get
       resourcePath: /nlb
       description: "Retrieve a list of Network Load Balancers (NLBs) associated with a specific connection."
+    List-Org-Db-Spec:
+      method: get
+      resourcePath: /dborgspec
+      description: "Retrieve a list of Original Database instance specs for a specific DB engine, associated with a specific connection. <br> The response structure may vary depending on the requested CSP."
     List-Org-Region:
       method: get
       resourcePath: /orgregion
@@ -902,6 +974,10 @@ serviceActions:
       method: get
       resourcePath: /rdbms/{Name}/databases
       description: "List databases inside an RDBMS instance using the CSP-native API."
+    List-Rdbms-Engine:
+      method: get
+      resourcePath: /rdbmsengine
+      description: "Retrieve the list of RDBMS engines (e.g., mysql, mariadb, postgresql) that the CSP supports for a specific connection, derived from the connection's driver capability information (GET /driver/capability)."
     List-Recent-Imagespec:
       method: get
       resourcePath: /vm/imagespecrecent
@@ -926,10 +1002,14 @@ serviceActions:
       method: get
       resourcePath: /securitygroup
       description: "Retrieve a list of Security Groups associated with a specific connection."
+    List-Storage-Driver:
+      method: get
+      resourcePath: /cluster/{Name}/storagedriver
+      description: "List the CSP-managed CSI storage driver (Block) of a Cluster, read through the CSP API."
     List-Tag:
       method: get
       resourcePath: /tag
-      description: "Retrieve a list of tags for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+      description: "Retrieve a list of tags for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER, RDBMS\n※ RDBMS: tagging support (mysql, mariadb, etc.) varies by CSP driver — check GetMetaInfo().SupportsTag before use"
     List-Topology-Layouts:
       method: get
       resourcePath: /topology/layout
@@ -998,6 +1078,10 @@ serviceActions:
       method: post
       resourcePath: /regdisk
       description: "Register a new Disk with the specified name, zone, and CSP ID."
+    Register-Dnszone:
+      method: post
+      resourcePath: /regdnszone
+      description: "Register an existing Public DNS Zone with the specified name and CSP ID."
     Register-Driver:
       method: post
       resourcePath: /driver
@@ -1054,6 +1138,10 @@ serviceActions:
       method: delete
       resourcePath: /vpc/{VPCName}/cspsubnet/{Id}
       description: "Remove an existing CSP Subnet from a VPC."
+    Remove-Dnsrecord:
+      method: delete
+      resourcePath: /dnszone/{DNSZoneName}/record/{RecordName}
+      description: "Remove an existing record from a Public DNS Zone."
     Remove-Nic-Privateip:
       method: delete
       resourcePath: /nic/{Name}/privateip/{IP}
@@ -1077,7 +1165,7 @@ serviceActions:
     Remove-Tag:
       method: delete
       resourcePath: /tag/{Key}
-      description: "Remove a specific tag from a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+      description: "Remove a specific tag from a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER, RDBMS\n※ RDBMS: tagging support (mysql, mariadb, etc.) varies by CSP driver — check GetMetaInfo().SupportsTag before use"
     Save-Topology-Layout:
       method: post
       resourcePath: /topology/layout
@@ -1085,7 +1173,7 @@ serviceActions:
     Set-Nodegroup-Autoscaling:
       method: put
       resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/onautoscaling
-      description: "Enable or disable auto scaling for a Node Group in a Cluster."
+      description: "Enable or disable auto scaling for a Node Group in a Cluster.\nOnAutoScaling must be a valid boolean."
     Start-Vm:
       method: post
       resourcePath: /vm
@@ -1098,6 +1186,10 @@ serviceActions:
       method: delete
       resourcePath: /vm/{Name}
       description: "Terminate a specified Virtual Machine (VM)."
+    Unassign-Vm-Default-Publicip:
+      method: delete
+      resourcePath: /vm/{Name}/publicip
+      description: "Disassociate and DELETE the PublicIP that was assigned via AssignVMDefaultPublicIP. Fails if the VM has no default PublicIP assigned. 🕷️"
     Unregister-Cluster:
       method: delete
       resourcePath: /regcluster/{Name}
@@ -1110,6 +1202,10 @@ serviceActions:
       method: delete
       resourcePath: /regdisk/{Name}
       description: "Unregister a Disk with the specified name."
+    Unregister-Dnszone:
+      method: delete
+      resourcePath: /regdnszone/{Name}
+      description: "Unregister a DNS Zone with the specified name, without deleting it from the CSP."
     Unregister-Driver:
       method: delete
       resourcePath: /driver/{DriverName}
@@ -1170,6 +1266,10 @@ serviceActions:
       method: post
       resourcePath: /driver/upload
       description: "Upload a Cloud Driver library file."
+    Validate-Credential:
+      method: post
+      resourcePath: /credential/validate
+      description: "Check whether a Credential can connect to the cloud before registering it. The Credential is not stored."
     Version-Info:
       method: get
       resourcePath: /version
@@ -1330,11 +1430,11 @@ serviceActions:
     DelSubnet:
       method: delete
       resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/subnet/{subnetId}
-      description: "Delete Subnet\n---\n**action options:**\n\n**reconcile** – (To be deprecated: Use PUT /ns/{nsId}/resources/vNet/{vNetId}/reconcile instead) Synchronize Tumblebug metadata with the actual CSP state.\nChecks whether the Subnet resource still exists on CSP (via Spider).\nIf the CSP resource is gone, removes the orphaned Tumblebug metadata.\nIf the CSP resource still exists, keeps the metadata intact.\nUse this to clean up stale metadata after system errors or partial failures.\n(e.g., `DELETE /ns/{nsId}/resources/vNet/{vNetId}/subnet/{subnetId}?action=reconcile` - To be deprecated)\n\n**force** – Force-delete the Subnet on CSP (passes `?force=true` to Spider).\nUse this when normal deletion fails due to CSP-side constraints (e.g., resource in use).\n(e.g., `DELETE /ns/{nsId}/resources/vNet/{vNetId}/subnet/{subnetId}?action=force`)"
+      description: "Delete Subnet\n---\n**action options:**\n\n**force** – Force-delete the Subnet on CSP (passes `?force=true` to Spider).\nUse this when normal deletion fails due to CSP-side constraints (e.g., resource in use).\n(e.g., `DELETE /ns/{nsId}/resources/vNet/{vNetId}/subnet/{subnetId}?action=force`)"
     DelVNet:
       method: delete
       resourcePath: /ns/{nsId}/resources/vNet/{vNetId}
-      description: "Delete VNet\n---\n**action options:**\n\n**withsubnets** – Delete the VNet together with all its subnets in a single call.\n\n**reconcile** – (To be deprecated: Use PUT /ns/{nsId}/resources/vNet/{vNetId}/reconcile instead) Synchronize Tumblebug metadata with the actual CSP state.\nChecks whether the VNet/Subnet resource still exists on CSP (via Spider).\nIf the CSP resource is gone, removes the orphaned Tumblebug metadata.\nIf the CSP resource still exists, keeps the metadata intact.\nUse this to clean up stale metadata after system errors or partial failures.\n(e.g., `DELETE /ns/{nsId}/resources/vNet/{vNetId}?action=reconcile` - To be deprecated)\n\n**force** – Force-delete the VNet and its subnets on CSP (passes `?force=true` to Spider).\nUse this when normal deletion fails due to CSP-side constraints (e.g., resource in use).\n(e.g., `DELETE /ns/{nsId}/resources/vNet/{vNetId}?action=force`)"
+      description: "Delete VNet\n---\n**action options:**\n\n**withsubnets** – Delete the VNet together with all its subnets in a single call.\n\n**force** – Force-delete the VNet and its subnets on CSP (passes `?force=true` to Spider).\nUse this when normal deletion fails due to CSP-side constraints (e.g., resource in use).\n(e.g., `DELETE /ns/{nsId}/resources/vNet/{vNetId}?action=force`)"
     DeleteAllInfraDynamicTemplate:
       method: delete
       resourcePath: /ns/{nsId}/template/infra
@@ -1387,6 +1487,14 @@ serviceActions:
       method: delete
       resourcePath: /ns/{nsId}/template/k8sCluster/{templateId}
       description: "Delete a specific K8s Cluster Dynamic Template."
+    DeleteK8sClusterStorageDriver:
+      method: delete
+      resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/storageDriver/{kind}
+      description: "Disable the CSP-managed CSI storage driver of a K8sCluster. Only kind Block is supported (400 otherwise).\nWARNING: existing PersistentVolumes of this driver can no longer be attached or mounted (volumes and data are kept).\nRequires option=force (400 otherwise). BuiltIn drivers cannot be disabled (400)."
+    DeleteK8sLeftoverVolume:
+      method: delete
+      resourcePath: /ns/{nsId}/k8sLeftoverVolume/{cspDiskId}
+      description: "Delete a CSP disk created by a Kubernetes CSI driver that was left after its cluster was deleted.\nWARNING: the disk and all its data are deleted permanently. Requires option=force (400 otherwise).\n409 when the disk no longer looks CSI-created, is attached, its owner cluster is known to CB-Tumblebug, or it is a registered dataDisk."
     DeleteK8sNodeGroup:
       method: delete
       resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/k8sNodeGroup/{k8sNodeGroupName}
@@ -1419,6 +1527,14 @@ serviceActions:
       method: delete
       resourcePath: /provisioning/log/{specId}
       description: "Remove all provisioning history data for a specific node specification.\nThis operation permanently deletes historical failure and success records:\n\n**Warning**: This action is irreversible and will remove:\n- All failure and success statistics\n- Historical error messages and troubleshooting data\n- Risk analysis baseline for future deployments\n- Failure pattern analysis data\n\n**When to Use:**\n- **Data Cleanup**: Remove outdated or irrelevant provisioning history\n- **Fresh Start**: Clear history after infrastructure changes that resolve previous issues\n- **Privacy Compliance**: Remove logs containing sensitive error information\n- **Storage Management**: Clean up logs to manage kvstore space\n\n**Impact on System:**\n- Future risk analysis for this spec will have no historical baseline\n- Infra review process will not show historical warnings for this spec\n- Provisioning reliability metrics will be reset to zero"
+    DeleteRDBMS:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/rdbms/{rdbmsId}
+      description: "Delete an RDBMS instance. Use option=force to delete despite DeletionProtection."
+    DeleteRDBMSDatabase:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/rdbms/{rdbmsId}/database/{dbName}
+      description: "Deletes a logical database inside an RDBMS instance via CB-Spider.\nX-Admin-User-Name and X-Admin-User-Password headers are required."
     DeleteRequest:
       method: delete
       resourcePath: /request/{reqId}
@@ -1478,7 +1594,7 @@ serviceActions:
     FetchPrice:
       method: post
       resourcePath: /fetchPrice
-      description: "Fetch price from all CSP connections and update the price information for associated specs in the system."
+      description: "Fetch price from CSP connections and update the price information for associated specs in the system.\n\n**Provider Selection Options (optional body):**\n- `targetProviders`: Specify exact providers to fetch (e.g., [\"aws\", \"gcp\"]). When set, only these providers are processed and `excludedProviders` is ignored.\n- `excludedProviders`: Specify providers to skip (e.g., [\"azure\"]). Only used when `targetProviders` is not set.\n- Empty body fetches prices for all connections."
     FetchSpecs:
       method: post
       resourcePath: /fetchSpecs
@@ -1535,6 +1651,14 @@ serviceActions:
       method: get
       resourcePath: /ns/{nsId}/template/k8sCluster
       description: "List all K8s Cluster Dynamic Templates in a namespace.\nOptionally filter by keyword matching against template name or description (case-insensitive)."
+    GetAllK8sClusterStorageDriver:
+      method: get
+      resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/storageDriver
+      description: "List the CSP-managed CSI storage drivers (Block) of a K8sCluster"
+    GetAllK8sLeftoverVolume:
+      method: get
+      resourcePath: /ns/{nsId}/k8sLeftoverVolume
+      description: "List CSP disks of a connection that look created by a Kubernetes CSI driver (PV-backed disks), e.g. left after cluster deletion with reclaimPolicy Retain.\nA disk matches by its name (pvc-<uuid>) or CSI tags (see matchedBy). Attached disks and disks of K8sClusters known to CB-Tumblebug are excluded by default.\nDisks without an owner hint (GCP, Azure) may still belong to a cluster outside CB-Tumblebug: check before deleting."
     GetAllNLB:
       method: get
       resourcePath: /ns/{nsId}/infra/{infraId}/nlb
@@ -1667,6 +1791,10 @@ serviceActions:
       method: head
       resourcePath: /ns/{nsId}/resources/objectStorage/{osId}/object/{objectKey}
       description: "Get object info from an object storage (bucket)\n\n**Important Notes:**\n- This API retrieves the metadata of an object without downloading the actual content\n- Returns metadata in response headers (Content-Length, Content-Type, ETag, Last-Modified)"
+    GetDiskSupport:
+      method: get
+      resourcePath: /disk/support
+      description: "Valid rootDiskType/diskType values (CSP-native identifiers) with size constraints per CSP,\nfrom assets/diskinfo.yaml (no CB-Spider call). Where CB-Spider expects a different\nidentifier, cbSpiderName shows what CB-Tumblebug translates it to.\nview=available (default) lists only types in scope for the given region/zone/spec;\nview=all also lists out-of-scope types with unavailableReason.\nPass regionName / cspSpecName to scope availability; or use\nGET /ns/{nsId}/resources/spec/{specId}/diskOptions to derive them from a spec."
     GetExecutionTask:
       method: get
       resourcePath: /ns/{nsId}/cmd/infra/{infraId}/task/{taskId}
@@ -1755,10 +1883,30 @@ serviceActions:
       method: get
       resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/kubeconfig
       description: "Get a CSP native kubeconfig for the specified K8sCluster.\nReturns a kubeconfig using CSP native auth plugins (e.g., aws-iam-authenticator for EKS, gke-gcloud-auth-plugin for GKE)."
+    GetK8sClusterStorage:
+      method: get
+      resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/storage
+      description: "Get the readiness (Ready / NotReady / Preparing) of the abstract storage types of a K8sCluster.\nWhen no preparation is running, the driver status is refreshed from the CSP."
+    GetK8sClusterStorageClassManifest:
+      method: get
+      resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/storageClassManifest
+      description: "Generate the abstract StorageClasses (cb-<storageType>, e.g. cb-ssd-general) of a K8sCluster; apply them to the cluster.\nDefault response is a multi-document YAML; send \"Accept: application/json\" for a JSON Kubernetes List.\n412 when a storage type is not Ready (prepare it with PUT .../storage first); 422 when the catalog entry is not verified."
     GetK8sClusterToken:
       method: get
       resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/token
-      description: "Get an access token for the specified K8sCluster.\nOnly applicable to CSPs that use exec-based authentication (e.g., GCP GKE, AWS EKS)."
+      description: "Get an access token for the specified K8sCluster.\nOnly applicable to CSPs that use exec-based authentication (e.g., GCP GKE, AWS EKS).\nThe response follows the Kubernetes ExecCredential format. Its\nexpirationTimestamp tells the client when the token stops being accepted,\nso it can refresh before the token expires instead of after a 401.\nThe field is omitted when the CSP provides no expiry information."
+    GetK8sMultiClusterStorage:
+      method: get
+      resourcePath: /ns/{nsId}/k8sStorage
+      description: "Aggregate GET .../k8sCluster/{k8sClusterId}/storage over the K8sClusters of the namespace (done when summary.preparing is 0)."
+    GetK8sMultiClusterStorageClassManifest:
+      method: get
+      resourcePath: /ns/{nsId}/k8sStorageClassManifest
+      description: "Generate the cb-<storageType> StorageClass YAML for each listed K8sCluster (default: all in the namespace).\nClusters whose storage types are not Ready or not verified are returned with status NotReady and a reason."
+    GetK8sStorageInfo:
+      method: get
+      resourcePath: /k8sStorageInfo
+      description: "Get the kubernetes storage catalog: per-CSP StorageClass details and abstract storage types (e.g., ssd-general).\nGenerated StorageClass manifests use only entries with verified=true."
     GetLabels:
       method: get
       resourcePath: /label/{labelType}/{uid}
@@ -1771,6 +1919,10 @@ serviceActions:
       method: get
       resourcePath: /livez
       description: "Check Tumblebug server process is alive (liveness probe). Always returns 200 while the process is running."
+    GetLoadAssetsStatus:
+      method: get
+      resourcePath: /loadAssetsStatus
+      description: "Returns the current phase, processed/total regions, and registered specs/images counts while LoadAssets or FetchPrice is running."
     GetMonitorData:
       method: get
       resourcePath: /ns/{nsId}/monitoring/infra/{infraId}/metric/{metric}
@@ -1786,7 +1938,7 @@ serviceActions:
     GetNLBSupport:
       method: get
       resourcePath: /nlb/support
-      description: "Get CSP support information for NLB health checker configuration fields (customHealthCheckerInterval, customHealthCheckerTimeout, customHealthCheckerThreshold).\nA false value means the CSP does not support a custom value for that field (e.g., AWS TCP NLB does not support custom timeout).\nIf cspType query parameter is provided, returns support information for that specific CSP.\nIf cspType is not provided, returns support information for all CSPs."
+      description: "Get CSP support information for NLB health checker configuration fields (customHealthCheckerInterval, customHealthCheckerTimeout, customHealthCheckerThreshold).\nA false value means the CSP does not support a custom value for that field (e.g., AWS TCP NLB does not support custom timeout).\nIf providerName query parameter is provided, returns support information for that specific CSP\nIf providerName is not provided, returns support information for all CSPs"
     GetNodeCommandStatus:
       method: get
       resourcePath: /ns/{nsId}/infra/{infraId}/node/{nodeId}/commandStatus/{index}
@@ -1851,10 +2003,26 @@ serviceActions:
       method: get
       resourcePath: /credential/publicKey
       description: "Generates an RSA key pair using a 4096-bit key size with the RSA algorithm. The public key is generated using the RSA algorithm with OAEP padding and SHA-256 as the hash function. This key is used to encrypt an AES key that will be used for hybrid encryption of credentials."
+    GetRDBMS:
+      method: get
+      resourcePath: /ns/{nsId}/resources/rdbms/{rdbmsId}
+      description: "Get details of an RDBMS instance, always refreshed live"
+    GetRDBMSCapability:
+      method: get
+      resourcePath: /rdbms/capability
+      description: "Live capability query for one connection+dbEngine (calls CB-Spider), so all\nthree params are required. Call GET /tumblebug/rdbms/support first to see\nwhich CSPs/engines are worth trying. Fields listed in notes.staticFields are\nfixed/approximate rather than live. dbInstanceSpecs is a richer per-option catalog\n(vCPU/memory/storage range) than dbInstanceSpecOptions; liveSupportedEngines is this\nconnection's live-verified engine list, independent of the dbEngine queried.\nBoth are best-effort and may be empty if their underlying live call failed."
+    GetRDBMSDatabases:
+      method: get
+      resourcePath: /ns/{nsId}/resources/rdbms/{rdbmsId}/database
+      description: "Lists logical databases inside an RDBMS instance via CB-Spider.\nX-Admin-User-Name and X-Admin-User-Password headers are required."
+    GetRDBMSSecureTransport:
+      method: get
+      resourcePath: /ns/{nsId}/resources/rdbms/{rdbmsId}/secure-transport
+      description: "Retrieves live TLS enforcement status, active cipher, and server CA certificate via CB-Spider."
     GetRDBMSSupport:
       method: get
       resourcePath: /rdbms/support
-      description: "Get CSP support metadata and capabilities for RDBMS engines (e.g., mysql, mariadb, postgresql)\nQuery parameters can be filtered by providerName, regionName, or dbEngine."
+      description: "Static per-CSP RDBMS reference (no CB-Spider call, so it cheaply covers every\nCSP). Omit providerName for all CSPs. Use this to decide what to try before\nGET /tumblebug/rdbms/capability, which gives live per-connection details."
     GetReadyz:
       method: get
       resourcePath: /readyz
@@ -1911,6 +2079,10 @@ serviceActions:
       method: get
       resourcePath: /ns/{nsId}/resources/spec/{specId}
       description: "Get spec"
+    GetSpecDiskOptions:
+      method: get
+      resourcePath: /ns/{nsId}/resources/spec/{specId}/diskOptions
+      description: "Resolves the spec's provider, region and CSP spec name and returns the\nrootDiskType/diskType options in CSP-native terms (assets/diskinfo.yaml, scoped by\nregion/spec availability). Give imageId (same as for POST .../reviewSpecImagePair) so the\nimage's OS selects byOS root size rules and its minimum OS disk size raises rootDiskSizeGB.min.\nData disks do not depend on the image. Static reference; for live stock use POST .../reviewSpecImagePair."
     GetSshKey:
       method: get
       resourcePath: /ns/{nsId}/resources/sshKey/{sshKeyId}
@@ -1963,10 +2135,14 @@ serviceActions:
       method: get
       resourcePath: /ns/{nsId}/resources/objectStorage/{osId}/versions
       description: "List all versions of objects in an object storage (bucket)"
+    ListRDBMSs:
+      method: get
+      resourcePath: /ns/{nsId}/resources/rdbms
+      description: "Get the list of RDBMS instances registered in the namespace\n\n**Filtering with filterKey and filterVal:**\nBoth parameters perform a case-insensitive substring match against the stored JSON of each resource.\nA resource is included in the result only when its JSON contains **both** the filterKey string and the filterVal string."
     LoadAssets:
       method: get
       resourcePath: /loadAssets
-      description: "Load Common Resources from internal asset files (Spec, Image). By default, Azure images are excluded for faster initialization. Use includeAzure=true to fetch Azure images (may take 40+ minutes)."
+      description: "Load Common Resources from internal asset files (Spec, Image). By default, Azure images are excluded for faster initialization. Use includeAzure=true to fetch Azure images (may take 40+ minutes).\n\nUse providers to fetch only the named providers (comma-separated, as listed by GET /provider). This targets a single registered CSP rather than every provider, which turns a 10-40 minute run into minutes - useful right after registering one new CSP. When providers is set, includeAzure is ignored."
     LookupImage:
       method: post
       resourcePath: /lookupImage
@@ -1987,6 +2163,10 @@ serviceActions:
       method: put
       resourcePath: /mergeCSPLabel/{labelType}/{uid}
       description: "Fetch the labels in the CSP and merge them with the existing labels"
+    PostAuditCspResources:
+      method: post
+      resourcePath: /auditCspResources
+      description: "Lists VMs directly from the CSP and reports TB-managed VMs (tb-uid names or sys.manager tag) that no TB record tracks, plus residual sub-resources.\n`remediate=true` terminates untracked VMs; `cleanResiduals=attributed|all` deletes residuals."
     PostBuildAgnosticImage:
       method: post
       resourcePath: /ns/{nsId}/buildAgnosticImage
@@ -1995,10 +2175,6 @@ serviceActions:
       method: post
       resourcePath: /ns/{nsId}/cmd/infra/{infraId}
       description: "Send a command to specified Infra. Use query parameters to target specific nodeGroup or node.\nWhen async=true, returns immediately with xRequestId and streams results via SSE at GET /stream/ns/{nsId}/cmd/infra/{infraId}?xRequestId={xRequestId}"
-    PostCmdK8sCluster:
-      method: post
-      resourcePath: /ns/{nsId}/cmd/k8sCluster/{k8sClusterId}
-      description: "Send a command to specified Container in K8sCluster\n[note] This feature is not intended for general use\nThis API is provided as an exceptional and limited function for specific purposes such as migration.\nKubernetes resource information required as input for this API is not currently provided, and its availability in the future is uncertain."
     PostConfig:
       method: post
       resourcePath: /config
@@ -2023,10 +2199,6 @@ serviceActions:
       method: post
       resourcePath: /ns/{nsId}/transferFile/infra/{infraId}
       description: "Transfer a file to specified Infra to the specified path.\nThe file size should be less than 10MB.\nNot for gerneral file transfer but for specific purpose (small configuration files)."
-    PostFileToK8sCluster:
-      method: post
-      resourcePath: /ns/{nsId}/transferFile/k8sCluster/{k8sClusterId}
-      description: "Transfer a file to specified Container in K8sCluster. The tar command is required in the container.\n[note] This feature is not intended for general use\nThis API is provided as an exceptional and limited function for specific purposes such as migration.\nKubernetes resource information required as input for this API is not currently provided, and its availability in the future is uncertain."
     PostFirewallRules:
       method: post
       resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}/rules
@@ -2039,6 +2211,10 @@ serviceActions:
       method: post
       resourcePath: /ns/{nsId}/infra
       description: "Create Infra with detailed node specifications and resource configuration.\nThis endpoint creates a complete multi-cloud infrastructure by:\n1. **node Provisioning**: Creates nodes across multiple cloud providers using predefined specs and images\n2. **Resource Management**: Automatically handles VPC/VNet, security groups, SSH keys, and network configuration\n3. **Status Tracking**: Monitors node creation progress and handles failures based on policy settings\n4. **Post-Deployment**: Optionally installs monitoring agents and executes custom commands\n\n**Key Features:**\n- Multi-cloud node deployment with heterogeneous configurations\n- Automatic resource dependency management (VPC → Security Group → node)\n- Built-in failure handling with configurable policies (continue/rollback/refine)\n- Optional CB-Dragonfly monitoring agent installation\n- Post-deployment command execution support\n- Real-time status updates and progress tracking\n\n**node Lifecycle:**\n1. Creating → Running (successful deployment)\n2. Creating → Failed (deployment error, handled by failure policy)\n3. Running → Terminated (manual or policy-driven cleanup)\n\n**Failure Policies:**\n- `continue`: Keep successful nodes, mark failed ones for later refinement\n- `rollback`: Delete entire Infra if any node fails (all-or-nothing)\n- `refine`: Automatically clean up failed nodes, keep successful ones\n\n**Resource Requirements:**\n- Valid node specifications (must exist in system namespace)\n- Valid images (must be available in target CSP regions)\n- Sufficient CSP quotas and permissions\n- Network connectivity between components"
+    PostInfraAudit:
+      method: post
+      resourcePath: /ns/{nsId}/infra/{infraId}/audit
+      description: "Lists VMs directly from each CSP used by the Infra (never via CB-Spider metadata) and classifies them:\n- `trackedAlive`: TB node exists and the CSP VM is alive (expected)\n- `ghostAlive`: TB recorded the node as Terminated/Failed but the CSP VM is still alive\n- `trackedGone`: TB node has a CSP id but the CSP has no such VM\n- `untrackedAlive`: a CSP VM of this Infra (by name/uid or sys.infraId tag) that TB never recorded\n- `residuals`: NIC / public IP / disk / ENI left behind (attributed = named after a node of this Infra)\n\n`remediate=true` terminates ghost/untracked VMs directly at the CSP. `cleanResiduals=attributed|all` deletes residuals."
     PostInfraAutopilot:
       method: post
       resourcePath: /ns/{nsId}/infraAutopilot
@@ -2155,6 +2331,14 @@ serviceActions:
       method: post
       resourcePath: /ns
       description: "Create namespace"
+    PostRDBMS:
+      method: post
+      resourcePath: /ns/{nsId}/resources/rdbms
+      description: "Create a managed RDBMS instance and wait for it to become Available\n(can take several minutes). Call GET /tumblebug/rdbms/capability first to\ndiscover valid dbEngineVersion/dbInstanceSpec/storageType/storageSize values,\nor set autoFillDefaults=true to auto-pick a capability-valid (not necessarily\noptimal) default for each."
+    PostRDBMSDatabase:
+      method: post
+      resourcePath: /ns/{nsId}/resources/rdbms/{rdbmsId}/database
+      description: "Creates a logical database inside an Available RDBMS instance via CB-Spider.\nOptional charset and collation fields are supported for MySQL and MariaDB instances (Alibaba MariaDB supports charset only).\nX-Admin-User-Name and X-Admin-User-Password headers are required (not persisted by Tumblebug).\nNote: Setting charset/collation on NCP requires CB-Spider network access to the private VPC endpoint (sys.ncp_create_db), and on NHN Cloud requires 'Direct Control' enabled in the NHN Console."
     PostRegisterCSPNativeNode:
       method: post
       resourcePath: /ns/{nsId}/registerCspNode
@@ -2241,11 +2425,15 @@ serviceActions:
       description: "Perform a bidirectional ping test on a site-to-site VPN using existing Infra nodes and return the results.\n\nIt finds nodes that belong to the VPN's two sites and runs ping tests\nin both directions (site1→site2 and site2→site1) via private IP.\nThe VPN is considered healthy only when both directions succeed.\n\nA retry strategy is used with configurable interval and max attempts\n(default: 15s interval, 20 attempts)."
     PruneObjectStorages:
       method: post
-      resourcePath: /ns/{nsId}/resources/objectStorage/prune
+      resourcePath: /ns/{nsId}/resources/objectStorage/reconcile/prune
       description: "Purges Tumblebug metadata for Object Storage resources diagnosed as missing on CSP."
+    PruneRDBMS:
+      method: post
+      resourcePath: /ns/{nsId}/resources/rdbms/reconcile/prune
+      description: "Purges Tumblebug metadata for RDBMS instances diagnosed as missing on CSP."
     PruneVNets:
       method: post
-      resourcePath: /ns/{nsId}/resources/vNet/prune
+      resourcePath: /ns/{nsId}/resources/vNet/reconcile/prune
       description: "Purges Tumblebug metadata for vNet resources diagnosed as missing on CSP."
     PutChangeK8sNodeGroupAutoscaleSize:
       method: put
@@ -2275,6 +2463,18 @@ serviceActions:
       method: put
       resourcePath: /ns/{nsId}/template/k8sCluster/{templateId}
       description: "Update an existing K8s Cluster Dynamic Template."
+    PutK8sClusterStorage:
+      method: put
+      resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/storage
+      description: "Prepare abstract storage types (e.g., ssd-general; see GET /k8sStorageInfo) on a K8sCluster:\nenable the storage drivers the requested storage types need.\nReturns 202 immediately; poll GET .../storage for the result. 409 when a preparation is already running.\nStorageClasses are not created; get them from GET .../storageClassManifest."
+    PutK8sClusterStorageDriver:
+      method: put
+      resourcePath: /ns/{nsId}/k8sCluster/{k8sClusterId}/storageDriver
+      description: "Enable the CSP-managed CSI storage driver of a K8sCluster (idempotent; status may be \"Updating\", check with GET).\nOnly kind Block is supported (400 otherwise).\nUsually not needed: PUT .../storage enables the drivers that the requested storage types need."
+    PutK8sMultiClusterStorage:
+      method: put
+      resourcePath: /ns/{nsId}/k8sStorage
+      description: "Run PUT .../k8sCluster/{k8sClusterId}/storage on the listed K8sClusters (empty: all in the namespace) in parallel.\nReturns 202 with a per-cluster result."
     PutMonitorAgentStatusInstalled:
       method: put
       resourcePath: /ns/{nsId}/monitoring/status/infra/{infraId}/node/{nodeId}
@@ -2347,6 +2547,10 @@ serviceActions:
       method: put
       resourcePath: /ns/{nsId}/resources/objectStorage/reconcile
       description: "Compares Tumblebug metadata with actual CSP object storage status via Spider.\nRestores status for alive resources and flags discrepancies."
+    ReconcileAllRDBMS:
+      method: put
+      resourcePath: /ns/{nsId}/resources/rdbms/reconcile
+      description: "Compares Tumblebug metadata with actual CSP RDBMS status via Spider.\nRestores status for alive resources and flags discrepancies."
     ReconcileAllVNets:
       method: put
       resourcePath: /ns/{nsId}/resources/vNet/reconcile
@@ -2355,6 +2559,10 @@ serviceActions:
       method: put
       resourcePath: /ns/{nsId}/resources/objectStorage/{osId}/reconcile
       description: "Compares Tumblebug metadata for a specific Object Storage resource with actual CSP status via Spider."
+    ReconcileRDBMS:
+      method: put
+      resourcePath: /ns/{nsId}/resources/rdbms/{rdbmsId}/reconcile
+      description: "Compares Tumblebug metadata for a specific RDBMS instance with actual CSP status via Spider."
     ReconcileVNet:
       method: put
       resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/reconcile
@@ -2367,6 +2575,10 @@ serviceActions:
       method: post
       resourcePath: /credential
       description: "This API registers credential information using hybrid encryption. The process involves compressing and encrypting sensitive data with AES-256, encrypting the AES key with a 4096-bit RSA public key (retrieved via `GET /credential/publicKey`), and using OAEP padding with SHA-256. All values, including the AES key, must be base64 encoded before sending, and the public key token ID must be included in the request."
+    RegisterCspDefinition:
+      method: post
+      resourcePath: /cloudInfo/{providerName}
+      description: "Add (or replace) a cloud provider definition without editing assets/cloudinfo.yaml or restarting the server, then register it with CB-Spider.\n\nThis exists for clouds that come into being while CB-Tumblebug is running - most obviously an OpenStack that CB-Tumblebug itself deployed onto a VM it created. The definition is persisted, so it survives a restart.\n\nUse `cloudPlatform` to name the base platform when this is an instance of one (ex: an OpenStack named `openstack-site01` sets cloudPlatform to `openstack`); CB-Spider selects its driver from that. Registering credentials is a separate, subsequent call to POST /credential."
     RegisterCspNativeResources:
       method: post
       resourcePath: /registerCspResources
@@ -2399,14 +2611,26 @@ serviceActions:
       method: delete
       resourcePath: /ns/{nsId}/infra/{infraId}/nlb/{nlbId}/node
       description: "Delete nodes from NLB"
+    ReplaceFailedNodeGroup:
+      method: put
+      resourcePath: /ns/{nsId}/infra/{infraId}/nodeGroupDynamic/{nodeGroupId}
+      description: "Replace a NodeGroup that could not be provisioned, using the same name.\n\nSome failures cannot be retried: an image the CSP does not have, a root disk too\nsmall for the flavor. Re-sending the same request fails identically — the request\nhas to change. This clears the failed Nodes and creates the NodeGroup again from\nthe corrected request, so its record carries the new values too.\n\nThe request body is the same shape as adding a NodeGroup, so it can be validated\nfirst with POST /ns/{nsId}/infra/{infraId}/nodeGroupDynamicReview.\n\nRefused rather than guessed when clearing could destroy something:\n- 409 if any Node of the group is not failed — add a new NodeGroup instead\n- 409 if a failed Node still names a CSP resource — run action=reconcile to rescue\nit or action=refine to remove it first\n- 400 if the request carries a different specId; instance type decides cost,\nperformance and availability together, so changing it is a new NodeGroup\n\nA zone in the body is ignored: pinning one derives a zone-scoped shared VNet, which\nwould place the new Nodes in a separate VPC from the rest of the Infra."
     RestDeleteObjectStorage:
       method: delete
       resourcePath: /ns/{nsId}/resources/objectStorage/{osId}
-      description: "Delete an object storage (bucket).\n\n**Query option (mutually exclusive — specify at most one):**\n\n| option | Description |\n|--------|-------------|\n| (none) | Standard delete. Fails if the bucket is not empty. |\n| `empty` | Empty the bucket first, then delete. |\n| `force` | Force delete bucket with all contents (passed to Spider as `force=true`). Behaviour varies by CSP; use when standard delete is not sufficient. |\n| `reconcile` | Do not call the CSP delete API. Instead, check whether the CSP bucket actually exists and remove only the Tumblebug metadata if the bucket is absent. Use this to clean up orphaned metadata that cannot be deleted through normal means (e.g., a bucket stuck in `Failed` status after a partial creation or a CSP-side deletion error such as Tencent 405). Returns a reconcile result object instead of 204. |"
+      description: "Delete an object storage (bucket).\n\n**Query option (mutually exclusive — specify at most one):**\n\n| option | Description |\n|--------|-------------|\n| (none) | Standard delete. Fails if the bucket is not empty. |\n| `empty` | Empty the bucket first, then delete. |\n| `force` | Force delete bucket with all contents (passed to Spider as `force=true`). Behaviour varies by CSP; use when standard delete is not sufficient. |\n\nTo clean up metadata for a bucket whose CSP resource is already gone, use `PUT .../reconcile` followed by `POST .../prune` instead of a delete option."
     RetrieveRegionListFromCsp:
       method: get
       resourcePath: /regionFromCsp
       description: "RetrieveR all region lists from CSPs"
+    RetryFailedNodes:
+      method: post
+      resourcePath: /ns/{nsId}/infra/{infraId}/retryFailedNodes
+      description: "Re-create the retriable failed Nodes of the Infra, one Node at a time.\n\nEach replacement keeps the failed Node's exact configuration — zone, subnet, VNet,\nsecurity group, key, spec, image and root disk — so it stays on the same private\nnetwork as its siblings. Use attemptsPerNode with intervalSeconds to keep trying\nwhile a CSP capacity shortage clears.\n\nEach target names one failed Node and the settings for it: an optional zone,\nresolved to a subnet of that Node's own VNet, and assumeResolved to retry a Node\nthe classifier ruled out because the block was lifted outside CB-Tumblebug (a\nquota granted, a permission fixed). An empty targets list retries every retriable\nfailed Node. The original failed Node record is removed once its replacement is\nup, unless keepFailedNodes is set.\n\nA target's zone never leaves the Node's VNet: it selects a subnet of that zone, or\nadds one, so the replacement keeps the VPC, security group and key. This is not the\nzone field of a dynamic provisioning request, which builds a separate zone-scoped\nVNet."
+    RetryFailedNodesReview:
+      method: post
+      resourcePath: /ns/{nsId}/infra/{infraId}/retryFailedNodesReview
+      description: "Classify every failed Node in the Infra and report whether re-creating it can succeed.\n\nNothing is created. Each plan carries the classified CSP failure, the action\n(retryInPlace or none), a reason, and the hourly cost of one replacement.\n\nA retry re-creates the Node with the identical configuration — same zone, subnet,\nVNet, security group and key. CSP capacity shortages are transient, so the same\nrequest is often accepted minutes later. Failures that retrying cannot fix\n(account quota, an image the spec rejects, a malformed request) are reported with\nthe reason instead."
     SearchImage:
       method: post
       resourcePath: /ns/{nsId}/resources/searchImage
@@ -2443,6 +2667,10 @@ serviceActions:
       method: get
       resourcePath: /auth/test
       description: "Test JWT authentication"
+    UnregisterCspDefinition:
+      method: delete
+      resourcePath: /cloudInfo/{providerName}
+      description: "Remove a CSP definition that was registered at runtime. Providers loaded from assets/cloudinfo.yaml cannot be removed this way - they would return on the next restart; edit the file instead."
     UnsetSystemInitialized:
       method: delete
       resourcePath: /readyz/init
@@ -2455,6 +2683,14 @@ serviceActions:
       method: post
       resourcePath: /updateImagesFromAsset
       description: "Update image information based on the cloudimage.csv asset file"
+    UpdateSpecsFromAsset:
+      method: post
+      resourcePath: /updateSpecsFromAsset
+      description: "Update spec information (costPerHour, accelerator, evaluationScore, etc.) based on the cloudspec.csv asset file"
+    ValidateRDBMS:
+      method: post
+      resourcePath: /ns/{nsId}/resources/rdbms/validate
+      description: "Dry run of the same checks POST .../rdbms performs before provisioning\n(network resolution, live CB-Spider capability checks,\nassets/rdbmsinfo.yaml storage-type constraints) — no instance is created, no\nCSP call is made to provision anything. Returns the resolved request\n(autoFillDefaults applied, if set) so the caller can preview exactly what\nPOST .../rdbms would use."
   cm-ant:
     AntServerReadiness:
       method: get
@@ -2572,7 +2808,7 @@ serviceActions:
     AlignNames:
       method: post
       resourcePath: /naming/alignment
-      description: "When a parent/primary resource is renamed (e.g., VNet), this API updates all\nchild/dependent references in the model (e.g., SecurityGroup.VNetId, SubGroup.VNetId).\n\n**Supported resourceType values** (cb-tumblebug convention):\n- `vNet` : Rename VNet → propagates to SecurityGroup.VNetId, SubGroup.VNetId\n- `subnet` : Rename Subnet → propagates to SubGroup.SubnetId\n- `sshKey` : Rename SSH Key → propagates to SubGroup.SshKeyId\n- `securityGroup` : Rename SecurityGroup → propagates to SubGroup.SecurityGroupIds\n- `infra` : Rename Infra (no child propagation)\n\nAfter propagation, names are validated for referential integrity.\nThe returned model uses **base names only** (NameSeed is applied at migration time via query param).\n\nSee also: [API Guide: Align Names](https://github.com/cloud-barista/cm-beetle/blob/main/docs/api-guide-align-names.md)\n"
+      description: "When a parent/primary resource is renamed (e.g., VNet), this API updates all\nchild/dependent references in the model (e.g., SecurityGroup.VNetId, NodeGroup.VNetId).\n\n**Supported resourceType values** (cb-tumblebug convention):\n- `vNet` : Rename VNet → propagates to SecurityGroup.VNetId, NodeGroup.VNetId\n- `subnet` : Rename Subnet → propagates to NodeGroup.SubnetId\n- `sshKey` : Rename SSH Key → propagates to NodeGroup.SshKeyId\n- `securityGroup` : Rename SecurityGroup → propagates to NodeGroup.SecurityGroupIds\n- `infra` : Rename Infra (no child propagation)\n\nAfter propagation, names are validated for referential integrity.\nThe returned model uses **base names only** (NameSeed is applied at migration time via query param).\n\nSee also: [API Guide: Align Names](https://github.com/cloud-barista/cm-beetle/blob/main/docs/api-guide-align-names.md)\n"
     CheckHTTPVersion:
       method: get
       resourcePath: /httpVersion
@@ -2581,6 +2817,10 @@ serviceActions:
       method: get
       resourcePath: /migration/ns/{nsId}/infra/{infraId}/ssh-ready
       description: "Check if all nodes in the migrated infrastructure are SSH-accessible.\n\n\"Running\" status doesn't mean cloud-init (SSH user setup) is done; timing varies by\nCSP (IBM Cloud VPC: up to ~3 min in testing). Works for any CSP.\n\n**Rate limiting**: At most **1 check per 30 seconds per infrastructure**, counted per\n`nsId:infraId` rather than per caller, because the protected resource is the nodes' own SSH\nservers. The window matches this API's own **30 s** runtime, so only one check per\ninfrastructure runs at a time. An early or concurrent call is rejected with **`429`** plus a\n**`Retry-After`** header in seconds, and performs no SSH activity. A client that awaits each\nresponse is never rate limited: a not-ready check runs the full 30 s before answering.\n\n**Check Method**: This API runs a lightweight command on each node via Tumblebug's\nremote command API (not a direct connection from CM-Beetle), so it reuses Tumblebug's\nexisting SSH/bastion setup for the node's CSP. It re-probes every **10 s** for up to\n**30 s**, returning as soon as every node responds.\n\n**Response Options**:\n- Default (no option): Returns summary information (ready, totalNodes, readyNodes, message)\n- option=detail: Returns summary + detailed node status array (nodeStatus) for troubleshooting (per-node SSH readiness)"
+    CreateArtifact:
+      method: post
+      resourcePath: /artifacts
+      description: "Creates and persists a migration artifact (`source`, `planning`, or `target`) across\n`infra`, `software`, or `data` categories. When `parentId` is provided, lineage fields\n(`sourceGroupId`, `sourceModelId`, `planningModelId`, `targetModelId`) are inherited automatically.\nLegacy JSON payloads are automatically normalized to the latest schema using reflect upcasting."
     CreateMigratedSSHKey:
       method: post
       resourcePath: /migration/ns/{nsId}/resources/sshKey
@@ -2589,6 +2829,10 @@ serviceActions:
       method: post
       resourcePath: /migration/ns/{nsId}/resources/securityGroup
       description: "Create a new migrated security group in the namespace"
+    CreateRDBMSDatabase:
+      method: post
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms/{rdbmsId}/database
+      description: "Create a new logical database inside an existing managed RDBMS instance"
     CreateVNet:
       method: post
       resourcePath: /migration/ns/{nsId}/resources/vNet
@@ -2597,6 +2841,10 @@ serviceActions:
       method: delete
       resourcePath: /requests
       description: "Deletes all API request tracking records from Beetle.\n\n[Note]\n- This only clears Beetle's request tracking memory.\n- It does NOT affect any data in Tumblebug or cancel any ongoing operations."
+    DeleteArtifact:
+      method: delete
+      resourcePath: /artifacts/{id}
+      description: "Removes a migration artifact file and its index entry by ID."
     DeleteInfra:
       method: delete
       resourcePath: /migration/ns/{nsId}/infra/{infraId}
@@ -2637,6 +2885,14 @@ serviceActions:
       method: delete
       resourcePath: /migration/middleware/ns/{nsId}/objectStorage/{osId}
       description: "Delete a specific object storage (bucket).\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously (RFC 7240). Check progress via GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized.\n\nDeletion behavior is controlled by the `option` query parameter (mutually exclusive):\n- (none): Standard delete — fails if the bucket is not empty.\n- `empty`: Empty the bucket first, then delete.\n- `force`: Force-delete with all contents (passed to Spider as force=true).\n- `reconcile`: Remove only Tumblebug metadata without calling the CSP delete API."
+    DeleteRDBMS:
+      method: delete
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms/{rdbmsId}
+      description: "Delete a specific migrated managed RDBMS / RDS instance in the namespace"
+    DeleteRDBMSDatabase:
+      method: delete
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms/{rdbmsId}/database/{dbName}
+      description: "Delete a logical database inside an existing managed RDBMS instance"
     DeleteRequest:
       method: delete
       resourcePath: /request/{reqId}
@@ -2649,10 +2905,14 @@ serviceActions:
       method: head
       resourcePath: /migration/middleware/ns/{nsId}/objectStorage/{osId}
       description: "Check if a specific object storage (bucket) exists\n\n[Note]\n- Returns 200 OK if the bucket exists, 404 Not Found if it doesn't exist"
+    GenerateK8sMigrationReport:
+      method: post
+      resourcePath: /report/migration/ns/{nsId}/k8sCluster/{clusterId}
+      description: "Generate a comprehensive Kubernetes migration report comparing on-premise nodes with target cloud managed K8s, including worker node group consolidation, sizing rationales, version differences, cost summary, and recommendations in Markdown, HTML, or JSON format"
     GenerateMigrationReport:
       method: post
       resourcePath: /report/migration/ns/{nsId}/infra/{infraId}
-      description: "Generate a comprehensive migration report comparing source infrastructure with target cloud VMs, including resource mappings, network/security analysis, cost summary, and recommendations in Markdown or HTML format"
+      description: "Generate a comprehensive migration report comparing source infrastructure with target cloud VMs, including resource mappings, network/security analysis, cost summary, and recommendations in Markdown, HTML, or JSON format"
     GenerateSourceInfraSummary:
       method: post
       resourcePath: /summary/source
@@ -2661,10 +2921,22 @@ serviceActions:
       method: get
       resourcePath: /summary/target/ns/{nsId}/infra/{infraId}
       description: "Generate a comprehensive target infrastructure summary in multiple formats based on 'format' query parameter:\n\n**Response Format by 'format' Parameter:**\n- `format=md` (default): Returns markdown string with Content-Type: text/markdown; charset=utf-8\n- `format=html`: Returns HTML string with Content-Type: text/html; charset=utf-8\n- `format=json`: Returns ApiResponse[TargetInfraSummary] with Content-Type: application/json\n\n**Note:** API documentation shows JSON schema for reference, but actual default response is markdown format.\n\n**Markdown example**: https://github.com/cloud-barista/cm-beetle/blob/main/cmd/test-cli/infra/testresult/beetle-summary-target-aws.md\n\n**Download Behavior:**\n- `download=false` (default): Content displayed inline (viewable in browser/Swagger UI)\n- `download=true`: Content downloaded as file (Content-Disposition: attachment)"
+    GenerateTargetK8sInfraSummary:
+      method: get
+      resourcePath: /summary/target/ns/{nsId}/k8sCluster/{clusterId}
+      description: "Generate a comprehensive target K8s infrastructure summary in multiple formats based on 'format' query parameter:\n\n**Response Format by 'format' Parameter:**\n- `format=md` (default): Returns markdown string with Content-Type: text/markdown; charset=utf-8\n- `format=html`: Returns HTML string with Content-Type: text/html; charset=utf-8\n- `format=json`: Returns ApiResponse[TargetK8sInfraSummary] with Content-Type: application/json\n\n**Download Behavior:**\n- `download=false` (default): Content displayed inline (viewable in browser/Swagger UI)\n- `download=true`: Content downloaded as file (Content-Disposition: attachment)"
     GetAllRequests:
       method: get
       resourcePath: /requests
       description: "Retrieves all API requests tracked by Beetle with optional filters.\n\n[Note]\n- Request tracking is managed independently by Beetle (not shared with Tumblebug).\n- This API only returns requests made to Beetle, not to Tumblebug.\n\n[Status Values]\n- Handling: Request is currently being processed\n- Success: Request completed successfully\n- Error: Request failed with an error\n\n[Retry Information]\n- retry.retryable: Whether the failed request can be retried (present only for retriable errors)\n- retry.retryAfter: Suggested retry delay in seconds\n- retry.retryReason: Human-readable reason for retry requirement (e.g., \"Rate Limit Exceeded\")"
+    GetArtifact:
+      method: get
+      resourcePath: /artifacts/{id}
+      description: "Retrieves a single migration artifact by its unique ID and ensures its payload is normalized to the latest schema."
+    GetArtifactLineage:
+      method: get
+      resourcePath: /artifacts/{id}/lineage
+      description: "Returns the connected `source`, `planning`, and `target` artifacts in the derivation chain\nalong with all artifacts sharing the same `sourceGroupId`."
     GetDataMigrationEncryptionKey:
       method: get
       resourcePath: /migration/data/encryptionKey
@@ -2705,6 +2977,22 @@ serviceActions:
       method: get
       resourcePath: /recommendation/middleware/objectStorage/support
       description: "Forward object storage support request to CB-Tumblebug via Proxy (Returns ObjectStorageSupportResponse)"
+    GetRDBMS:
+      method: get
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms/{rdbmsId}
+      description: "Retrieve details of a specific migrated managed RDBMS / RDS instance in the namespace"
+    GetRDBMSCapability:
+      method: get
+      resourcePath: /recommendation/middleware/rdbms/capability
+      description: "Retrieve real-time engine versions, DB instance specs, and storage options for Managed RDBMS / RDS (Amazon RDS, Cloud SQL, Azure Database, etc.) from CB-Tumblebug"
+    GetRDBMSSecureTransport:
+      method: get
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms/{rdbmsId}/secure-transport
+      description: "Retrieve live TLS enforcement status, active cipher, and server CA certificate via CB-Tumblebug and CB-Spider"
+    GetRDBMSSupport:
+      method: get
+      resourcePath: /recommendation/middleware/rdbms/support
+      description: "Retrieve CSP feature support matrix for managed RDBMS / RDS (Amazon RDS, Google Cloud SQL, Azure Database, NCP Cloud DB, etc.) via CB-Tumblebug"
     GetReadyz:
       method: get
       resourcePath: /readyz
@@ -2725,6 +3013,10 @@ serviceActions:
       method: post
       resourcePath: /migration/middleware/objectStorage/inspect
       description: "Deeply inspect and extract feature/usage metadata (totalSizeBytes, objectCount, versioning, encryption, CORS, policy, tags, creationDate) from selected cloud object storage buckets.\n\n[Note] Extracted fields strictly conform to Beetle's Recommendation API input specification (`SourceObjectStorage`).\n- Versioning: Extracted via `GetBucketVersioning`. If versioning is disabled or error occurs, `versioningEnabled` is false.\n- Encryption: Extracted via `GetBucketEncryption`. If encryption rules are absent or error occurs, `encryptionEnabled` is false.\n- CORS: Extracted via `GetBucketCors`. If CORS rules are absent or error occurs, `corsEnabled` is false and `corsRule` is nil.\n- Public Access: Extracted via `GetBucketPolicy`. If wildcard public policy statement is detected, `isPublic` is true, otherwise false.\n- Tags: Extracted via `GetBucketTagging`. If tags are not set, `tags` is nil/empty map.\n- CreationDate: Extracted via bucket listing creation timestamp formatted in RFC 3339 format.\n- AccessFrequency: Defaults to `\"frequent\"` (Standard storage tier baseline for recommendation)."
+    ListArtifacts:
+      method: get
+      resourcePath: /artifacts
+      description: "Lists stored migration artifacts filtered by `category` (`infra`, `software`, `data`),\n`stage` (`source`, `planning`, `target`), `schemaType` (e.g., `OnpremInfra`, `RecommendedInfra`),\nor `sourceGroupId`."
     ListInfra:
       method: get
       resourcePath: /migration/ns/{nsId}/infra
@@ -2732,7 +3024,7 @@ serviceActions:
     ListK8sClusters:
       method: get
       resourcePath: /migration/ns/{nsId}/k8sCluster
-      description: "List all K8s clusters created in the namespace via cm-beetle migration."
+      description: "List all K8s clusters created in the namespace via cm-beetle migration.\n\nUse `option=id` to get only the cluster IDs. The full listing refreshes every\ncluster's state through the CSP, so its cost grows with the cluster count; the\nID listing reads stored metadata only and stays cheap."
     ListMigratedSSHKeys:
       method: get
       resourcePath: /migration/ns/{nsId}/resources/sshKey
@@ -2757,10 +3049,18 @@ serviceActions:
       method: get
       resourcePath: /migration/middleware/ns/{nsId}/objectStorage
       description: "Get the list of all object storages (buckets) in the namespace"
+    ListRDBMS:
+      method: get
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms
+      description: "Retrieve the list of all migrated managed RDBMS / RDS instances in the namespace"
+    ListRDBMSDatabases:
+      method: get
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms/{rdbmsId}/database
+      description: "Retrieve the list of logical databases inside an existing managed RDBMS instance"
     MigrateData:
       method: post
       resourcePath: /migration/data
-      description: "By default this API runs synchronously and returns the migration result directly.\n\n[Async Operation (opt-in)]\n1. Send header `Prefer: respond-async` → Receive 202 Accepted with reqId\n2. Poll GET /request/{reqId} to check status\n3. Status flow: Handling → Success / Error\n* Only the \"respond-async\" preference token is recognized; other tokens (e.g. wait=N) are ignored.\n* If too many async jobs are already running, this returns 503 instead of 202; retry after the `Retry-After` seconds.\n\n[Endpoint Requirements]\n* Both source and destination must be remote endpoints (SSH or object storage)\n* Local filesystem access is not allowed for security reasons\n\n[Transfer Options]\n* Strategy: auto (default), direct, relay\n* SSH: Supports PrivateKey content or PrivateKeyPath\n\n[Encryption Support]\n* To encrypt sensitive fields, first call GET /migration/data/encryptionKey\n* Encrypted requests include `encryptionKeyId` field\n* Server automatically detects and decrypts encrypted requests\n\n[Examples]\n* Test results: https://github.com/cloud-barista/cm-beetle/blob/main/docs/test-results-data-migration.md\n"
+      description: "By default this API runs synchronously and returns the migration result directly.\n\n[Async Operation (opt-in)]\n1. Send header `Prefer: respond-async` → Receive 202 Accepted with reqId\n2. Poll GET /request/{reqId} to check status\n3. Status flow: Handling → Success / Error\n* Only the \"respond-async\" preference token is recognized; other tokens (e.g. wait=N) are ignored.\n* If too many async jobs are already running, this returns 503 instead of 202; retry after the `Retry-After` seconds.\n\n[Endpoint Requirements]\n* Both source and destination must be remote endpoints (SSH or object storage)\n* Local filesystem access is not allowed for security reasons\n\n[Transfer Options]\n* Strategy: auto (default), direct, relay, ssh-agent-fwd-push, ssh-agent-fwd-pull\n* SSH: Supports PrivateKey content or PrivateKeyPath\n\n[Encryption Support]\n* To encrypt sensitive fields, first call GET /migration/data/encryptionKey\n* Encrypted requests include `encryptionKeyId` field\n* Server automatically detects and decrypts encrypted requests\n\n[Examples]\n* Test results: https://github.com/cloud-barista/cm-beetle/blob/main/docs/test-results-data-migration.md\n"
     MigrateInfra:
       method: post
       resourcePath: /migration/ns/{nsId}/infra
@@ -2772,7 +3072,7 @@ serviceActions:
     MigrateK8sInfra:
       method: post
       resourcePath: /migration/ns/{nsId}/k8sCluster
-      description: "Migrate an on-premise Kubernetes cluster to a managed K8s service (e.g., AWS EKS).\n\n**Workflow**:\n1. Call POST /recommendation/k8sCluster to get a RecommendK8sInfraResponse.\n2. Pass the recommendation result as-is to this endpoint.\n\n**Internal steps**: VNet → SSH Key → Security Group → K8s Cluster → Node Groups\n\n**Long-running** — This API waits for the cluster to become Active, up to **40 min**\n(typically **~10-20 min** on EKS), then adds the node groups, so it can take longer still.\n\nBy default it runs synchronously, so configure your own HTTP client to wait that long —\nmost client defaults cut the connection first. Send header `Prefer: respond-async` to run it\nasynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized.\n\nIf a synchronous connection drops the migration keeps running on the server; poll\nGET /migration/ns/{nsId}/k8sCluster/{k8sClusterId} with the cluster name you supplied."
+      description: "Migrate an on-premise Kubernetes cluster to a managed K8s service (e.g., AWS EKS).\n\n**Workflow**:\n1. Call POST /recommendation/k8sCluster to get a RecommendK8sInfraResponse.\n2. Pass the recommendation result as-is to this endpoint.\n\nThe optional `lineage` is recorded on the K8s cluster as labels, together with `cm-migrated-at`.\n\n**Internal steps**: VNet → SSH Key → Security Group → K8s Cluster → Node Groups\n\n**Long-running** — This API waits for the cluster to become Active, up to **40 min**\n(typically **~10-20 min** on EKS), then adds the node groups, so it can take longer still.\n\nBy default it runs synchronously, so configure your own HTTP client to wait that long —\nmost client defaults cut the connection first. Send header `Prefer: respond-async` to run it\nasynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized.\n\nIf a synchronous connection drops the migration keeps running on the server; poll\nGET /migration/ns/{nsId}/k8sCluster/{k8sClusterId} with the cluster name you supplied."
     MigrateNlbs:
       method: post
       resourcePath: /migration/middleware/ns/{nsId}/infra/{infraId}/nlb
@@ -2781,10 +3081,22 @@ serviceActions:
       method: post
       resourcePath: /migration/middleware/ns/{nsId}/objectStorage
       description: "Migrate object storages to cloud based on recommendation results\n\n[Note]\n- This API creates object storages (buckets) in the target cloud within the specified namespace\n- Input should be the output from RecommendObjectStorage API\n- Connection name is automatically generated from CSP and region in the request body\n\n[Note] `nameSeed` enables dynamic naming via **Late Binding**.\n- If `nameSeed` query param is set (e.g., `?nameSeed=my`), bucket names are prefixed at migration time: `my-os-01`.\n- If `nameSeed` is omitted, bucket names are used as-is from the recommendation result.\n\n[Examples]\n* Test results: https://github.com/cloud-barista/cm-beetle/blob/main/docs/test-results-data-migration.md\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously instead: receive 202 Accepted with a reqId, then poll GET /request/{reqId}\n(status flow: Handling → Success / Error). Only the \"respond-async\" token is recognized."
+    MigrateRDBMS:
+      method: post
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms
+      description: "Provision and migrate managed RDBMS / RDS instances in target cloud based on recommendation results (supports AWS RDS, GCP Cloud SQL, Azure Database, NCP Cloud DB, NHN RDS, Alibaba ApsaraDB, TencentDB, IBM Databases)\n\n[Note]\n- This API provisions managed RDBMS instances in the target cloud within the specified namespace.\n- Input should be the output from the RecommendRDBMS API with `adminUserName` and `adminUserPassword` set for each target instance.\n- Connection name is automatically resolved from CSP and region in the request body.\n\n[Note] `nameSeed` enables dynamic naming via **Late Binding**.\n- If `nameSeed` query param is set (e.g., `?nameSeed=my`), instance names are prefixed: `my-rdbms-01`.\n\nBy default this API runs synchronously. Send header `Prefer: respond-async` to run it\nasynchronously instead (recommended due to CSP RDS provisioning time of 5-10 minutes, or 35-45+ minutes for IBM dedicated flavors): receive 202 Accepted with a reqId.\n- IBM Cloud Databases hosting note: 'multitenant' shared model provisions in ~10 minutes, whereas Dedicated flavors ('b3c.*') take 35-45+ minutes. Ensure client/proxy timeouts are configured for >= 50 minutes if calling synchronously with dedicated flavors."
     PreviewInfra:
       method: post
       resourcePath: /naming/preview
       description: "Applies the `nameSeed` prefix to all resource names in the model and returns the result.\nNo resources are created — this is a dry-run to verify final names before migration.\n\nExample: if `nameSeed=blue` and `VNetName=vnet-01`, the preview returns `blue-vnet-01`.\n"
+    RecommendInfraCandidates:
+      method: post
+      resourcePath: /recommendation/infra
+      description: "Recommend best-effort infrastructure (Infra) candidates for migrating on-premise workloads to cloud environments.\n\n- See overview and examples on https://github.com/cloud-barista/cm-beetle/discussions/256\n\n**[Required Parameters: `desiredCsp`, `desiredRegion`]** The desired cloud service provider and region for the recommended infrastructure.\n- if **desiredCsp** and **desiredRegion** are set on request body, the values in the query parameter will be ignored.\n\n**[Optional Parameters: `limit`]** Maximum number of recommended infrastructures to return (default: 3)\n\n**[Optional Parameters: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 85.0, range: 0-100)\n\n**[Response Field: `status`]** Candidate status based on the match rate threshold\n- **highly-matched**: Candidates meet or exceed the match rate threshold\n- **partially-matched**: Valid candidates below the match rate threshold\n\n**[Response Field: `description`]** Summary containing Candidate ID, status, match rate statistics (Min/Max/Avg), and VM counts\n- Example: \"Candidate #1 | partially-matched | Overall Match Rate: Min=88.9% Max=100.0% Avg=98.7% | VMs: 3 total, 2 matched, 1 acceptable\"\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path.\n- Pass the recommendation response as-is to the migration API to ensure the resolved image is used.\n"
+    RecommendInfraWithDefaults:
+      method: post
+      resourcePath: /recommendation/infraWithDefaults
+      description: "Recommend an appropriate infrastructure (i.e., Infra, multi-cloud infrastructure) with defaults for cloud migration\n\n[Note] `desiredCsp` and `desiredRegion` are required.\n- `desiredCsp` and `desiredRegion` can set on the query parameter or the request body.\n\n- If desiredCsp and desiredRegion are set on request body, the values in the query parameter will be ignored.\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path."
     RecommendInfraWithNlbCandidates:
       method: post
       resourcePath: /recommendation/infraWithNlb
@@ -2804,31 +3116,27 @@ serviceActions:
     RecommendMultiInfraCandidates:
       method: post
       resourcePath: /recommendation/multiInfra
-      description: "Recommend a single best-effort infrastructure candidate for each of several target CSP/region pairs.\n\nUse this API to compare candidate clouds before committing to one; once a target is chosen,\nuse `POST /recommendation/infra` against that single CSP/region to explore multiple candidates.\n\n**[Required Parameter: `desiredCspAndRegionPairs`]** 2 to 10 target CSP/region pairs (project scope: 10 supported CSPs).\nDuplicate pairs are rejected.\n\n**[Response]** Always returns exactly one item per requested target, in request order\n(`len(data) == len(desiredCspAndRegionPairs)`), so items map back to targets via `targetCloud`\nwithout needing to be re-sorted or grouped. A target that fails validation or yields no\ncompatible infrastructure still produces one item, with `status` set to `failed` or\n`nothing-to-recommend` and `targetInfra` left empty.\n\n**[Optional Parameter: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 90.0, range: 0-100)\n\n[Note] Each target costs roughly as much as one `/recommendation/infra` call; requests with\nseveral targets can take a while. `Prefer: respond-async` is strongly recommended."
+      description: "Recommend a single best-effort infrastructure candidate for each of several target CSP/region pairs.\n\nUse this API to compare candidate clouds before committing to one; once a target is chosen,\nuse `POST /recommendation/infra` against that single CSP/region to explore multiple candidates.\n\n**[Required Parameter: `desiredCspAndRegionPairs`]** 2 to 10 target CSP/region pairs.\nDuplicate pairs are rejected.\n\n**[Response]** Always returns exactly one item per requested target, in request order\n(`len(data) == len(desiredCspAndRegionPairs)`), so items map back to targets via `targetCloud`\nwithout needing to be re-sorted or grouped. A target that fails validation or yields no\ncompatible infrastructure still produces one item, with `status` set to `failed` or\n`nothing-to-recommend` and `targetInfra` left empty.\n\n**[Optional Parameter: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 85.0, range: 0-100)\n\n[Note] Each target costs roughly as much as one `/recommendation/infra` call; requests with\nseveral targets can take a while. `Prefer: respond-async` is strongly recommended."
     RecommendMultiInfraWithNlbCandidates:
       method: post
       resourcePath: /recommendation/multiInfraWithNlb
-      description: "NLB-aware counterpart of `POST /recommendation/multiInfra`. Recommends a single best-effort\ninfrastructure candidate (including NLB mapping) for each of several target CSP/region pairs.\n\nUse this API to compare candidate clouds before committing to one; once a target is chosen,\nuse `POST /recommendation/infraWithNlb` against that single CSP/region to explore multiple candidates.\n\n**[Required Parameter: `desiredCspAndRegionPairs`]** 2 to 10 target CSP/region pairs (project scope: 10 supported CSPs).\nDuplicate pairs are rejected.\n\n[Note] `sourceInfra.nlbs` must be populated (HAProxy frontend-backend pairs from cm-honeybee).\n\n**[Response]** Always returns exactly one item per requested target, in request order\n(`len(data) == len(desiredCspAndRegionPairs)`), so items map back to targets via `targetCloud`\nwithout needing to be re-sorted or grouped. A target that fails validation or yields no\ncompatible infrastructure still produces one item, with `status` set to `failed` or\n`nothing-to-recommend` and `targetInfra` left empty.\n\n**[Optional Parameter: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 90.0, range: 0-100)\n\n[Note] Each target costs roughly as much as one `/recommendation/infraWithNlb` call; requests with\nseveral targets can take a while. `Prefer: respond-async` is strongly recommended."
+      description: "NLB-aware counterpart of `POST /recommendation/multiInfra`. Recommends a single best-effort\ninfrastructure candidate (including NLB mapping) for each of several target CSP/region pairs.\n\nUse this API to compare candidate clouds before committing to one; once a target is chosen,\nuse `POST /recommendation/infraWithNlb` against that single CSP/region to explore multiple candidates.\n\n**[Required Parameter: `desiredCspAndRegionPairs`]** 2 to 10 target CSP/region pairs.\nDuplicate pairs are rejected.\n\n[Note] `sourceInfra.nlbs` must be populated (HAProxy frontend-backend pairs from cm-honeybee).\n\n**[Response]** Always returns exactly one item per requested target, in request order\n(`len(data) == len(desiredCspAndRegionPairs)`), so items map back to targets via `targetCloud`\nwithout needing to be re-sorted or grouped. A target that fails validation or yields no\ncompatible infrastructure still produces one item, with `status` set to `failed` or\n`nothing-to-recommend` and `targetInfra` left empty.\n\n**[Optional Parameter: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 85.0, range: 0-100)\n\n[Note] Each target costs roughly as much as one `/recommendation/infraWithNlb` call; requests with\nseveral targets can take a while. `Prefer: respond-async` is strongly recommended."
     RecommendObjectStorage:
       method: post
       resourcePath: /recommendation/middleware/objectStorage
       description: "Recommend an appropriate object storage for cloud migration\n\n[Note] `desiredCsp` and `desiredRegion` are required.\n- `desiredCsp` and `desiredRegion` can set on the query parameter or the request body.\n\n- If desiredCsp and desiredRegion are set on request body, the values in the query parameter will be ignored.\n\n[Note] The recommended bucket name uses a default pattern (`mig-bucket-01`, `mig-bucket-02`, ...).\n- Bucket names must be globally unique across all accounts in the target cloud provider.\n- CB-Tumblebug internally generates a uid and uses it as the actual bucket name in the cloud.\n- The `bucketName` field in the recommendation result represents the intended name, not the final cloud resource name.\n\n[Note] To apply a naming prefix, use the `nameSeed` query parameter on the migration API (`POST /migration/.../objectStorage?nameSeed=xxx`).\n"
+    RecommendRDBMS:
+      method: post
+      resourcePath: /recommendation/middleware/rdbms
+      description: "Recommend optimal Managed RDBMS / RDS (MySQL, MariaDB) instance specs, engine versions, and storage configurations for target cloud migration (supports AWS RDS, GCP Cloud SQL, Azure Database, Alibaba ApsaraDB, TencentDB, IBM Databases, NCP Cloud DB, NHN RDS)\n\n[Note] `desiredCsp` and `desiredRegion` are required.\n- `desiredCsp` and `desiredRegion` can be set in the query parameter or the request body.\n- If set in the request body, the query parameter values will be overridden.\n\n[Note] The recommended instance names use default patterns (`mig-rdbms-01`, `mig-rdbms-02`, ...).\n- To apply a naming prefix at migration time, use the `nameSeed` query parameter on the migration API.\n- IBM Cloud Databases hosting note: defaults to 'multitenant' shared model for fast provisioning (~10 minutes). Dedicated host flavors ('b3c.*') take 35-45+ minutes."
     RecommendSecurityGroups:
       method: post
       resourcePath: /recommendation/resources/securityGroups
       description: "Recommend an appropriate security group for cloud migration\n\n[Note] `desiredProvider` and `desiredRegion` are required.\n- `desiredProvider` and `desiredRegion` can set on the query parameter or the request body.\n\n- If desiredProvider and desiredRegion are set on request body, the values in the query parameter will be ignored."
-    RecommendVMInfraWithDefaults:
-      method: post
-      resourcePath: /recommendation/infraWithDefaults
-      description: "Recommend an appropriate infrastructure (i.e., Infra, multi-cloud infrastructure) with defaults for cloud migration\n\n[Note] `desiredCsp` and `desiredRegion` are required.\n- `desiredCsp` and `desiredRegion` can set on the query parameter or the request body.\n\n- If desiredCsp and desiredRegion are set on request body, the values in the query parameter will be ignored.\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path."
     RecommendVNet:
       method: post
       resourcePath: /recommendation/resources/vNet
       description: "Recommend an appropriate virtual network for cloud migration\n\n[Note] `desiredProvider` and `desiredRegion` are required.\n- `desiredProvider` and `desiredRegion` can set on the query parameter or the request body.\n\n- If desiredProvider and desiredRegion are set on request body, the values in the query parameter will be ignored."
-    RecommendVmInfraCandidates:
-      method: post
-      resourcePath: /recommendation/infra
-      description: "Recommend best-effort infrastructure (Infra) candidates for migrating on-premise workloads to cloud environments.\n\n- See overview and examples on https://github.com/cloud-barista/cm-beetle/discussions/256\n\n**[Required Parameters: `desiredCsp`, `desiredRegion`]** The desired cloud service provider and region for the recommended infrastructure.\n- if **desiredCsp** and **desiredRegion** are set on request body, the values in the query parameter will be ignored.\n\n**[Optional Parameters: `limit`]** Maximum number of recommended infrastructures to return (default: 3)\n\n**[Optional Parameters: `minMatchRate`]** Minimum match rate threshold for highly-matched classification (default: 90.0, range: 0-100)\n\n**[Response Field: `status`]** Candidate status based on the match rate threshold\n- **highly-matched**: Candidates meet or exceed the match rate threshold\n- **partially-matched**: Valid candidates below the match rate threshold\n\n**[Response Field: `description`]** Summary containing Candidate ID, status, match rate statistics (Min/Max/Avg), and VM counts\n- Example: \"Candidate #1 | partially-matched | Overall Match Rate: Min=88.9% Max=100.0% Avg=98.7% | VMs: 3 total, 2 matched, 1 acceptable\"\n\n**[Response Field: `nodeGroups[].cspImageName`]** Set only when the spec-image review resolved a newer image than the DB cache.\n- **Non-empty**: TumbleBug sends this to Spider directly, bypassing the per-VM image DB lookup (prevents stale image failures, e.g., Alibaba alibase images).\n- **Empty**: TumbleBug uses `imageId` for the standard DB lookup path.\n- Pass the recommendation response as-is to the migration API to ensure the resolved image is used.\n"
     RecommendVmOsImages:
       method: post
       resourcePath: /recommendation/resources/osImages
@@ -2861,14 +3169,30 @@ serviceActions:
       method: get
       resourcePath: /test/tracing
       description: "Tests distributed tracing by calling Tumblebug's readyz endpoint.\n\n[Note]\n- The 'traceparent' header (W3C Trace Context) is propagated to Tumblebug for distributed tracing.\n- The 'X-Request-Id' header is propagated for log correlation.\n- Use this API to verify that tracing works correctly between Beetle and Tumblebug."
+    UpdateArtifact:
+      method: put
+      resourcePath: /artifacts/{id}
+      description: "Overwrites an existing migration artifact's metadata or payload by ID and normalizes the payload to the latest schema."
     ValidateInfra:
       method: post
       resourcePath: /validation/ns/{nsId}/infra
       description: "Runs, without creating or modifying any resource, the same checks\nmigration execution performs immediately before provisioning:\n\n- **Naming & referential integrity**: names must be 3-63 alphanumeric/hyphen\ncharacters, and internal references must resolve within the submitted model\n(e.g. a NodeGroup's `securityGroupIds` must match a `name` in `targetSecurityGroupList`).\n- **Required fields**, which differ by `useExisting`:\n- `true`: each NodeGroup's `vNetId`, `sshKeyId`, `securityGroupIds` must be set.\n- `false`: `targetVNet.name`, `targetSshKey.name`, and each security group's `name` must be set.\n- **Resource name collision / availability** against Tumblebug, which also differs by `useExisting`:\n- `false`: the VNet/SSH key/security groups to be created must NOT already exist in the\nnamespace (e.g. `targetVNet.name: \"vnet-01\"` fails if a VNet named `vnet-01` already exists).\n- `true`: an existing resource must be under the same CSP/region connection the NodeGroup\nrequests (e.g. reusing a VNet provisioned under connection `aws-ap-northeast-2` while the\nNodeGroup's `connectionName` is `gcp-asia-northeast3` fails); a resource that doesn't exist\nyet must have enough data alongside it to create it instead (e.g. `targetVNet.cidrBlock`).\n- **VM spec/image compatibility** per NodeGroup: `specId`, `imageId`, and `connectionName` must\nbe set, `connectionName` must be in `csp-region` format (e.g. `aws-ap-northeast-2`), and the\nresolved spec/image pair must be compatible for that CSP (e.g. an `x86_64` spec paired with\nan `arm64` image fails).\n- **Infra name collision**: `targetInfra.name` must not already exist in the namespace.\n\nAlways returns HTTP 200: the response body's `valid` field and\n`issues` list carry the outcome, since a failed check is a normal,\nsuccessfully-answered result rather than a malformed request.\n400 is reserved for request body/parameter errors.\n\nBecause Tumblebug/CSP state can change afterward, a `valid: true`\nresult is a best-effort snapshot, not a guarantee - the migration\nAPI re-runs this same validation immediately before provisioning."
+    ValidateK8sInfra:
+      method: post
+      resourcePath: /validation/ns/{nsId}/k8sCluster
+      description: "Runs, without creating or modifying any resource, the same checks\nK8s migration execution performs immediately before provisioning:\n\n- **Naming & referential integrity**: cluster and companion resource names\n- **Connection & provider metadata**: resolves CSP/region from connection\n- **K8s version compatibility**: verifies version is supported in target CSP/region\n- **Subnet count requirement**: verifies network meets CSP minimums (e.g. AWS >= 2)\n- **Node group constraints**: initial node group requirement and naming rules (e.g. Azure AKS <= 12 chars)\n- **Autoscaling sizing & root disk**: sizing bounds and CSP root disk minimums\n- **Worker spec viability**: enforces 2 vCPU / 4 GiB minimum and spec naming rules"
+    ValidateMigrateRDBMS:
+      method: post
+      resourcePath: /migration/middleware/ns/{nsId}/rdbms/validate
+      description: "Validate managed RDBMS configuration against target cloud constraints before actual migration"
     ValidateNames:
       method: post
       resourcePath: /naming/validation
       description: "Validates that all internal references within a RecommendedInfra model\nare consistent and point to existing resources.\nNameSeed is NOT applied here; this validates the base names only.\n"
+    ValidateRDBMSRecommendation:
+      method: post
+      resourcePath: /recommendation/middleware/rdbms/validate
+      description: "Perform strict dry-run validation for a Managed RDBMS / RDS configuration against target cloud constraints"
   cm-cicada:
     Cancel-Workflow-Schedule:
       method: delete
@@ -3075,6 +3399,10 @@ serviceActions:
       resourcePath: /workflow/{wfId}
       description: "Update the workflow content."
   cm-damselfly:
+    ConvertInfraModel:
+      method: get
+      resourcePath: /infra-model/{id}/convert
+      description: "Get a stored infra migration user model converted to the struct of the cm-beetle/imdl tagged version given by 'modelVersion'. The stored model is not changed.\nOnly the conversion to the same or a newer version is allowed. A cloud model cannot be converted to a version older than v0.1.2, and a model whose stored version is not a cm-beetle/imdl tag cannot be converted.\nThe response has the fields of 'GET /infra-model/{id}', with the model version and 'onpremiseInfraModel' (or 'cloudInfraModel') converted, and 'conversion' added: 'originVersion' (the stored version), 'currentVersion' (the version of the returned model), 'converted' (false if the stored version is already the requested version), 'droppedFields' (the paths of the fields removed because the requested version does not have them) and 'warnings' (what could not be converted as it was).\nThe values are not changed by the conversion unless a field's structure requires it. e.g. the disk sizes are kept as they are although their unit was changed from GiB to GB in the comments of v0.1.11."
     CreateCloudModel:
       method: post
       resourcePath: /cloudmodel
@@ -3082,11 +3410,15 @@ serviceActions:
     CreateInfraModel:
       method: post
       resourcePath: /infra-model
-      description: "Create a new infra migration user model. Use 'modelType' to select on-premise or cloud, and 'isTargetModel' to select source or target model."
+      description: "Create a new infra migration user model. Use 'modelType' to select on-premise or cloud, and 'modelStage' to select the stage (source, planning or target) of the model.\nThe 'onpremiseInfraModel' (or 'cloudInfraModel') is validated against the 'OnpremInfra' (or 'RecommendedInfra') struct of the cm-beetle/imdl tagged version given by 'modelVersion', and is stored in that struct's form.\nThe former query parameters 'onpremModelVersion' and 'cloudModelVersion' are no longer accepted (400 Bad Request). Use 'modelVersion' instead.\n(The body schema below shows the struct of the cm-beetle/imdl version built into cm-damselfly. To see the struct of another version, choose 'imdl/{version}/doc.json' in 'Select a definition' at the top of Swagger UI.)\n[Lineage] 'parentId' is the ID of the infra model this model is derived from, which must be in the previous stage (source → planning → target): a source model for a planning model, and a planning model for a target model. The upstream fields of 'lineage' are derived from the parent.\n'lineage' can also be given explicitly (e.g. 'sourceGroupId'). The field of the model's own stage (e.g. 'planningModelId' of a planning model) is set to the ID of the created model by the server."
     CreateOnPremModel:
       method: post
       resourcePath: /onpremmodel
       description: "Create a new on-premise model with the given information."
+    CreateSoftwareModel:
+      method: post
+      resourcePath: /software-model
+      description: "Create a new software migration user model. Use 'modelStage' to select the stage (source, planning or target) of the model.\nProvide 'sourceSoftwareModel' for a source model (modelStage=source), or 'targetSoftwareModel' for a planning or target model (modelStage=planning or target).\nThe 'sourceSoftwareModel' (or 'targetSoftwareModel') is validated against the 'SourceGroupSoftwareProperty' (or 'TargetGroupSoftwareProperty') struct of the cm-grasshopper/smdl tagged version given by 'softwareModelVersion', and is stored in that struct's form.\n'nodeId' is an optional identifier of the node the model is associated with.\n[Lineage] 'parentId' is the ID of the software model this model is derived from, which must be in the previous stage (source → planning → target): a source model for a planning model, and a planning model for a target model. The upstream fields of 'lineage' are derived from the parent.\n'lineage' can also be given explicitly (e.g. 'sourceGroupId'). The field of the model's own stage (e.g. 'planningModelId' of a planning model) is set to the ID of the created model by the server.\n(The body schema below shows the struct of the cm-grasshopper/smdl version built into cm-damselfly. To see the struct of another version, choose 'smdl/{version}/doc.json' in 'Select a definition' at the top of Swagger UI.)"
     CreateSourceSoftwareModel:
       method: post
       resourcePath: /softwaremodel/source
@@ -3102,11 +3434,15 @@ serviceActions:
     DeleteInfraModel:
       method: delete
       resourcePath: /infra-model/{id}
-      description: "Delete a specific infra migration user model by ID. Works for both on-premise and cloud models without requiring the caller to specify the model type."
+      description: "Delete a specific infra migration user model by ID. Works for both on-premise and cloud models without requiring the caller to specify the model type.\nIf the model is referred to by the lineage of other models, it is not deleted (409 Conflict with the referring models in 'list') unless 'force' is true."
     DeleteOnPremModel:
       method: delete
       resourcePath: /onpremmodel/{id}
       description: "Delete a on-premise model with the given information."
+    DeleteSoftwareModel:
+      method: delete
+      resourcePath: /software-model/{id}
+      description: "Delete a specific software migration user model by ID. Use 'modelStage' to specify the stage (source, planning or target) of the model.\nIf the model is referred to by the lineage of other models, it is not deleted (409 Conflict with the referring models in 'list') unless 'force' is true."
     DeleteSourceSoftwareModel:
       method: delete
       resourcePath: /softwaremodel/source/{id}
@@ -3126,19 +3462,19 @@ serviceActions:
     GetInfraModel:
       method: get
       resourcePath: /infra-model/{id}
-      description: "Get a specific infra migration user model by ID. Use 'modelType' to specify whether it is an on-premise or cloud model."
+      description: "Get a specific infra migration user model by ID. Use 'modelType' to specify whether it is an on-premise or cloud model.\nThe 'lineage' of the model refers to its upstream models and itself."
     GetInfraModels:
       method: get
       resourcePath: /infra-model
-      description: "Get a list of infra migration user models filtered by model type and source/target classification."
+      description: "Get a list of infra migration user models filtered by model type and model stage.\nThe models can be further filtered by their 'lineage' (e.g. 'sourceModelId' to find the models derived from a source model)."
     GetModels:
       method: get
-      resourcePath: /model/{isTargetModel}
-      description: "Get a list of all user models."
-    GetModelsVersion:
+      resourcePath: /model
+      description: "Get a list of migration user models of both categories (infra and software).\nUse 'modelStage' to select the stage (source, planning or target) of the models, and 'category' to select the category. If omitted, the models of all stages (or both categories) are returned.\nThe models can be further filtered by their 'lineage' (e.g. 'sourceGroupId' to get all the models derived from a source group)."
+    GetModelsVersions:
       method: get
       resourcePath: /model/version
-      description: "Get the versions of all models(schemata of on-premise/cloud/software migration models)"
+      description: "Get all tagged versions (in ascending order) of the migration models. 'onpremModelVersion' and 'cloudModelVersion' are the 'imdl/vX.Y.Z' tags of cm-beetle, and 'softwareModelVersion' is the 'smdl/vX.Y.Z' tags of cm-grasshopper."
     GetOnPremModel:
       method: get
       resourcePath: /onpremmodel/{id}
@@ -3147,6 +3483,14 @@ serviceActions:
       method: get
       resourcePath: /onpremmodel
       description: "Get a list of on-premise models."
+    GetSoftwareModel:
+      method: get
+      resourcePath: /software-model/{id}
+      description: "Get a specific software migration user model by ID. Use 'modelStage' to specify the stage (source, planning or target) of the model.\nThe 'lineage' of the model refers to its upstream models and itself."
+    GetSoftwareModels:
+      method: get
+      resourcePath: /software-model
+      description: "Get a list of software migration user models. Use 'modelStage' to select the stage (source, planning or target) of the models.\nThe models can be further filtered by their 'lineage' (e.g. 'sourceModelId' to find the models derived from a source model)."
     GetSourceSoftwareModel:
       method: get
       resourcePath: /softwaremodel/source/{id}
@@ -3178,11 +3522,15 @@ serviceActions:
     UpdateInfraModel:
       method: put
       resourcePath: /infra-model/{id}
-      description: "Update a specific infra migration user model by ID. Use 'modelType' to specify whether it is an on-premise or cloud model."
+      description: "Update a specific infra migration user model by ID. Use 'modelType' to specify whether it is an on-premise or cloud model.\nThe model stage is changed to 'modelStage' if it is given, and is preserved otherwise.\nThe model version is preserved, and 'onpremiseInfraModel' (or 'cloudInfraModel') is validated against the struct of that cm-beetle/imdl tagged version.\n[Lineage] The stored 'lineage' is preserved if neither 'lineage' nor 'parentId' is given. If 'lineage' is given, it replaces the stored one. If 'parentId' is given, the upstream fields are derived from that model in the previous stage (source → planning → target).\nThe stage cannot be changed while the model is referred to by the lineage of other models (409 Conflict with the referring models in 'list')."
     UpdateOnPremModel:
       method: put
       resourcePath: /onpremmodel/{id}
       description: "Update a on-premise model with the given information."
+    UpdateSoftwareModel:
+      method: put
+      resourcePath: /software-model/{id}
+      description: "Update a specific software migration user model by ID.\nThe model stage is changed to 'modelStage' if it is given, and is preserved otherwise.\nProvide 'sourceSoftwareModel' if the (resulting) stage is source, or 'targetSoftwareModel' if it is planning or target.\n'createTime' and 'softwareModelVersion' of the stored model are preserved, and 'sourceSoftwareModel' (or 'targetSoftwareModel') is validated against the struct of that cm-grasshopper/smdl tagged version.\n[Lineage] The stored 'lineage' is preserved if neither 'lineage' nor 'parentId' is given. If 'lineage' is given, it replaces the stored one. If 'parentId' is given, the upstream fields are derived from that model in the previous stage (source → planning → target).\nThe stage cannot be changed while the model is referred to by the lineage of other models (409 Conflict with the referring models in 'list')."
     UpdateSourceSoftwareModel:
       method: put
       resourcePath: /softwaremodel/source/{id}
@@ -3240,6 +3588,14 @@ serviceActions:
       method: get
       resourcePath: /readyz
       description: "Check Grasshopper is ready"
+    K8s-Candidates:
+      method: post
+      resourcePath: /k8s/candidates
+      description: "Read the kubernetes inventory cm-honeybee collected for a connection and list the namespaces, resource kinds and storage classes that can be picked for /k8s/migrate."
+    K8s-Migrate:
+      method: post
+      resourcePath: /k8s/migrate
+      description: "Install Velero on both clusters and run the migration as a single asynchronous job. Leave out the install block when Velero is already installed. Poll the returned job id through /job/status/{jobId}."
     List-Job-Status:
       method: get
       resourcePath: /job/status
@@ -3300,7 +3656,7 @@ serviceActions:
     Discover-Source-Group-Resources:
       method: get
       resourcePath: /source_group/{sgId}/discover
-      description: "Lists VMs / K8s clusters / object-storage buckets reachable through the CSP connection bound to this SourceGroup. Used by the UI to populate ConnectionInfo selection."
+      description: "Lists VMs / K8s clusters / object-storage buckets / network load balancers / managed databases reachable through the CSP connection bound to this SourceGroup. Used by the UI to populate ConnectionInfo selection."
     Get-Benchmark-Info:
       method: get
       resourcePath: /bench/{connId}
@@ -3321,10 +3677,50 @@ serviceActions:
       method: get
       resourcePath: /source_group/{sgId}/connection_info/{connId}/data
       description: "Get the data information of the connection information."
+    Get-Data-Info-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/data/refined
+      description: "Get the bucket of a CSP object-storage connection in the source model cm-beetle recommends a target bucket from. The values are those collected by import/infra."
     Get-Data-Info-Source-Group:
       method: get
       resourcePath: /source_group/{sgId}/data
       description: "Get the data information for all connections in the source group."
+    Get-Data-Info-Source-Group-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/data/refined
+      description: "Get every collected bucket of the source group's CSP object-storage connections in the source model cm-beetle recommends target buckets from. Connections without a collected bucket are left out."
+    Get-Db-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/db
+      description: "Get the database information of the connection information."
+    Get-Db-Info-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/db/refined
+      description: "Get the refined database information of the connection information."
+    Get-Db-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/db
+      description: "Get the database information for all connections in the source group."
+    Get-Db-Info-Source-Group-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/db/refined
+      description: "Get the refined database information for all connections in the source group."
+    Get-Fs-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/fs
+      description: "Get the filesystem information of the connection information."
+    Get-Fs-Info-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/fs/refined
+      description: "Get the refined filesystem information of the connection information."
+    Get-Fs-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/fs
+      description: "Get the filesystem information for all connections in the source group."
+    Get-Fs-Info-Source-Group-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/fs/refined
+      description: "Get the refined filesystem information for all connections in the source group."
     Get-Helm-Info:
       method: get
       resourcePath: /source_group/{sgId}/connection_info/{connId}/helm
@@ -3357,6 +3753,38 @@ serviceActions:
       method: get
       resourcePath: /source_group/{sgId}/kubernetes
       description: "Get the kubernetes information for all connections in the source group."
+    Get-Object-Storage-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/objectstorage
+      description: "Get the object storage information of the connection information."
+    Get-Object-Storage-Info-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/objectstorage/refined
+      description: "Get the refined object storage information of the connection information."
+    Get-Object-Storage-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/objectstorage
+      description: "Get the object storage information for all connections in the source group."
+    Get-Object-Storage-Info-Source-Group-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/objectstorage/refined
+      description: "Get the refined object storage information for all connections in the source group."
+    Get-Rdbms-Info:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/rdbms
+      description: "Get the database information of the connection information. A CSP managed database (resource_type rdbms) gives what the CSP driver reported; a VM gives the databases installed on it."
+    Get-Rdbms-Info-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/rdbms/refined
+      description: "Get the refined database information of the connection information, in the source model cm-beetle recommends from. A value the source did not report is left empty for cm-beetle to fill in."
+    Get-Rdbms-Info-Source-Group:
+      method: get
+      resourcePath: /source_group/{sgId}/rdbms
+      description: "Get the database information for all connections in the source group. Connections that cannot hold a database or have not been collected are skipped."
+    Get-Rdbms-Info-Source-Group-Refined:
+      method: get
+      resourcePath: /source_group/{sgId}/rdbms/refined
+      description: "Get the refined database information for all connections in the source group, in the source model cm-beetle recommends from. Connections that cannot hold a database or have not been collected are skipped."
     Get-Software-Info:
       method: get
       resourcePath: /source_group/{sgId}/connection_info/{connId}/software
@@ -3389,6 +3817,22 @@ serviceActions:
       method: post
       resourcePath: /source_group/{sgId}/import/data
       description: "Import data information for all connections in the source group."
+    Import-Db:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/db
+      description: "Import the database information of the connection information. With no db_name on the connection, every user database on the server is inspected."
+    Import-Db-Source-Group:
+      method: post
+      resourcePath: /source_group/{sgId}/import/db
+      description: "Import database information for all connections in the source group. Each connection is inspected at its own db_name and db_pg_schema."
+    Import-Fs:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/fs
+      description: "Import the filesystem information of the connection information. The path inspected is the connection's fs_scan_path."
+    Import-Fs-Source-Group:
+      method: post
+      resourcePath: /source_group/{sgId}/import/fs
+      description: "Import filesystem information for all connections in the source group. Each connection is inspected at its own fs_scan_path."
     Import-Helm:
       method: post
       resourcePath: /source_group/{sgId}/connection_info/{connId}/import/helm
@@ -3413,6 +3857,14 @@ serviceActions:
       method: post
       resourcePath: /source_group/{sgId}/import/kubernetes
       description: "Import kubernetes information for all connections in the source group."
+    Import-Object-Storage:
+      method: post
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/import/objectstorage
+      description: "Import the object storage information of the connection information. The bucket and prefix inspected are the connection's os_scan_bucket and os_scan_prefix."
+    Import-Object-Storage-Source-Group:
+      method: post
+      resourcePath: /source_group/{sgId}/import/objectstorage
+      description: "Import object storage information for all connections in the source group. Each connection is inspected at its own os_scan_bucket and os_scan_prefix."
     Import-Software:
       method: post
       resourcePath: /source_group/{sgId}/connection_info/{connId}/import/software
@@ -3428,11 +3880,15 @@ serviceActions:
     List-Csp:
       method: get
       resourcePath: /csp
-      description: "Return the list of CSPs supported by the connected cb-spider."
+      description: "Return the list of CSPs supported by the linked cb-spider drivers."
     List-Source-Group:
       method: get
       resourcePath: /source_group
       description: "Get a list of source group."
+    List-Source-Group-Regions:
+      method: get
+      resourcePath: /source_group/{sgId}/region
+      description: "Return the CSP's available regions and zones, queried live via the source group's stored credential. CSP-type source groups only."
     Refresh-Connection-Info-Status:
       method: put
       resourcePath: /source_group/{sgId}/connection_info/{connId}/refresh
@@ -3461,6 +3917,14 @@ serviceActions:
       method: post
       resourcePath: /bench/{connId}/stop
       description: "Stop the benchmark"
+    Uninstall-Agent:
+      method: delete
+      resourcePath: /source_group/{sgId}/connection_info/{connId}/agent
+      description: "Uninstall cm-honeybee-agent from the connection's host over SSH. It is kept (not removed) when another connection on the same host (same ip_address) still uses it. This does not delete the connection record."
+    Uninstall-Agent-Source-Group:
+      method: delete
+      resourcePath: /source_group/{sgId}/agent
+      description: "Uninstall cm-honeybee-agent from every host in the source group over SSH. Each host is processed once; a host is kept (not removed) when a connection in another source group still uses it. This does not delete the connection records."
     Update-Connection-Info:
       method: put
       resourcePath: /source_group/{sgId}/connection_info/{connId}
