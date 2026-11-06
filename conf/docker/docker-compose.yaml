@@ -31,7 +31,7 @@ services:
   # https://github.com/cloud-barista/cb-spider/wiki/Docker-based-Start-Guide
   # https://hub.docker.com/r/cloudbaristaorg/cb-spider
   cb-spider:
-    image: cloudbaristaorg/cb-spider:0.12.42
+    image: cloudbaristaorg/cb-spider:0.13.20
     pull_policy: always
     container_name: cb-spider
     logging: *default-logging
@@ -64,6 +64,7 @@ services:
       - SPIDER_METADB_DATABASE=${SPIDER_DB_NAME}
       - SPIDER_LOG_LEVEL=${SPIDER_LOG_LEVEL}
       - SPIDER_HISCALL_LOG_LEVEL=${SPIDER_HISCALL_LOG_LEVEL}
+      - GOMEMLIMIT=8GiB # Go GC soft target (no hard limit); see helm values spider.goMemLimit
       - ID_TRANSFORM_MODE=OFF
       - ADMINWEB=OFF # ON or OFF Spider Admin Web Console
       - SPIDER_BACKUP_ENABLED=false
@@ -97,10 +98,11 @@ services:
   # https://hub.docker.com/r/cloudbaristaorg/cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-tumblebug:
-    image: cloudbaristaorg/cb-tumblebug:0.12.30
+    image: cloudbaristaorg/cb-tumblebug:0.13.8
     container_name: cb-tumblebug
     logging: *default-logging
     restart: unless-stopped
+    # stop_grace_period: 10s
     pull_policy: always
     platform: linux/amd64
     networks:
@@ -140,6 +142,7 @@ services:
       - TB_POSTGRES_DATABASE=${TUMBLEBUG_DB_NAME}
       - TB_POSTGRES_USER=${TUMBLEBUG_DB_USER}
       - TB_POSTGRES_PASSWORD=${TUMBLEBUG_DB_PASSWORD}
+      # - TB_POSTGRES_SSLMODE=disable
       - TB_SPIDER_USERNAME=${SPIDER_USERNAME}
       - TB_SPIDER_PASSWORD=${SPIDER_PASSWORD}
       - TB_TERRARIUM_API_USERNAME=${TERRARIUM_API_USERNAME}
@@ -159,7 +162,13 @@ services:
       # - TB_LOGFILE_COMPRESS=false
       - TB_LOGLEVEL=${TB_LOGLEVEL}
       # - TB_LOGWRITER=both
+      # - TB_LOGFORMAT=console  # 'json' for log collectors (stdout format)
+      # - TB_LOG_MASKING_ENABLED=true   # enable/disable sensitive data masking (default: true)
+      # - TB_REQUEST_DUMP_ENABLED=false
+      # - TB_READYZ_CHECK_DEPS=true  # readyz also verifies etcd/PostgreSQL connectivity
       # - TB_NODE_ENV=development
+      # Graceful shutdown timeout (raise stop_grace_period together when increasing)
+      # - TB_SHUTDOWN_TIMEOUT_MS=10000
       # OpenBao (secrets manager) integration
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN=${VAULT_TOKEN}
@@ -211,6 +220,9 @@ services:
       - stderr
       - --auth-token
       - simple
+      - --quota-backend-bytes=8589934592
+      - --auto-compaction-mode=periodic
+      - --auto-compaction-retention=1h
     healthcheck:
       #test: [ "CMD", "etcdctl", "endpoint", "health", "--endpoints=http://localhost:2379"]
       test: ["CMD", "/usr/local/bin/etcd", "--version"]
@@ -244,11 +256,21 @@ services:
   # used by cb-tumblebug
   # See https://github.com/cloud-barista/cb-tumblebug/blob/main/docker-compose.yaml
   cb-mapui:
-    image: cloudbaristaorg/cb-mapui:0.12.56
+    image: cloudbaristaorg/cb-mapui:0.13.14
     container_name: cb-mapui
     logging: *default-logging
     restart: unless-stopped
     pull_policy: always
+    environment:
+      # Optional: preset remote-command popup parameters from .env (blank = ask in UI)
+      - MAPUI_PARAM_HF_TOKEN=${HF_TOKEN:-}
+      - MAPUI_PARAM_VLLM_HF_TOKEN=${HF_TOKEN:-}
+      - MAPUI_PARAM_TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - MAPUI_PARAM_DISCORD_TOKEN=${DISCORD_TOKEN:-}
+      - MAPUI_PARAM_DISCORD_HOME_CHANNEL=${DISCORD_HOME_CHANNEL:-}
+      - MAPUI_PARAM_DISCORD_HOME_CHANNEL_NAME=${DISCORD_HOME_CHANNEL_NAME:-}
+      - MAPUI_PARAM_HERMES_API_KEY=${HERMES_API_KEY:-}
+      - MAPUI_PARAM_NTFY_TOPIC=${NTFY_TOPIC:-}
     ports:
       - target: 1324
         published: 1324
@@ -429,7 +451,7 @@ services:
   # see conf folder : https://github.com/cloud-barista/cm-beetle/tree/main/conf
   # And remove the conf-related comments in the volumes settings below.
   cm-beetle:
-    image: cloudbaristaorg/cm-beetle:0.6.0
+    image: cloudbaristaorg/cm-beetle:0.6.4
     container_name: cm-beetle
     logging: *default-logging
     pull_policy: always
@@ -452,9 +474,11 @@ services:
       - BEETLE_SELF_ENDPOINT=localhost:8056
       # - BEETLE_API_ALLOW_ORIGINS=*
       # - BEETLE_API_AUTH_ENABLED=true
+      # - BEETLE_API_AUTH_MODE=basic
       - BEETLE_API_USERNAME=${BEETLE_API_USERNAME}
       - BEETLE_API_PASSWORD=${BEETLE_API_PASSWORD}
       # - BEETLE_LKVSTORE_PATH=/app/db/beetle.db
+      # - BEETLE_ARTIFACT_PATH=/app/db/artifacts
       # - BEETLE_LOGFILE_PATH=/app/log/beetle.log
       # - BEETLE_LOGFILE_MAXSIZE=1000
       # - BEETLE_LOGFILE_MAXBACKUPS=3
@@ -462,6 +486,7 @@ services:
       # - BEETLE_LOGFILE_COMPRESS=false
       - BEETLE_LOGLEVEL=${BEETLE_LOGLEVEL}
       # - BEETLE_LOGWRITER=both
+      # - BEETLE_LOG_MASKING_ENABLED=true   # enable/disable sensitive data masking (default: true)
       - BEETLE_NODE_ENV=development
       # - BEETLE_AUTOCONTROL_DURATION_MS=10000
       - BEETLE_TUMBLEBUG_ENDPOINT=http://cb-tumblebug:1323
@@ -472,8 +497,8 @@ services:
       - BEETLE_TUMBLEBUG_API_USERNAME=${TB_API_USERNAME}
       - BEETLE_TUMBLEBUG_API_PASSWORD=${TB_API_PASSWORD}
       # Set REQUESTS_PER_SEC to CB-Tumblebug's own per-client-IP limit
-      # - BEETLE_TUMBLEBUG_RETRIEVAL_REQUESTS_PER_SEC=2
-      # - BEETLE_TUMBLEBUG_RETRIEVAL_MAX_WAIT_SEC=8
+      - BEETLE_TUMBLEBUG_RETRIEVAL_REQUESTS_PER_SEC=5
+      - BEETLE_TUMBLEBUG_RETRIEVAL_MAX_WAIT_SEC=30
     healthcheck: # for CM-Beetle
       test: ["CMD", "/app/tool/mayfly", "rest", "get", "http://cm-beetle:8056/beetle/readyz"]
       #test: [ "CMD", "curl", "-f", "http://localhost:8056/beetle/readyz" ]
